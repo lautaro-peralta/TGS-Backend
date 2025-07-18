@@ -12,7 +12,11 @@
     "alwaysStrict": true,
     "skipLibCheck": true,
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "baseUrl": "./src",
+    "paths": {
+      "*": ["./*"]
+    }
   },
   "include": ["src/**/*", "**/*.ts"],
   "exclude": ["node_modules"]
