@@ -1,95 +1,78 @@
-import { Request, Response, NextFunction } from "express"
-import { ZonaRepository } from "./zona.repository.js"
-import { Zona } from "./zona.entity"
+import { Request, Response, NextFunction } from 'express';
+import { DI } from '../mikro-orm.config'; // Asumiendo que usás inyección desde un archivo central
+import { Zona } from './zona.entity';
 
-
-const repository = new ZonaRepository()
-
-function sanitizarInputZona(req:Request, res:Response,next:NextFunction){
+function sanitizarInputZona(req: Request, res: Response, next: NextFunction) {
   const body = req.body;
-
   const zonaSanitizada = {
-    nombre: typeof body.nombre === "string" ? body.nombre.trim() : undefined,
+    nombre: typeof body.nombre === 'string' ? body.nombre.trim() : undefined,
   };
-
   req.body.zonaSanitizada = zonaSanitizada;
-
-  next()
-  
+  next();
 }
 
 async function findAll(req: Request, res: Response) {
   try {
-    const zonas = await repository.findAll();
+    const zonas = await DI.em.find(Zona, {});
     res.status(200).json({ data: zonas });
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener zonas" });
+    res.status(500).json({ message: 'Error al obtener zonas' });
   }
 }
-
 
 async function findOne(req: Request, res: Response) {
   try {
-    const id = req.params.id.trim(); // se toma el id de la URL
-    const zona = await repository.findOne(id); // busca la zona
+    const id = req.params.id.trim();
+    const zona = await DI.em.findOne(Zona, { id });
     if (!zona) {
-      return res.status(404).send({ message: "Zona no encontrada" });
+      return res.status(404).json({ message: 'Zona no encontrada' });
     }
-    res.json({ data: zona }); // responde con la zona encontrada
+    res.json({ data: zona });
   } catch (err) {
-    return res.status(400).send({ message: "Error al buscar zona" });
+    res.status(400).json({ message: 'Error al buscar zona' });
   }
 }
-
 
 async function add(req: Request, res: Response) {
-  const input = req.body.zonaSanitizada;
-
-  const inputZona = new Zona(
-    '',             // ID vacío, se genera en el repo o DB
-    input.nombre
-  );
-
   try {
-    const zona = await repository.add(inputZona);
-    return res.status(201).send({ message: "Zona creada", data: zona });
+    const input = req.body.zonaSanitizada;
+    const zona = new Zona(input.nombre);
+    await DI.em.persistAndFlush(zona);
+    res.status(201).json({ message: 'Zona creada', data: zona });
   } catch (err: any) {
-    return res.status(400).send({ message: err.message || "Error al crear zona" });
+    res.status(400).json({ message: err.message || 'Error al crear zona' });
   }
 }
-
 
 async function update(req: Request, res: Response) {
   try {
     const id = req.params.id.trim();
     const input = req.body.zonaSanitizada;
-
-    const zona = await repository.update(id, input);
-
+    const zona = await DI.em.findOne(Zona, { id });
     if (!zona) {
-      return res.status(404).send({ message: "Zona no encontrada" });
+      return res.status(404).json({ message: 'Zona no encontrada' });
     }
-
-    return res.status(200).send({ message: "Zona actualizada correctamente", data: zona });
+    zona.nombre = input.nombre;
+    await DI.em.flush();
+    res.status(200).json({ message: 'Zona actualizada correctamente', data: zona });
   } catch (err) {
-    return res.status(400).send({ message: "Error al actualizar zona" });
+    res.status(400).json({ message: 'Error al actualizar zona' });
   }
 }
-
 
 async function remove(req: Request, res: Response) {
   try {
     const id = req.params.id.trim();
-    const zona = await repository.delete(id);
+    const zona = await DI.em.findOne(Zona, { id });
     if (!zona) {
-      return res.status(404).send({ message: "Zona no encontrada" });
+      return res.status(404).json({ message: 'Zona no encontrada' });
     }
-    res.status(200).send({ message: "Zona eliminada exitosamente" });
+    await DI.em.removeAndFlush(zona);
+    res.status(200).json({ message: 'Zona eliminada exitosamente' });
   } catch (err) {
-    return res.status(400).send({ message: "Error al eliminar zona" });
+    res.status(400).json({ message: 'Error al eliminar zona' });
   }
 }
-
 
 export {
   sanitizarInputZona,

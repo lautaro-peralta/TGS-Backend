@@ -1,15 +1,15 @@
-export class Zona {
-  constructor(
-    public id: string, //UUID
-    public nombre: string,
-  ){}
+import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
+import { v4 as uuidv4 } from 'uuid';
 
-  
-  public static fromDbRow(row: any): Zona {
-    return new Zona(
-      row.id, //UUID
-      row.nombre,
-    );
+@Entity()
+export class Zona {
+  @PrimaryKey()
+  id: string = uuidv4();
+
+  @Property()
+  nombre: string;
+
+  constructor(nombre: string) {
+    this.nombre = nombre;
   }
 }
-  
