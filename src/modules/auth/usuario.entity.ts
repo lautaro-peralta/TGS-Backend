@@ -10,8 +10,11 @@ export enum Rol {
 
 @Entity()
 export class Usuario extends BaseEntityPersona {
-  @Property()
+  @Property() //despues en base.persona.entity.ts
   nombre!: string;
+
+  @Property()
+  username!: string;
 
   @Property({ unique: true })
   email!: string;
