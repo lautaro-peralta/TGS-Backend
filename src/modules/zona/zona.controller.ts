@@ -22,7 +22,7 @@ async function findAll(req: Request, res: Response) {
 
 async function findOne(req: Request, res: Response) {
   try {
-    const id = req.params.id.trim();
+    const id = parseInt(req.params.id); 
     const zona = await DI.em.findOne(Zona, { id });
     if (!zona) {
       return res.status(404).json({ message: 'Zona no encontrada' });
@@ -46,7 +46,7 @@ async function add(req: Request, res: Response) {
 
 async function update(req: Request, res: Response) {
   try {
-    const id = req.params.id.trim();
+    const id = parseInt(req.params.id); 
     const input = req.body.zonaSanitizada;
     const zona = await DI.em.findOne(Zona, { id });
     if (!zona) {
@@ -62,7 +62,7 @@ async function update(req: Request, res: Response) {
 
 async function remove(req: Request, res: Response) {
   try {
-    const id = req.params.id.trim();
+    const id = parseInt(req.params.id); 
     const zona = await DI.em.findOne(Zona, { id });
     if (!zona) {
       return res.status(404).json({ message: 'Zona no encontrada' });
