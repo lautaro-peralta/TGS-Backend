@@ -1,7 +1,10 @@
 import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
+import { table } from 'console';
+import { BaseEntityObjeto } from 'shared/db/base.objeto.entity.js';
 
-@Entity()
-export class Zona {
+
+@Entity({ tableName: 'zonas' })
+export class Zona extends BaseEntityObjeto{
   @PrimaryKey()
   id!: number;  
 
@@ -10,5 +13,12 @@ export class Zona {
 
   constructor(nombre: string) {
     this.nombre = nombre;
+  }
+
+  toDTO() {
+  return {
+    id: this.id,
+    nombre: this.nombre,
+  };
   }
 }
