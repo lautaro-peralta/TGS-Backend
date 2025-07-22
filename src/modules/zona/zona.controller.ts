@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { DI } from '../mikro-orm.config'; // Asumiendo que usás inyección desde un archivo central
+import { orm } from '../../shared/db/orm.js';
 import { Zona } from './zona.entity';
+
+const em =orm.em.fork()
+
 
 function sanitizarInputZona(req: Request, res: Response, next: NextFunction) {
   const body = req.body;
