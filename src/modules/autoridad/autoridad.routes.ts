@@ -1,7 +1,7 @@
 import { adminMiddleware } from "modules/auth/auth.middleware.js";
 import { Router } from 'express';
 import * as autoridadController from './autoridad.controller.js';
-import { validarConSchema } from "shared/validation/zod.middleware.js";
+import { validarConSchema } from "../../shared/validation/zod.middleware.js";
 import { crearAutoridadSchema } from "./autoridad.schema.js";
 
 const router = Router();

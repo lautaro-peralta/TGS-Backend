@@ -1,7 +1,7 @@
 import { Entity, OneToMany, ManyToOne, Property, Collection} from '@mikro-orm/core';
-import { BaseEntityPersona } from 'shared/db/base.persona.entity.js';
-import { Venta } from 'modules/venta/venta.entity.js';
-import { Zona } from...
+import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { Venta } from '../../modules/venta/venta.entity.js';
+import { Zona } from '../../modules/zona/zona.entity.js';
 
 @Entity({tableName:'autoridades'})
 export class Autoridad extends BaseEntityPersona{

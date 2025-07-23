@@ -41,7 +41,7 @@ async function crear(req: Request, res: Response) {
 async function listar(req: Request, res: Response) {
   const em = orm.em.fork();
   try {
-    const autoridades = await em.find(Autoridad, { populate: ['zona'] });
+    const autoridades = await em.find(Autoridad,{}, { populate: ['zona'] });
     return res.json(autoridades.map(a => a.toDTO()));
   } catch (error) {
     console.error('Error al listar autoridades:', error);
@@ -53,7 +53,8 @@ async function eliminar(req: Request, res: Response) {
   const dni = req.params.dni;
 
   try {
-    const autoridad = await em.findOne(Autoridad, { dni });
+    const dniNumber = Number(dni);
+    const autoridad = await em.findOne(Autoridad, { dni: dniNumber });
 
     if (!autoridad) {
       return res.status(404).json({ error: 'Autoridad no encontrada' });

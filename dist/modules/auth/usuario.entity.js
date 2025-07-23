@@ -25,11 +25,20 @@ export let Usuario = class Usuario extends BaseEntityPersona {
         this.password = password;
         this.rol = rol;
     }
+    toDTO() {
+        return {
+            id: this.id,
+            nombre: this.nombre,
+            username: this.username,
+            email: this.email,
+            rol: this.rol,
+        };
+    }
 };
 __decorate([
     Property(),
     __metadata("design:type", String)
-], Usuario.prototype, "nombre", void 0);
+], Usuario.prototype, "username", void 0);
 __decorate([
     Property({ unique: true }),
     __metadata("design:type", String)
@@ -43,7 +52,7 @@ __decorate([
     __metadata("design:type", String)
 ], Usuario.prototype, "rol", void 0);
 Usuario = __decorate([
-    Entity(),
+    Entity({ tableName: 'usuarios' }),
     __metadata("design:paramtypes", [String, String, String, String])
 ], Usuario);
 //# sourceMappingURL=usuario.entity.js.map

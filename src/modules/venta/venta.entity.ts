@@ -2,7 +2,7 @@ import { Entity, DateTimeType, Property, OneToMany, ManyToOne, Collection, Casca
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js"
 import { Cliente } from "../cliente/cliente.entity.js"
 import { Detalle } from "./detalle.entity.js"
-import { Autoridad } from "modules/autoridad/autoridad.entity.js"
+import { Autoridad } from "../../modules/autoridad/autoridad.entity.js"
 
 @Entity({ tableName: 'ventas' })
 export class Venta extends BaseEntityObjeto{ 
