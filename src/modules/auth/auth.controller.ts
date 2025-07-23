@@ -11,9 +11,9 @@ export class AuthController {
     const em = orm.em.fork();
     try {
       console.log('Request body:', req.body);
-      const { nombre, email, password, username } = req.body||{};
+      const { nombre, email, password, username,dni } = req.body||{};
 
-      if ( !nombre || !password || !email || !username ) {
+      if ( !nombre || !password ||!dni|| !email || !username ) {
         return res.status(400).json({ message: 'Faltan datos obligatorios' });
       }
 
@@ -31,6 +31,7 @@ export class AuthController {
 
       // Crear el usuario incluyendo el rol, que es obligatorio
     const userNew = em.create(Usuario, {
+      dni,
       nombre,
       username,
       email,

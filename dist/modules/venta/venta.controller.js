@@ -2,9 +2,11 @@ import { orm } from '../../shared/db/orm.js';
 import { Venta } from "./venta.entity.js";
 import { Detalle } from "./detalle.entity.js";
 import { Cliente } from "../cliente/cliente.entity.js";
+import { obtenerProductoPorId } from "../../mocks/productos.mock.js";
 // TODO: Descomentar esta línea cuando se cree la entidad Producto
 // import { Producto } from "../producto/producto.entity.js";
-const em = orm.em;
+import { Autoridad } from "../autoridad/autoridad.entity.js";
+const em = orm.em.fork();
 function sanitizarInputVenta(req, res, next) {
     const body = req.body;
     const ventaSanitizada = {
@@ -62,15 +64,22 @@ async function add(req, res) {
             montoVenta: 0,
             detalles: [],
         });
+        let hayProductoIlegal = false;
         for (const detalle of detalles) {
+            const producto = obtenerProductoPorId(detalle.productoId);
+            if (!producto) {
+                return res.status(400).send({ message: `Producto con ID ${detalle.productoId} no encontrado (mock)` });
+            }
+            if (producto.esIlegal) {
+                hayProductoIlegal = true;
+            }
             // TODO: Reemplazar esto por la consulta real a Producto cuando esté creada
             // const producto = await em.findOne(Producto, { id: detalle.productoId });
             // if (!producto) {
             //   return res.status(400).send({ message: `Producto con ID ${detalle.productoId} no encontrado` });
             // }
-            const productoSimulado = `Producto ${detalle.productoId}`; // <--- Simulación temporal
             const nuevoDetalle = em.create(Detalle, {
-                producto: productoSimulado,
+                producto: producto.nombre,
                 cantidad: detalle.cantidad,
                 precioUnitario: detalle.precioUnitario,
                 subtotal: detalle.subtotal,
@@ -80,6 +89,18 @@ async function add(req, res) {
         }
         // Calcular el monto total de la venta sumando subtotales
         nuevaVenta.montoVenta = nuevaVenta.detalles.getItems().reduce((acc, d) => acc + d.subtotal, 0);
+        // Si hubo producto ilegal, asignar autoridad con mayor rango
+        if (hayProductoIlegal) {
+            const autoridad = await em.findOne(Autoridad, {}, { orderBy: { rango: 'asc' } });
+            if (autoridad) {
+                nuevaVenta.autoridad = autoridad;
+                // podés loggear o trackear que hubo control
+            }
+            else {
+                // no hay autoridad disponible: no se asigna nada, la venta sigue sin autoridad
+                console.warn("Producto ilegal detectado, pero no hay autoridad disponible. Venta permitida sin regulación.");
+            }
+        }
         await em.persistAndFlush(nuevaVenta);
         return res.status(201).send({ message: "Venta registrada exitosamente", data: nuevaVenta.toDTO() });
     }

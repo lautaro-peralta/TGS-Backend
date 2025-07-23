@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { PrimaryKey } from '@mikro-orm/core';
+import { PrimaryKey, Property } from '@mikro-orm/core';
 import { v4 as uuidv4 } from 'uuid';
 export class BaseEntityPersona {
     constructor() {
@@ -19,6 +19,14 @@ __decorate([
     PrimaryKey({ type: 'uuid' }),
     __metadata("design:type", String)
 ], BaseEntityPersona.prototype, "id", void 0);
+__decorate([
+    Property({ unique: true }),
+    __metadata("design:type", Number)
+], BaseEntityPersona.prototype, "dni", void 0);
+__decorate([
+    Property({ nullable: false }),
+    __metadata("design:type", String)
+], BaseEntityPersona.prototype, "nombre", void 0);
 /*
   @Property({ type: DateTimeType })
   createdAt = new Date();

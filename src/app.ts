@@ -2,6 +2,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import 'reflect-metadata';
 import express from 'express';
+import path from 'path';
 
 import { RequestContext } from '@mikro-orm/core';
 import { orm, syncSchema } from './shared/db/orm.js';
@@ -28,6 +29,12 @@ app.use('/api/clientes', clienteRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/usuarios', usuarioRouter);
 app.use('/api/ventas', ventaRouter);
+
+app.use(express.static(path.join(__dirname, '../../frontend/dist/frontend')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/dist/frontend', 'index.html'));
+});
 
 app.use((_, res) => {
   res.status(404).json({ message: 'No se encontró el recurso' });

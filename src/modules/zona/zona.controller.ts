@@ -72,7 +72,7 @@ async function update(req: Request, res: Response) {
 async function remove(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id); 
-    const zona = await DI.em.findOne(Zona, { id });
+    const zona = await em.findOne(Zona, { id });
     if (!zona) {
       return res.status(404).json({ message: 'Zona no encontrada' });
     }
