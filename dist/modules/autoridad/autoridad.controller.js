@@ -46,8 +46,7 @@ async function eliminar(req, res) {
     const em = orm.em.fork();
     const dni = req.params.dni;
     try {
-        const dniNumber = Number(dni);
-        const autoridad = await em.findOne(Autoridad, { dni: dniNumber });
+        const autoridad = await em.findOne(Autoridad, { dni });
         if (!autoridad) {
             return res.status(404).json({ error: 'Autoridad no encontrada' });
         }

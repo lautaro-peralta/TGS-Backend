@@ -21,7 +21,7 @@ __decorate([
 ], BaseEntityPersona.prototype, "id", void 0);
 __decorate([
     Property({ unique: true }),
-    __metadata("design:type", Number)
+    __metadata("design:type", String)
 ], BaseEntityPersona.prototype, "dni", void 0);
 __decorate([
     Property({ nullable: false }),

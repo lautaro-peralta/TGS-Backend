@@ -2,9 +2,9 @@ import { Router } from 'express';
 import { sanitizarInputCliente, findAll, findOne, add, putUpdate, patchUpdate, remove } from './cliente.controller.js';
 export const clienteRouter = Router();
 clienteRouter.get('/', findAll);
-clienteRouter.get('/:id', findOne);
+clienteRouter.get('/:dni', findOne);
 clienteRouter.post('/', sanitizarInputCliente, add);
-clienteRouter.put('/:id', sanitizarInputCliente, putUpdate);
-clienteRouter.patch('/:id', sanitizarInputCliente, patchUpdate);
-clienteRouter.delete('/:id', remove);
+clienteRouter.put('/:dni', sanitizarInputCliente, putUpdate);
+clienteRouter.patch('/:dni', sanitizarInputCliente, patchUpdate);
+clienteRouter.delete('/:dni', remove);
 //# sourceMappingURL=cliente.routes.js.map
