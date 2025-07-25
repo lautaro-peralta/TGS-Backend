@@ -2,25 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Zona } from './zona.entity';
 
-const em =orm.em.fork()
-
-
-function sanitizarInputZona(req: Request, res: Response, next: NextFunction) {
-  const body = req.body;
-  const zonaSanitizada = {
-    nombre: typeof body.nombre === 'string' ? body.nombre.trim() : undefined,
-  };
-
-  Object.keys(zonaSanitizada).forEach((key) => {
-  if (zonaSanitizada[key as keyof typeof zonaSanitizada] === undefined) {
-    delete zonaSanitizada[key as keyof typeof zonaSanitizada];
-  }
-  });
-  req.body.zonaSanitizada = zonaSanitizada;
-  next();
-}
 
 async function findAll(req: Request, res: Response) {
+  const em = orm.em.fork();
   try {
     const zonas = await em.find(Zona, {});
     res.status(200).json({ data: zonas });
@@ -30,6 +14,7 @@ async function findAll(req: Request, res: Response) {
 }
 
 async function findOne(req: Request, res: Response) {
+  const em = orm.em.fork();
   try {
     const id = parseInt(req.params.id); 
     const zona = await em.findOne(Zona, { id });
@@ -43,6 +28,7 @@ async function findOne(req: Request, res: Response) {
 }
 
 async function add(req: Request, res: Response) {
+  const em = orm.em.fork();
   try {
     const input = req.body.zonaSanitizada;
     const zona = new Zona(input.nombre);
@@ -54,6 +40,7 @@ async function add(req: Request, res: Response) {
 }
 
 async function update(req: Request, res: Response) {
+  const em = orm.em.fork();
   try {
     const id = parseInt(req.params.id); 
     const input = req.body.zonaSanitizada;
@@ -70,6 +57,7 @@ async function update(req: Request, res: Response) {
 }
 
 async function remove(req: Request, res: Response) {
+  const em = orm.em.fork();
   try {
     const id = parseInt(req.params.id); 
     const zona = await DI.em.findOne(Zona, { id });
@@ -84,7 +72,6 @@ async function remove(req: Request, res: Response) {
 }
 
 export {
-  sanitizarInputZona,
   findAll,
   findOne,
   add,
