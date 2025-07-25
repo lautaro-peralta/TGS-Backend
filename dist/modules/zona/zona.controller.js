@@ -1,5 +1,5 @@
 import { orm } from '../../shared/db/orm.js';
-import { Zona } from './zona.entity';
+import { Zona } from './zona.entity.js';
 const em = orm.em.fork();
 function sanitizarInputZona(req, res, next) {
     const body = req.body;

@@ -1,118 +1,99 @@
 import { orm } from "../../shared/db/orm.js";
 import { Cliente } from "./cliente.entity.js";
-const em = orm.em.fork();
-function sanitizarInputCliente(req, res, next) {
-    const body = req.body;
-    const clienteSanitizado = {
-        dni: typeof body.dni === "string" ? body.dni.trim() : undefined,
-        nombre: typeof body.nombre === "string" ? body.nombre.trim() : undefined,
-        email: typeof body.email === "string" ? body.email.trim() : undefined,
-        direccion: typeof body.direccion === "string" ? body.direccion.trim() : undefined,
-        telefono: typeof body.telefono === "string" ? body.telefono.trim() : undefined,
-    };
-    Object.keys(clienteSanitizado).forEach((key) => {
-        if (clienteSanitizado[key] === undefined) {
-            delete clienteSanitizado[key];
-        }
-    });
-    req.body = clienteSanitizado;
-    next();
-}
 async function findAll(req, res) {
+    const em = orm.em.fork();
     try {
         const clientes = await em.find(Cliente, {}, { populate: ['regCompras'] });
-        const clientesDTO = clientes.map(cliente => cliente.toDTO());
-        res.status(200).json({ data: clientesDTO });
+        return res.json({ data: clientes.map(c => c.toDTO()) });
     }
     catch (err) {
-        res.status(500).json({ message: "Error al obtener clientes" });
+        console.error('Error al obtener clientes:', err);
+        return res.status(500).json({ error: 'Error interno del servidor' });
     }
 }
 async function findOne(req, res) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
     try {
-        const dni = req.params.dni.trim();
         const cliente = await em.findOne(Cliente, { dni }, { populate: ['regCompras'] });
         if (!cliente) {
-            return res.status(404).send({ message: "Cliente no encontrado" });
+            return res.status(404).json({ error: 'Cliente no encontrado' });
         }
-        res.json({ data: cliente.toDTO() });
+        return res.json({ data: cliente.toDTO() });
     }
     catch (err) {
-        return res.status(400).send({ message: "Error al buscar cliente" });
+        console.error('Error al buscar cliente:', err);
+        return res.status(400).json({ error: 'Error al buscar cliente' });
     }
 }
 async function add(req, res) {
-    const input = req.body.clienteSanitizado;
+    const em = orm.em.fork();
+    const { dni, nombre, email, direccion, telefono } = res.locals.validated.body;
     try {
-        const cliente = em.create(Cliente, req.body.clienteSanitizado);
-        await orm.em.persistAndFlush(cliente);
-        return res.status(201).send({ message: "Cliente creado", data: cliente.toDTO() });
+        const existente = await em.findOne(Cliente, { dni });
+        if (existente) {
+            return res.status(409).json({ error: 'Ya existe un cliente con ese DNI' });
+        }
+        const nuevoCliente = em.create(Cliente, { dni, nombre, email, direccion, telefono });
+        await em.persistAndFlush(nuevoCliente);
+        return res.status(201).json({ data: nuevoCliente.toDTO() });
     }
     catch (err) {
-        return res.status(400).send({ message: err.message || "Error al crear cliente" });
+        console.error('Error al crear cliente:', err);
+        return res.status(500).json({ error: 'Error interno del servidor' });
     }
 }
 async function putUpdate(req, res) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+    const { nombre, email, direccion, telefono } = res.locals.validated.body;
     try {
-        const dni = req.params.dni.trim();
-        const input = req.body;
-        const camposObligatorios = ['nombre', 'email']; // definir según modelo
-        for (const campo of camposObligatorios) {
-            if (!input[campo]) {
-                return res.status(400).send({ message: `Campo obligatorio faltante: ${campo}` });
-            }
+        const cliente = await em.findOne(Cliente, { dni });
+        if (!cliente) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
         }
-        const clienteToUpdate = await em.findOne(Cliente, { dni }, { populate: ['regCompras'] });
-        if (!clienteToUpdate) {
-            return res.status(404).send({ message: "Cliente no encontrado" });
-        }
-        const camposCliente = ['nombre', 'email', 'direccion', 'telefono'];
-        const reemplazoCompleto = {};
-        for (const campo of camposCliente) {
-            reemplazoCompleto[campo] = input[campo] !== undefined ? input[campo] : undefined;
-        }
-        em.assign(clienteToUpdate, reemplazoCompleto);
+        em.assign(cliente, { nombre, email, direccion, telefono });
         await em.flush();
-        return res.status(200).send({ message: "Cliente actualizado correctamente (PUT)", data: clienteToUpdate.toDTO() });
+        return res.status(200).json({ data: cliente.toDTO() });
     }
     catch (err) {
-        console.error("Error en PUT actualizar cliente:", err);
-        return res.status(400).send({ message: err.message || "Error al actualizar cliente (PUT)" });
+        console.error('Error en PUT cliente:', err);
+        return res.status(500).json({ error: 'Error al actualizar cliente' });
     }
 }
 async function patchUpdate(req, res) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+    const updates = res.locals.validated.body;
     try {
-        const dni = req.params.dni.trim();
-        const input = req.body;
-        if (!input || Object.keys(input).length === 0) {
-            return res.status(400).send({ message: "No hay datos para actualizar" });
+        const cliente = await em.findOne(Cliente, { dni });
+        if (!cliente) {
+            return res.status(404).json({ error: 'Cliente no encontrado' });
         }
-        const clienteToUpdate = await em.findOne(Cliente, { dni }, { populate: ['regCompras'] });
-        if (!clienteToUpdate) {
-            return res.status(404).send({ message: "Cliente no encontrado" });
-        }
-        em.assign(clienteToUpdate, input);
+        em.assign(cliente, updates);
         await em.flush();
-        return res.status(200).send({ message: "Cliente actualizado correctamente (PATCH)", data: clienteToUpdate.toDTO() });
+        return res.status(200).json({ data: cliente.toDTO() });
     }
     catch (err) {
-        console.error("Error en PATCH actualizar cliente:", err);
-        return res.status(400).send({ message: err.message || "Error al actualizar cliente (PATCH)" });
+        console.error('Error en PATCH cliente:', err);
+        return res.status(500).json({ error: 'Error al actualizar cliente' });
     }
 }
 async function remove(req, res) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
     try {
-        const dni = req.params.dni.trim();
         const cliente = await em.findOne(Cliente, { dni });
         if (!cliente) {
-            return res.status(404).send({ message: "Cliente no encontrado" });
+            return res.status(404).json({ error: 'Cliente no encontrado' });
         }
         await em.removeAndFlush(cliente);
-        res.status(200).send({ message: "Cliente eliminado exitosamente" });
+        return res.status(204).send();
     }
     catch (err) {
-        return res.status(400).send({ message: "Error al eliminar cliente" });
+        console.error('Error al eliminar cliente:', err);
+        return res.status(500).json({ error: 'Error al eliminar cliente' });
     }
 }
-export { sanitizarInputCliente, findAll, findOne, add, putUpdate, patchUpdate, remove, };
+export { findAll, findOne, add, putUpdate, patchUpdate, remove, };
 //# sourceMappingURL=cliente.controller.js.map

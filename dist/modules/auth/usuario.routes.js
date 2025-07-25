@@ -12,5 +12,5 @@ usuarioRouter.patch("/:id/rol", authMiddleware, adminMiddleware, validarConSchem
 usuarioRouter.get('/', authMiddleware, adminMiddleware, UsuarioController.findAll);
 //Obtener user por id o username (solo ADMIN)
 usuarioRouter.get("/:identificador", authMiddleware, adminMiddleware, UsuarioController.findOneByIdentificador);
-export default usuarioRouter;
+export { usuarioRouter };
 //# sourceMappingURL=usuario.routes.js.map

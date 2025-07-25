@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { orm } from '../../shared/db/orm.js';
-import { Zona } from './zona.entity';
+import { Zona } from './zona.entity.js';
 
 const em =orm.em.fork()
 
