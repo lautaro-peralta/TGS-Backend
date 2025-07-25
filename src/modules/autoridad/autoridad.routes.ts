@@ -1,13 +1,21 @@
-import { adminMiddleware } from "modules/auth/auth.middleware.js";
+import { adminMiddleware, authMiddleware } from "../../modules/auth/auth.middleware.js";
 import { Router } from 'express';
 import * as autoridadController from './autoridad.controller.js';
 import { validarConSchema } from "../../shared/validation/zod.middleware.js";
-import { crearAutoridadSchema } from "./autoridad.schema.js";
+import { crearAutoridadSchema, actualizarAutoridadSchema, parcialActualizarAutoridadSchema } from "./autoridad.schema.js";
+import { z } from 'zod';
 
-const router = Router();
+const autoridadRouter = Router();
 
-router.post('/', adminMiddleware, validarConSchema({body:crearAutoridadSchema}), autoridadController.crear);
-router.get('/', adminMiddleware, autoridadController.listar);
-router.delete('/:dni', adminMiddleware, autoridadController.eliminar);
+const dniParamSchema = z.object({
+  dni: z.string().min(7).max(10),
+});
 
-export default router;
+autoridadRouter.post('/', authMiddleware, adminMiddleware, validarConSchema({ body: crearAutoridadSchema }), autoridadController.crear);
+autoridadRouter.get('/', authMiddleware, adminMiddleware, autoridadController.listar);
+autoridadRouter.get('/:dni', authMiddleware, adminMiddleware, validarConSchema({ params: dniParamSchema }), autoridadController.obtenerPorDni);
+autoridadRouter.put('/:dni', authMiddleware, adminMiddleware, validarConSchema({ body: actualizarAutoridadSchema }), autoridadController.putUpdate );
+autoridadRouter.patch('/:dni', authMiddleware, adminMiddleware, validarConSchema({ body: parcialActualizarAutoridadSchema }), autoridadController.patchUpdate);
+autoridadRouter.delete('/:dni', authMiddleware, adminMiddleware, autoridadController.eliminar);
+
+export {autoridadRouter};

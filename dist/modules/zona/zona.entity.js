@@ -12,12 +12,14 @@ import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
 export let Zona = class Zona extends BaseEntityObjeto {
     constructor(nombre) {
         super();
+        this.esSedeCentral = false;
         this.nombre = nombre;
     }
     toDTO() {
         return {
             id: this.id,
             nombre: this.nombre,
+            esSedeCentral: this.esSedeCentral,
         };
     }
 };
@@ -25,6 +27,10 @@ __decorate([
     Property(),
     __metadata("design:type", String)
 ], Zona.prototype, "nombre", void 0);
+__decorate([
+    Property({ default: false }),
+    __metadata("design:type", Boolean)
+], Zona.prototype, "esSedeCentral", void 0);
 Zona = __decorate([
     Entity({ tableName: 'zonas' }),
     __metadata("design:paramtypes", [String])

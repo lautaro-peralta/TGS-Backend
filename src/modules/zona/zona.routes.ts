@@ -6,8 +6,8 @@ import {
   add,
   update,
   remove,
-} from './zona.controller'; // corregí el typo "controler"
-import { adminMiddleware } from 'modules/auth/auth.middleware.js';
+} from './zona.controller.js';
+import { adminMiddleware} from '../auth/auth.middleware.js'
 
 export const zonaRouter = Router();
 

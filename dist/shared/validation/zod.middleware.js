@@ -1,6 +1,5 @@
 /**
  * Middleware para validar distintas partes del request usando Zod.
- * Compatible con MikroORM u otros ORMs.
  */
 export const validarConSchema = (schemas) => {
     return (req, res, next) => {
