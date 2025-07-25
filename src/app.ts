@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import 'reflect-metadata';
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { RequestContext } from '@mikro-orm/core';
 import { orm, syncSchema } from './shared/db/orm.js';
@@ -14,7 +15,10 @@ import authRouter from './modules/auth/auth.routes.js';
 import usuarioRouter from './modules/auth/usuario.routes.js';
 import { ventaRouter } from './modules/venta/venta.routes.js';
 
+
 dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -24,17 +28,17 @@ app.use(express.json());
 app.use((req, res, next) => {
   RequestContext.create(orm.em, next);
 });
+console.log('Rutas cargadas:');
+console.log('/api/clientes');
+console.log('/api/auth');
+console.log('/api/usuarios');
+console.log('/api/ventas');
 
 app.use('/api/clientes', clienteRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/usuarios', usuarioRouter);
 app.use('/api/ventas', ventaRouter);
 
-app.use(express.static(path.join(__dirname, '../../frontend/dist/frontend')));
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/dist/frontend', 'index.html'));
-});
 
 app.use((_, res) => {
   res.status(404).json({ message: 'No se encontró el recurso' });
