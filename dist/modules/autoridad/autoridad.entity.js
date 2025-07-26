@@ -31,9 +31,10 @@ let Autoridad = Autoridad_1 = class Autoridad extends BaseEntityPersona {
     }
     toDTO() {
         return {
-            id: this.id,
+            dni: this.dni,
             nombre: this.nombre,
             zona: this.zona ? { nombre: this.zona.nombre } : null,
+            rango: this.rango
             // agregá lo que consideres necesario
         };
     }
@@ -42,10 +43,6 @@ __decorate([
     Property(),
     __metadata("design:type", Number)
 ], Autoridad.prototype, "rango", void 0);
-__decorate([
-    Property(),
-    __metadata("design:type", Number)
-], Autoridad.prototype, "porcentajeComision", void 0);
 __decorate([
     OneToMany(() => Venta, venta => venta.autoridad),
     __metadata("design:type", Object)

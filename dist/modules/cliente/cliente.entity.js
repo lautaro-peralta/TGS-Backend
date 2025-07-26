@@ -16,7 +16,7 @@ let Cliente = class Cliente extends BaseEntityPersona {
     }
     toDTO() {
         return {
-            id: this.id,
+            dni: this.dni,
             nombre: this.nombre,
             email: this.email,
             direccion: this.direccion,

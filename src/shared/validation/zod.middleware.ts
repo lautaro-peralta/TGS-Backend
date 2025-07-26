@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from "express";
 
 /**
  * Middleware para validar distintas partes del request usando Zod.
- * Compatible con MikroORM u otros ORMs.
  */
 export const validarConSchema = (schemas: {
   body?: ZodType<any>;

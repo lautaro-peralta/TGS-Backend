@@ -9,10 +9,6 @@ export class Autoridad extends BaseEntityPersona{
   @Property()
   rango!: number;
 
-  @Property()
-  porcentajeComision!: number;
-
-
   @OneToMany(() => Venta, venta => venta.autoridad)
   ventas = new Collection<Venta>(this);
 
@@ -35,9 +31,10 @@ export class Autoridad extends BaseEntityPersona{
 
   toDTO() {
     return {
-      id: this.id,
+      dni: this.dni,
       nombre: this.nombre,
       zona: this.zona ? {nombre: this.zona.nombre } : null,
+      rango:this.rango
       // agregá lo que consideres necesario
     };
   }

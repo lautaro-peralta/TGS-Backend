@@ -7,7 +7,7 @@ export abstract class BaseEntityPersona {
   id!: string;
 
     @Property({unique:true})
-  dni!:number;
+  dni!:string;
 
   @Property({nullable:false})
   nombre!: string;
