@@ -8,22 +8,27 @@ export class Producto extends BaseEntityObjeto {
   nombre!: string;
 
   @Property()
+  descripcion?: string; // <-- Nuevo campo opcional
+
+  @Property()
   precio!: number;
 
   @Property()
   stock!: number;
 
-  constructor(nombre: string, precio: number, stock: number) {
+  constructor(nombre: string, precio: number, stock: number, descripcion?: string) {
     super();
     this.nombre = nombre;
     this.precio = precio;
     this.stock = stock;
+    this.descripcion = descripcion;
   }
 
   toDTO() {
     return {
       id: this.id,
       nombre: this.nombre,
+      descripcion: this.descripcion, // <-- Agregado
       precio: this.precio,
       stock: this.stock,
     };

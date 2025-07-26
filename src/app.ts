@@ -13,6 +13,7 @@ import { clienteRouter } from './modules/cliente/cliente.routes.js';
 import authRouter from './modules/auth/auth.routes.js';
 import usuarioRouter from './modules/auth/usuario.routes.js';
 import { ventaRouter } from './modules/venta/venta.routes.js';
+import { productoRouter } from './modules/producto/producto.routes.js';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use('/api/clientes', clienteRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/usuarios', usuarioRouter);
 app.use('/api/ventas', ventaRouter);
+app.use('/api/productos', productoRouter);
 
 app.use(express.static(path.join(__dirname, '../../frontend/dist/frontend')));
 
