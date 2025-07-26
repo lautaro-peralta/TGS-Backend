@@ -16,7 +16,7 @@ export let Cliente = class Cliente extends BaseEntityPersona {
     }
     toDTO() {
         return {
-            id: this.id,
+            dni: this.dni,
             nombre: this.nombre,
             email: this.email,
             direccion: this.direccion,
@@ -26,10 +26,6 @@ export let Cliente = class Cliente extends BaseEntityPersona {
         };
     }
 };
-__decorate([
-    Property({ nullable: false }),
-    __metadata("design:type", String)
-], Cliente.prototype, "nombre", void 0);
 __decorate([
     Property({ nullable: true, unique: true }),
     __metadata("design:type", String)

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { orm } from '../../shared/db/orm.js';
-import { Zona } from './zona.entity';
+import { Zona } from './zona.entity.js';
 
 
 async function findAll(req: Request, res: Response) {
@@ -60,7 +60,7 @@ async function remove(req: Request, res: Response) {
   const em = orm.em.fork();
   try {
     const id = parseInt(req.params.id); 
-    const zona = await DI.em.findOne(Zona, { id });
+    const zona = await em.findOne(Zona, { id });
     if (!zona) {
       return res.status(404).json({ message: 'Zona no encontrada' });
     }

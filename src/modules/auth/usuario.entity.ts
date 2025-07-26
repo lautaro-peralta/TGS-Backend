@@ -8,10 +8,11 @@ export enum Rol {
   CLIENTE = 'CLIENTE',
 }
 
-@Entity()
+@Entity({tableName:'usuarios'})
 export class Usuario extends BaseEntityPersona {
+
   @Property()
-  nombre!: string;
+  username!: string;
 
   @Property({ unique: true })
   email!: string;
@@ -28,5 +29,15 @@ export class Usuario extends BaseEntityPersona {
     this.email = email;
     this.password = password;
     this.rol = rol;
+  }
+  
+  toDTO() {
+    return {
+      id: this.id,
+      nombre: this.nombre,
+      username: this.username,
+      email: this.email,
+      rol: this.rol,
+    };
   }
 }

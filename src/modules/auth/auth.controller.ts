@@ -11,26 +11,33 @@ export class AuthController {
     const em = orm.em.fork();
     try {
       console.log('Request body:', req.body);
-      const { nombre, email, password } = req.body||{};
+      const { nombre, email, password, username,dni } = req.body||{};
 
-      if ( !nombre || !password || !email ) {
+      if ( !nombre || !password ||!dni|| !email || !username ) {
         return res.status(400).json({ message: 'Faltan datos obligatorios' });
       }
 
-      const existingUser = await em.findOne(Usuario, { email });
-      if (existingUser) {
-        return res.status(409).json({ message: 'Usuario ya registrado' });
-      }
+    const existingUsername = await em.findOne(Usuario, { username });
+    if (existingUsername) {
+      return res.status(409).json({ message: 'El nombre de usuario ya está registrado' });
+    }
 
-      const hashedPassword = await argon2.hash(password);
+    const existingEmail = await em.findOne(Usuario, { email });
+    if (existingEmail) {
+      return res.status(409).json({ message: 'El email ya está registrado' });
+    }
+
+    const hashedPassword = await argon2.hash(password);
 
       // Crear el usuario incluyendo el rol, que es obligatorio
-      const userNew = em.create(Usuario, {
-        email,
-        password: hashedPassword,
-        nombre,
-        rol: Rol.CLIENTE, // Asignamos un rol por defecto
-      });
+    const userNew = em.create(Usuario, {
+      dni,
+      nombre,
+      username,
+      email,
+      password: hashedPassword,
+      rol: Rol.CLIENTE, // Asignamos un rol por defecto
+    });
 
       await em.persistAndFlush(userNew);
 

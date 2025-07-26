@@ -6,6 +6,12 @@ export abstract class BaseEntityPersona {
   @PrimaryKey({type:'uuid'})
   id!: string;
 
+    @Property({unique:true})
+  dni!:string;
+
+  @Property({nullable:false})
+  nombre!: string;
+
   constructor() {
     if (!this.id) this.id = uuidv4();
   }
