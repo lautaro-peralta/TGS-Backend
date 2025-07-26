@@ -7,6 +7,9 @@ export class Zona extends BaseEntityObjeto{
   @Property()
   nombre: string;
 
+  @Property({ default: false })
+  esSedeCentral: boolean = false;
+
   constructor(nombre: string) {
     super()
     this.nombre = nombre;
@@ -16,6 +19,8 @@ export class Zona extends BaseEntityObjeto{
   return {
     id: this.id,
     nombre: this.nombre,
+    esSedeCentral: this.esSedeCentral,
   };
   }
 }
+ 

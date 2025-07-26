@@ -21,7 +21,7 @@ export async function crearAdminDev() {
         email: emailAdmin,
         password: hashedPassword,
         rol: Rol.ADMIN,
-        dni: 12345678
+        dni: '87654321'
     });
     await em.persistAndFlush(nuevoAdmin);
     console.log('Admin de desarrollo creado con éxito');

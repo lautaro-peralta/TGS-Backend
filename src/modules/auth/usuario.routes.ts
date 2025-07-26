@@ -28,4 +28,4 @@ usuarioRouter.get(
   UsuarioController.findOneByIdentificador
 );
 
-export default usuarioRouter;
+export {usuarioRouter};
