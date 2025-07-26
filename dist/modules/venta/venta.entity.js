@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 import { Entity, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mikro-orm/core";
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js";
 import { Cliente } from "../cliente/cliente.entity.js";
+import { Autoridad } from "../../modules/autoridad/autoridad.entity.js";
 export let Venta = class Venta extends BaseEntityObjeto {
     constructor() {
         super(...arguments);
@@ -21,13 +22,12 @@ export let Venta = class Venta extends BaseEntityObjeto {
             descripcion: this.descripcion || null,
             fecha: this.fechaVenta instanceof Date ? this.fechaVenta.toISOString() : this.fechaVenta,
             monto: this.montoVenta,
-            cliente: this.cliente
-                ? {
-                    id: this.cliente.id,
-                    nombre: this.cliente.nombre,
-                }
-                : null,
+            cliente: this.cliente ? {
+                id: this.cliente.id,
+                nombre: this.cliente.nombre,
+            } : null,
             detalles: this.detalles.getItems().map(d => d.toDTO()),
+            autoridad: this.autoridad ? this.autoridad.toDTO() : null,
         };
     }
 };
@@ -51,6 +51,10 @@ __decorate([
     OneToMany(() => 'Detalle', 'venta', { cascade: [Cascade.ALL] }),
     __metadata("design:type", Object)
 ], Venta.prototype, "detalles", void 0);
+__decorate([
+    ManyToOne(() => Autoridad, { nullable: true }),
+    __metadata("design:type", Autoridad)
+], Venta.prototype, "autoridad", void 0);
 Venta = __decorate([
     Entity({ tableName: 'ventas' })
 ], Venta);

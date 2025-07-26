@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { Usuario, Rol } from './usuario.entity.js';
 import { orm } from '../../shared/db/orm.js';
+import { validate as isUuid } from "uuid";
+import { wrap } from '@mikro-orm/core';
 
 export class UsuarioController {
 
@@ -26,9 +28,8 @@ export class UsuarioController {
   static async updateRol(req: Request, res: Response, next: NextFunction) {
     try {
       const em = orm.em.fork();
-      const { id } = req.params;
-      const { rol } = req.body;
-
+        const { id } = res.locals.validated.params;
+        const { rol } = res.locals.validated.body;
       if (![Rol.CLIENTE, Rol.SOCIO, Rol.DISTRIBUIDOR, Rol.ADMIN].includes(rol)) {
         return res.status(400).json({ message: 'Rol inválido' });
       }
@@ -47,7 +48,7 @@ export class UsuarioController {
     }
   }
 
-  // Obtener todos los usuarios (solo admin, agregar middleware si querés restringir)
+  // Obtener todos los usuarios (solo admin)
   static async findAll(req: Request, res: Response, next: NextFunction) {
     try {
       const em = orm.em.fork();
@@ -58,18 +59,26 @@ export class UsuarioController {
     }
   }
 
-  // Obtener usuario por ID
-  static async findOne(req: Request, res: Response, next: NextFunction) {
-    try {
-      const em = orm.em.fork();
-      const { id } = req.params;
-      const usuario = await em.findOne(Usuario, { id });
+  //
+  static async findOneByIdentificador(req: Request, res: Response, next: NextFunction) {
+    const { identificador } = req.params;
+    const em = orm.em.fork();
 
-      if (!usuario) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
+    try {
+      let usuario;
+
+      if (isUuid(identificador)) {
+        usuario = await em.findOne(Usuario, { id: identificador });
+      } else {
+        usuario = await em.findOne(Usuario, { username: identificador });
       }
 
-      res.status(200).json(usuario);
+      if (!usuario) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      const { password, ...usuarioSafe } = wrap(usuario).toJSON();
+      res.status(200).json(usuarioSafe);
     } catch (err) {
       next(err);
     }

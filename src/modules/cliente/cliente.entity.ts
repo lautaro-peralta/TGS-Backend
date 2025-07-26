@@ -5,9 +5,6 @@ import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 @Entity({tableName:'clientes'})
 export class Cliente extends BaseEntityPersona{
 
-  @Property({nullable: false})
-  nombre!: string;
-
   @Property({ nullable: true, unique:true })
   email?: string;
 
@@ -22,7 +19,7 @@ export class Cliente extends BaseEntityPersona{
 
   toDTO() {
     return {
-      id: this.id,
+      dni: this.dni,
       nombre: this.nombre,
       email: this.email,
       direccion: this.direccion,
