@@ -16,7 +16,7 @@ export var Rol;
     Rol["DISTRIBUIDOR"] = "DISTRIBUIDOR";
     Rol["CLIENTE"] = "CLIENTE";
 })(Rol || (Rol = {}));
-export let Usuario = class Usuario extends BaseEntityPersona {
+let Usuario = class Usuario extends BaseEntityPersona {
     constructor(nombre, email, password, rol = Rol.CLIENTE) {
         super();
         this.rol = Rol.CLIENTE; // Por defecto cliente
@@ -55,4 +55,5 @@ Usuario = __decorate([
     Entity({ tableName: 'usuarios' }),
     __metadata("design:paramtypes", [String, String, String, String])
 ], Usuario);
+export { Usuario };
 //# sourceMappingURL=usuario.entity.js.map

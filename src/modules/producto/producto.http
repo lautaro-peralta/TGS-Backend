@@ -1,0 +1,37 @@
+### Obtener todos los productos
+GET http://localhost:3000/api/productos
+
+### Obtener un producto por ID
+GET http://localhost:3000/api/productos/1
+
+### Crear nuevo producto
+POST http://localhost:3000/api/productos
+Content-Type: application/json
+
+{
+  "nombre": "Fernet Branca",
+  "precio": 1200,
+  "stock": 50
+}
+
+### Modificar producto (PUT - reemplazo completo)
+PUT http://localhost:3000/api/productos/1
+Content-Type: application/json
+
+{
+  "nombre": "Alfajor Havanna",
+  "precio": 800,
+  "stock": 100
+}
+
+### Modificar producto (PATCH - actualización parcial)
+PATCH http://localhost:3000/api/productos/1
+Content-Type: application/json
+
+{
+  "stock": 120
+}
+
+### Borrar un producto
+DELETE http://localhost:3000/api/productos/1
+

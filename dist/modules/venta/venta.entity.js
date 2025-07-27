@@ -11,7 +11,7 @@ import { Entity, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mi
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js";
 import { Cliente } from "../cliente/cliente.entity.js";
 import { Autoridad } from "../../modules/autoridad/autoridad.entity.js";
-export let Venta = class Venta extends BaseEntityObjeto {
+let Venta = class Venta extends BaseEntityObjeto {
     constructor() {
         super(...arguments);
         this.detalles = new Collection(this);
@@ -58,4 +58,5 @@ __decorate([
 Venta = __decorate([
     Entity({ tableName: 'ventas' })
 ], Venta);
+export { Venta };
 //# sourceMappingURL=venta.entity.js.map
