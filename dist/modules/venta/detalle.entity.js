@@ -10,7 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 import { Entity, Property, ManyToOne } from "@mikro-orm/core";
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js";
 import { Venta } from "./venta.entity.js";
-export let Detalle = class Detalle extends BaseEntityObjeto {
+let Detalle = class Detalle extends BaseEntityObjeto {
     toDTO() {
         return {
             //producto: {id: this.producto.id,nombre: this.producto.nombre,}
@@ -47,4 +47,5 @@ __decorate([
 Detalle = __decorate([
     Entity({ tableName: 'detalles_venta' })
 ], Detalle);
+export { Detalle };
 //# sourceMappingURL=detalle.entity.js.map
