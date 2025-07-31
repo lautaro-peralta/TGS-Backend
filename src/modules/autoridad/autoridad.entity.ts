@@ -33,9 +33,8 @@ export class Autoridad extends BaseEntityPersona{
     return {
       dni: this.dni,
       nombre: this.nombre,
-      zona: this.zona ? {nombre: this.zona.nombre } : null,
+      zona: this.zona,
       rango:this.rango
-      // agregá lo que consideres necesario
     };
   }
 }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Autoridad } from './autoridad.entity.js';
-import { Zona } from '../zona/zona.entity.js'; // asegurate de que esta ruta sea correcta
+import { Zona } from '../zona/zona.entity.js';
 
 async function crear(req: Request, res: Response) {
   const em = orm.em.fork();
@@ -30,7 +30,10 @@ async function crear(req: Request, res: Response) {
     });
 
     await em.persistAndFlush(autoridad);
-    return res.status(201).json(autoridad.toDTO());
+    return res.status(201).json({
+      message: 'Autoridad creada exitosamente',
+      data: autoridad.toDTO()
+    });
 
   }catch(error){
     console.error('Error creando autoridad:', error);
@@ -42,7 +45,10 @@ async function listar(req: Request, res: Response) {
   const em = orm.em.fork();
   try {
     const autoridades = await em.find(Autoridad,{}, { populate: ['zona'] });
-    return res.json(autoridades.map(a => a.toDTO()));
+    return res.status(200).json({
+      message: `Se ${autoridades.length === 1 ? 'encontró' : 'encontraron'} ${autoridades.length} autoridad${autoridades.length !== 1 ? 'es' : ''}`,
+      data: autoridades.map(a => a.toDTO())
+    });
   } catch (error) {
     console.error('Error al listar autoridades:', error);
     return res.status(500).json({ message: 'Error interno del servidor' });
@@ -93,7 +99,10 @@ async function putUpdate(req: Request, res: Response) {
 
     await em.flush();
 
-    return res.status(200).json(autoridad.toDTO());
+    return res.status(200).json({
+      message: 'Autoridad actualizada correctamente',
+      data: autoridad.toDTO()
+    });
 
   } catch (error) {
     console.error('Error actualizando autoridad:', error);
@@ -128,7 +137,10 @@ async function patchUpdate(req: Request, res: Response) {
 
     await em.flush();
 
-    return res.status(200).json(autoridad.toDTO());
+    return res.status(200).json({
+      message: 'Autoridad modificada parcialmente con éxito',
+      data: autoridad.toDTO()
+    });
 
   } catch (error) {
     console.error('Error en patchUpdate autoridad:', error);
@@ -148,7 +160,9 @@ async function eliminar(req: Request, res: Response) {
     }
 
     await em.removeAndFlush(autoridad);
-    return res.status(204).send();
+      return res.status(200).json({
+        message: `${autoridad.nombre}, DNI ${autoridad.dni} eliminado/a exitosamente de la lista de autoridades`,
+      });
 
   } catch (error) {
     console.error('Error eliminando autoridad:', error);
