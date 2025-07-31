@@ -1,0 +1,42 @@
+### Obtener todas las distribuidoras
+GET http://localhost:3000/api/distribuidoras
+
+### Obtener una distribuidora por idDistrib
+GET http://localhost:3000/api/distribuidoras/1
+
+### Crear nueva distribuidora
+POST http://localhost:3000/api/distribuidoras/
+Content-Type: application/json
+
+{
+  "idDistrib": 1,
+  "nombre": "Distribuidora Central",
+  "direccion": "Av. San Martín 1500, Rosario, Santa Fe",
+  "estado": true,
+  "telefono": ["3416001122", "3416003344"],
+  "email": ["contacto@central.com", "ventas@central.com"]
+}
+
+### Modificar distribuidora (PUT - modificaciones completas)
+PUT http://localhost:3000/api/distribuidoras/1
+Content-Type: application/json
+
+{
+  "nombre": "Distribuidora Central Actualizada",
+  "direccion": "Av. San Martín 2000, Rosario, Santa Fe",
+  "estado": false,
+  "telefono": ["3416005566"],
+  "email": ["nuevo-contacto@central.com"]
+}
+
+### Modificar distribuidora (PATCH - modificaciones parciales)
+PATCH http://localhost:3000/api/distribuidoras/1
+Content-Type: application/json
+
+{
+  "estado": true,
+  "telefono": ["3416007788", "3416009999"]
+}
+
+### Borrar una distribuidora
+DELETE http://localhost:3000/api/distribuidoras/1
