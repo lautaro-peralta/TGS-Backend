@@ -9,8 +9,7 @@ export async function crearZonaDev() {
         return;
     }
     // Crear nueva zona y marcarla como zona central
-    const nuevaZona = new Zona('Zona Central');
-    nuevaZona.esSedeCentral = true;
+    const nuevaZona = new Zona('Zona Central', true);
     await em.persistAndFlush(nuevaZona);
     console.log(`Zona central creada con éxito con ID ${nuevaZona.id}`);
 }

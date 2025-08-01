@@ -1,11 +1,16 @@
-import {Router} from 'express';
-import { sanitizarInputVenta,findAll,findOne,add,putUpdate, patchUpdate, remove } from './venta.controller.js';
+import { Router } from 'express';
+import { findAll, findOne, add, remove } from './venta.controller.js';
+import { validarConSchema } from '../../shared/validation/zod.middleware.js';
+import { crearVentaSchema } from './venta.schema.js';
+import { authMiddleware, adminMiddleware } from '../auth/auth.middleware.js';
+//agregar la autenticación del distribuidor para ver las ventas suyas 
+//en distribMiddleware, se debe poder acceder tambien si es el admin
 
-export const ventaRouter = Router()
+export const ventaRouter = Router();
 
-ventaRouter.get('/',findAll)
-ventaRouter.get('/:id',findOne)
-ventaRouter.post('/',sanitizarInputVenta,add)
-ventaRouter.put('/:id',sanitizarInputVenta,putUpdate)
-ventaRouter.patch('/:id',sanitizarInputVenta,patchUpdate)
-ventaRouter.delete('/:id',remove)
+ventaRouter.get('/', authMiddleware, adminMiddleware, findAll);
+//ventaRouter.get('/',authMiddleware, distribMiddleware,  findAllMine);
+ventaRouter.get('/:id', authMiddleware, adminMiddleware, findOne);
+//ventaRouter.get('/:id', authMiddleware, distribMiddleware, findOneMine);
+ventaRouter.post('/', authMiddleware, adminMiddleware, /* --> distribMiddleware,*/ validarConSchema({ body: crearVentaSchema }), add);
+ventaRouter.delete('/:id', authMiddleware, adminMiddleware, remove);

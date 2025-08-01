@@ -17,8 +17,6 @@ Content-Type: application/json
   "telefono": "3416007788"
 }
 
-
-
 ###modificar nuevo cliente (PUT - idempotente, modificaciones completas)
 PUT http://localhost:3000/api/clientes/12345678
 Content-Type: application/json

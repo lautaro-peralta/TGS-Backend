@@ -1,37 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response} from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Producto } from './producto.entity.js';
-import { crearProductoSchema, actualizarProductoSchema } from "./producto.schema";
+import { crearProductoSchema, actualizarProductoSchema } from "./producto.schema.js";
 
 const em = orm.em.fork();
-
-/**
- * Middleware opcional para sanitizar strings antes de validar
- * Si preferís, podés quitarlo y manejar sanitización con Zod (usando .transform()).
- */
-function sanitizarInputProducto(req: Request, res: Response, next: NextFunction) {
-  const body = req.body;
-  const productoSanitizado = {
-    nombre: typeof body.nombre === 'string' ? body.nombre.trim() : undefined,
-    precio: typeof body.precio === 'number' ? body.precio : undefined,
-    stock: typeof body.stock === 'number' ? body.stock : undefined,
-  };
-
-  Object.keys(productoSanitizado).forEach((key) => {
-    if (productoSanitizado[key as keyof typeof productoSanitizado] === undefined) {
-      delete productoSanitizado[key as keyof typeof productoSanitizado];
-    }
-  });
-
-  req.body = productoSanitizado;
-  next();
-}
 
 // Obtener todos los productos
 async function findAll(req: Request, res: Response) {
   try {
     const productos = await em.find(Producto, {});
-    res.status(200).json({ data: productos });
+    return res.status(200).json({
+      message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${productos.length} producto${productos.length !== 1 ? 's' : ''}`,
+      data: productos.map(p => p.toDTO())
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error al obtener productos' });
   }
@@ -59,9 +40,10 @@ async function add(req: Request, res: Response) {
 
     // Crear producto
     const producto = new Producto(
-      datosValidados.nombre,
       datosValidados.precio,
-      datosValidados.stock
+      datosValidados.stock,
+      datosValidados.descripcion,
+      datosValidados.esIlegal
     );
 
     await em.persistAndFlush(producto);
@@ -89,9 +71,10 @@ async function update(req: Request, res: Response) {
     }
 
     // Actualizar solo los campos enviados
-    if (datosValidados.nombre !== undefined) producto.nombre = datosValidados.nombre;
+    if (datosValidados.descripcion !== undefined) producto.descripcion = datosValidados.descripcion;
     if (datosValidados.precio !== undefined) producto.precio = datosValidados.precio;
     if (datosValidados.stock !== undefined) producto.stock = datosValidados.stock;
+    if (datosValidados.esIlegal !== undefined) producto.esIlegal = datosValidados.esIlegal;
 
     await em.flush();
     res.status(200).json({ message: 'Producto actualizado correctamente', data: producto });
@@ -120,7 +103,6 @@ async function remove(req: Request, res: Response) {
 }
 
 export {
-  sanitizarInputProducto,
   findAll,
   findOne,
   add,

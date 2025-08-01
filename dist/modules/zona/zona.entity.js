@@ -9,11 +9,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 import { Entity, Property } from '@mikro-orm/core';
 import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
-let Zona = class Zona extends BaseEntityObjeto {
-    constructor(nombre) {
+export let Zona = class Zona extends BaseEntityObjeto {
+    constructor(nombre, esSedeCentral) {
         super();
         this.esSedeCentral = false;
         this.nombre = nombre;
+        this.esSedeCentral = esSedeCentral;
     }
     toDTO() {
         return {
@@ -33,7 +34,6 @@ __decorate([
 ], Zona.prototype, "esSedeCentral", void 0);
 Zona = __decorate([
     Entity({ tableName: 'zonas' }),
-    __metadata("design:paramtypes", [String])
+    __metadata("design:paramtypes", [String, Boolean])
 ], Zona);
-export { Zona };
 //# sourceMappingURL=zona.entity.js.map

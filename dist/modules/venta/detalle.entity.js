@@ -10,24 +10,20 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 import { Entity, Property, ManyToOne } from "@mikro-orm/core";
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js";
 import { Venta } from "./venta.entity.js";
-let Detalle = class Detalle extends BaseEntityObjeto {
+import { Producto } from "../producto/producto.entity.js";
+export let Detalle = class Detalle extends BaseEntityObjeto {
     toDTO() {
         return {
-            //producto: {id: this.producto.id,nombre: this.producto.nombre,}
-            producto: this.producto,
+            producto: {
+                id: this.producto.id,
+                nombre: this.producto.descripcion,
+            },
             cantidad: this.cantidad,
             precioUnitario: this.precioUnitario,
             subtotal: this.subtotal,
         };
     }
 };
-__decorate([
-    Property()
-    // TODO: Reemplazar `string` por la entidad `Producto` cuando esté disponible
-    // @ManyToOne(() => Producto)
-    ,
-    __metadata("design:type", String)
-], Detalle.prototype, "producto", void 0);
 __decorate([
     Property(),
     __metadata("design:type", Number)
@@ -44,8 +40,11 @@ __decorate([
     ManyToOne(() => Venta, { nullable: false }),
     __metadata("design:type", Venta)
 ], Detalle.prototype, "venta", void 0);
+__decorate([
+    ManyToOne(() => Producto, { nullable: false }),
+    __metadata("design:type", Producto)
+], Detalle.prototype, "producto", void 0);
 Detalle = __decorate([
     Entity({ tableName: 'detalles_venta' })
 ], Detalle);
-export { Detalle };
 //# sourceMappingURL=detalle.entity.js.map

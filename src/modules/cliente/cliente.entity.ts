@@ -5,14 +5,14 @@ import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 @Entity({tableName:'clientes'})
 export class Cliente extends BaseEntityPersona{
 
-  @Property({ nullable: true, unique:true })
-  email?: string;
+  @Property({ nullable: false, unique:true })
+  email!: string;
 
-  @Property({ nullable: true })
-  direccion?: string;
+  @Property({ nullable: false })
+  direccion!: string;
 
-  @Property({ nullable: true })
-  telefono?: string;
+  @Property({ nullable: false })
+  telefono!: string;
 
   @OneToMany(() => 'Venta', 'cliente')
   regCompras = new Collection<Venta>(this);

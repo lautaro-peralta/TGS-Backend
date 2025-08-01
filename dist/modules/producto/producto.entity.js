@@ -9,26 +9,28 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 import { Entity, Property } from '@mikro-orm/core';
 import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
-let Producto = class Producto extends BaseEntityObjeto {
-    constructor(nombre, precio, stock) {
+export let Producto = class Producto extends BaseEntityObjeto {
+    constructor(precio, stock, descripcion, esIlegal) {
         super();
-        this.nombre = nombre;
         this.precio = precio;
         this.stock = stock;
+        this.descripcion = descripcion;
+        this.esIlegal = esIlegal;
     }
     toDTO() {
         return {
             id: this.id,
-            nombre: this.nombre,
+            descripcion: this.descripcion,
             precio: this.precio,
             stock: this.stock,
+            esIlegal: this.esIlegal
         };
     }
 };
 __decorate([
     Property(),
     __metadata("design:type", String)
-], Producto.prototype, "nombre", void 0);
+], Producto.prototype, "descripcion", void 0);
 __decorate([
     Property(),
     __metadata("design:type", Number)
@@ -37,9 +39,12 @@ __decorate([
     Property(),
     __metadata("design:type", Number)
 ], Producto.prototype, "stock", void 0);
+__decorate([
+    Property({ default: false }),
+    __metadata("design:type", Boolean)
+], Producto.prototype, "esIlegal", void 0);
 Producto = __decorate([
     Entity({ tableName: 'productos' }),
-    __metadata("design:paramtypes", [String, Number, Number])
+    __metadata("design:paramtypes", [Number, Number, String, Boolean])
 ], Producto);
-export { Producto };
 //# sourceMappingURL=producto.entity.js.map

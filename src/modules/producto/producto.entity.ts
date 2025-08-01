@@ -5,10 +5,7 @@ import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
 export class Producto extends BaseEntityObjeto {
 
   @Property()
-  nombre!: string;
-
-  @Property()
-  descripcion?: string; // <-- Nuevo campo opcional
+  descripcion!: string;
 
   @Property()
   precio!: number;
@@ -16,21 +13,24 @@ export class Producto extends BaseEntityObjeto {
   @Property()
   stock!: number;
 
-  constructor(nombre: string, precio: number, stock: number, descripcion?: string) {
+  @Property({default:false})
+  esIlegal!:boolean;
+
+  constructor(precio: number, stock: number, descripcion: string, esIlegal:boolean) {
     super();
-    this.nombre = nombre;
     this.precio = precio;
     this.stock = stock;
     this.descripcion = descripcion;
+    this.esIlegal = esIlegal
   }
 
   toDTO() {
     return {
       id: this.id,
-      nombre: this.nombre,
-      descripcion: this.descripcion, // <-- Agregado
+      descripcion: this.descripcion,
       precio: this.precio,
       stock: this.stock,
+      esIlegal: this.esIlegal
     };
   }
 }

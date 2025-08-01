@@ -1,37 +1,47 @@
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev",
+  "password": "admin123"
+}
+
 ###obtener todas las zonas
 GET http://localhost:3000/api/zonas
 
 ###obtener una zona
-GET http://localhost:3000/api/zonas/
+GET http://localhost:3000/api/zonas/2
 
 
 ### Crear nueva zona
 POST http://localhost:3000/api/zonas/
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTkxNzE1LCJleHAiOjE3NTM5OTUzMTV9.K9wBzBTXSim665LFFhPvCfejzoCiVl2UQ9zENLnKQ8E
 
 {
-  "nombre": "Zona centro"
+  "nombre": "Zona Oeste",
+  "esSedeCentral": true
 }
 
 
 
 ###modificar nueva zona (PUT - idempotente, modificaciones completas)
-PUT http://localhost:3000/api/zonas/
+PUT http://localhost:3000/api/zonas/2
 Content-Type: application/json
 
 {
-  "nombre":"Zona sur",
-
+  "nombre":"Zona sur"
 }
 
 
 ###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/zonas/
+PATCH http://localhost:3000/api/zonas/2
 Content-Type: application/json
 
 {
-  "nombre":"Zona Norte",
+  "nombre":"Zona Norte"
 }
 
 ###borrar una zona
-DELETE http://localhost:3000/api/zonas/
+DELETE http://localhost:3000/api/zonas/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTkxNzE1LCJleHAiOjE3NTM5OTUzMTV9.K9wBzBTXSim665LFFhPvCfejzoCiVl2UQ9zENLnKQ8E

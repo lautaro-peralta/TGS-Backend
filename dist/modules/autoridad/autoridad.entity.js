@@ -12,7 +12,7 @@ import { Entity, OneToMany, ManyToOne, Property, Collection } from '@mikro-orm/c
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import { Venta } from '../../modules/venta/venta.entity.js';
 import { Zona } from '../../modules/zona/zona.entity.js';
-let Autoridad = Autoridad_1 = class Autoridad extends BaseEntityPersona {
+export let Autoridad = Autoridad_1 = class Autoridad extends BaseEntityPersona {
     constructor() {
         super(...arguments);
         this.ventas = new Collection(this);
@@ -33,9 +33,8 @@ let Autoridad = Autoridad_1 = class Autoridad extends BaseEntityPersona {
         return {
             dni: this.dni,
             nombre: this.nombre,
-            zona: this.zona ? { nombre: this.zona.nombre } : null,
+            zona: this.zona,
             rango: this.rango
-            // agregá lo que consideres necesario
         };
     }
 };
@@ -54,5 +53,4 @@ __decorate([
 Autoridad = Autoridad_1 = __decorate([
     Entity({ tableName: 'autoridades' })
 ], Autoridad);
-export { Autoridad };
 //# sourceMappingURL=autoridad.entity.js.map
