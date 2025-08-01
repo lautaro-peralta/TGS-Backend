@@ -11,7 +11,7 @@ import { Entity, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mi
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js";
 import { Cliente } from "../cliente/cliente.entity.js";
 import { Autoridad } from "../../modules/autoridad/autoridad.entity.js";
-let Venta = class Venta extends BaseEntityObjeto {
+export let Venta = class Venta extends BaseEntityObjeto {
     constructor() {
         super(...arguments);
         this.detalles = new Collection(this);
@@ -23,7 +23,7 @@ let Venta = class Venta extends BaseEntityObjeto {
             fecha: this.fechaVenta instanceof Date ? this.fechaVenta.toISOString() : this.fechaVenta,
             monto: this.montoVenta,
             cliente: this.cliente ? {
-                id: this.cliente.id,
+                dni: this.cliente.dni,
                 nombre: this.cliente.nombre,
             } : null,
             detalles: this.detalles.getItems().map(d => d.toDTO()),
@@ -58,5 +58,4 @@ __decorate([
 Venta = __decorate([
     Entity({ tableName: 'ventas' })
 ], Venta);
-export { Venta };
 //# sourceMappingURL=venta.entity.js.map

@@ -12,12 +12,12 @@ export default {
     highlighter: new SqlHighlighter(),
     debug: true,
     migrations: {
-        path: './src/migrations', // Ruta para almacenar migraciones
+        path: './src/migrations',
         snapshot: false,
         disableForeignKeys: false
     },
     schemaGenerator: {
-        disableForeignKeys: false, // Mantener claves foráneas
+        disableForeignKeys: false,
         createForeignKeyConstraints: true,
         ignoreSchema: []
     },

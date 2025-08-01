@@ -1,11 +1,12 @@
+import { findAll, findOne, add, update, remove } from './zona.controller.js';
+import { adminMiddleware, authMiddleware } from '../auth/auth.middleware.js';
+import { actualizarZonaSchema, crearZonaSchema } from './zona.schema.js';
+import { validarConSchema } from '../../shared/validation/zod.middleware.js';
 import { Router } from 'express';
-import { sanitizarInputZona, findAll, findOne, add, update, remove, } from './zona.controller.js';
-import { adminMiddleware } from '../auth/auth.middleware.js';
 export const zonaRouter = Router();
 zonaRouter.get('/', findAll);
 zonaRouter.get('/:id', findOne);
-zonaRouter.post('/', adminMiddleware, sanitizarInputZona, add);
-zonaRouter.put('/:id', adminMiddleware, sanitizarInputZona, update);
-zonaRouter.patch('/:id', adminMiddleware, sanitizarInputZona, update);
-zonaRouter.delete('/:id', adminMiddleware, remove);
+zonaRouter.post('/', validarConSchema({ body: crearZonaSchema }), authMiddleware, adminMiddleware, add);
+zonaRouter.patch('/:id', validarConSchema({ body: actualizarZonaSchema }), authMiddleware, adminMiddleware, update);
+zonaRouter.delete('/:id', authMiddleware, adminMiddleware, remove);
 //# sourceMappingURL=zona.routes.js.map

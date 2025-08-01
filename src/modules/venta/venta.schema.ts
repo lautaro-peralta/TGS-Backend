@@ -1,13 +1,13 @@
-import{z} from 'zod'
+import { z } from 'zod';
 
 export const crearVentaSchema = z.object({
-  clienteNombre: z.string().min(1),
+  clienteDni: z.string().min(1, "El DNI del cliente es obligatorio"),
   detalles: z.array(
     z.object({
-      productoId: z.string(),
-      cantidad: z.number().positive(),
-      precioUnitario: z.number().positive(),
-      subtotal: z.number().positive(),
+      productoId: z.number(),
+      cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
+      precioUnitario: z.number().positive("El precio debe ser mayor a 0"),
+      subtotal: z.number().positive("El subtotal debe ser mayor a 0"),
     })
   ).min(1, "Debe haber al menos un producto en la venta"),
 });

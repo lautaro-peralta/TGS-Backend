@@ -10,9 +10,10 @@ export class Zona extends BaseEntityObjeto{
   @Property({ default: false })
   esSedeCentral: boolean = false;
 
-  constructor(nombre: string) {
+  constructor(nombre: string, esSedeCentral:boolean) {
     super()
     this.nombre = nombre;
+    this.esSedeCentral = esSedeCentral;
   }
 
   toDTO() {

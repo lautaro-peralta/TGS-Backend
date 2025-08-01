@@ -8,9 +8,14 @@ export const crearClienteSchema = z.object({
 });
 // PATCH: todos opcionales, pero si vienen, con validación básica
 export const actualizarClienteSchema = z.object({
-    dni: z.string().optional(),
     nombre: z.string().min(1).optional(),
     email: z.email().optional(),
+    direccion: z.string().optional(),
+    telefono: z.string().optional(),
+});
+export const putClienteSchema = z.object({
+    nombre: z.string().min(1),
+    email: z.string().email(),
     direccion: z.string().optional(),
     telefono: z.string().optional(),
 });

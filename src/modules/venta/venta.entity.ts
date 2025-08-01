@@ -32,7 +32,7 @@ export class Venta extends BaseEntityObjeto{
       fecha: this.fechaVenta instanceof Date ? this.fechaVenta.toISOString() : this.fechaVenta,
       monto: this.montoVenta,
       cliente: this.cliente? {
-            id: this.cliente.id,
+            dni: this.cliente.dni,
             nombre: this.cliente.nombre,
           }: null,
       detalles: this.detalles.getItems().map(d => d.toDTO()),

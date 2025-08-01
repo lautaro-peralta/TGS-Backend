@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 import { Entity, Property, OneToMany, Collection } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
-let Cliente = class Cliente extends BaseEntityPersona {
+export let Cliente = class Cliente extends BaseEntityPersona {
     constructor() {
         super(...arguments);
         this.regCompras = new Collection(this);
@@ -27,15 +27,15 @@ let Cliente = class Cliente extends BaseEntityPersona {
     }
 };
 __decorate([
-    Property({ nullable: true, unique: true }),
+    Property({ nullable: false, unique: true }),
     __metadata("design:type", String)
 ], Cliente.prototype, "email", void 0);
 __decorate([
-    Property({ nullable: true }),
+    Property({ nullable: false }),
     __metadata("design:type", String)
 ], Cliente.prototype, "direccion", void 0);
 __decorate([
-    Property({ nullable: true }),
+    Property({ nullable: false }),
     __metadata("design:type", String)
 ], Cliente.prototype, "telefono", void 0);
 __decorate([
@@ -45,5 +45,4 @@ __decorate([
 Cliente = __decorate([
     Entity({ tableName: 'clientes' })
 ], Cliente);
-export { Cliente };
 //# sourceMappingURL=cliente.entity.js.map
