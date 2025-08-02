@@ -8,13 +8,15 @@ import { orm, syncSchema } from './shared/db/orm.js';
 
 import { crearAdminDev } from './shared/crearAdminDEV.js';
 import { crearZonaDev } from './shared/crearZonaDev.js';
-
+import { fileURLToPath } from 'url';
 import { clienteRouter } from './modules/cliente/cliente.routes.js';
 import {authRouter} from './modules/auth/auth.routes.js';
 import {usuarioRouter} from './modules/auth/usuario.routes.js';
 import { ventaRouter } from './modules/venta/venta.routes.js';
 import {autoridadRouter}  from './modules/autoridad/autoridad.routes.js'
 import { zonaRouter } from './modules/zona/zona.routes.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -26,6 +28,7 @@ app.use(express.json());
 app.use((req, res, next) => {
   RequestContext.create(orm.em, next);
 });
+app.use('/api/clientes', clienteRouter);
 
 console.log('Rutas cargadas:');
 console.log('/api/clientes');
