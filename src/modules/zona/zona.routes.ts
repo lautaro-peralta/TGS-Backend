@@ -1,15 +1,20 @@
-import {findAll,findOne,add,update,remove} from './zona.controller.js'; 
-import { adminMiddleware} from '../auth/auth.middleware'
-import { actualizarZonaSchema, crearZonaSchema } from './zona.schema.js';
-import { validarConSchema } from '../../shared/validation/zod.middleware.js';
 import { Router } from 'express';
-
-
+import { authMiddleware, adminMiddleware } from '../auth/auth.middleware.js';
+import { validarConSchema } from '../../shared/validation/zod.middleware.js';
+import {findAll,findOne,add,patchUpdate,putUpdate,remove} from './zona.controller.js';
+import { crearZonaSchema, actualizarZonaSchema } from './zona.schema.js';
 
 export const zonaRouter = Router();
+
+// Lectura abierta a cualquier usuario
 zonaRouter.get('/', findAll);
 zonaRouter.get('/:id', findOne);
-zonaRouter.post('/',validarConSchema({ body: crearZonaSchema }), add);
-zonaRouter.put('/:id',validarConSchema({ body: actualizarZonaSchema }), update);
-zonaRouter.patch('/:id', validarConSchema({ body: actualizarZonaSchema }), update);
-zonaRouter.delete('/:id', remove);
+
+// Solo administradores pueden crear, modificar o eliminar zonas
+zonaRouter.post('/',authMiddleware,adminMiddleware,validarConSchema({ body: crearZonaSchema }),add);
+
+zonaRouter.put('/:id',authMiddleware,adminMiddleware,validarConSchema({ body: actualizarZonaSchema }),putUpdate);
+
+zonaRouter.patch('/:id',authMiddleware,adminMiddleware,validarConSchema({ body: actualizarZonaSchema }),patchUpdate);
+
+zonaRouter.delete('/:id',authMiddleware,adminMiddleware,remove);

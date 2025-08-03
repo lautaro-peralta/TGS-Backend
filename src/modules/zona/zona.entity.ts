@@ -1,26 +1,22 @@
-import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
-import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
+import { Entity, PrimaryKey, Property, OneToMany, Collection } from '@mikro-orm/core';
+import { Autoridad } from '../autoridad/autoridad.entity.js';
+import { Distribuidor } from '../distribuidor/distribuidor.js';
 
-@Entity({ tableName: 'zonas' })
-export class Zona extends BaseEntityObjeto{
+@Entity()
+export class Zona {
+  @PrimaryKey()
+  id!: number;
 
   @Property()
-  nombre: string;
+  nombre!: string;
 
+  // Marca si es la sede central; solo una zona puede ser sede
   @Property({ default: false })
-  esSedeCentral: boolean = false;
+  sede: boolean = false;
 
-  constructor(nombre: string) {
-    super()
-    this.nombre = nombre;
-  }
+  @OneToMany(() => Autoridad, a => a.zona, { cascade: ['remove'] })
+  autoridades = new Collection<Autoridad>(this);
 
-  toDTO() {
-  return {
-    id: this.id,
-    nombre: this.nombre,
-    esSedeCentral: this.esSedeCentral,
-  };
-  }
+  @OneToMany(() => Distribuidor, d => d.zona, { cascade: ['remove'] })
+  distribuidores = new Collection<Distribuidor>(this);
 }
- 

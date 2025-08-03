@@ -1,80 +1,76 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Zona } from './zona.entity.js';
 
-
-async function findAll(req: Request, res: Response) {
-  const em = orm.em.fork();
+export async function findAll(req: Request, res: Response) {
   try {
-    const zonas = await em.find(Zona, {});
-    res.status(200).json({ data: zonas });
+    const zonas = await orm.em.fork().find(Zona, {});
+    return res.json({ data: zonas });
   } catch (err) {
-    res.status(500).json({ message: 'Error al obtener zonas' });
+    console.error(err);
+    return res.status(500).json({ error: 'Error interno al obtener zonas' });
   }
 }
 
-async function findOne(req: Request, res: Response) {
-  const em = orm.em.fork();
+export async function findOne(req: Request, res: Response) {
   try {
-    const id = parseInt(req.params.id); 
-    const zona = await em.findOne(Zona, { id });
-    if (!zona) {
-      return res.status(404).json({ message: 'Zona no encontrada' });
-    }
-    res.json({ data: zona });
-  } catch (err) {
-    res.status(400).json({ message: 'Error al buscar zona' });
-  }
-}
-
-async function add(req: Request, res: Response) {
-  const em = orm.em.fork();
-  try {
-    const input = req.body.zonaSanitizada;
-    const zona = new Zona(input.nombre);
-    await em.persistAndFlush(zona);
-    res.status(201).json({ message: 'Zona creada', data: zona });
+    const zona = await orm.em.fork().findOneOrFail(Zona, { id: +req.params.id });
+    return res.json({ data: zona });
   } catch (err: any) {
-    res.status(400).json({ message: err.message || 'Error al crear zona' });
+    const code = err.name === 'NotFoundError' ? 404 : 500;
+    console.error(err);
+    return res.status(code).json({ error: 'Zona no encontrada' });
   }
 }
 
-async function update(req: Request, res: Response) {
+export async function add(req: Request, res: Response) {
   const em = orm.em.fork();
   try {
-    const id = parseInt(req.params.id); 
-    const input = req.body.zonaSanitizada;
-    const zona = await em.findOne(Zona, { id });
-    if (!zona) {
-      return res.status(404).json({ message: 'Zona no encontrada' });
+    if (req.body.sede) {
+      await em.nativeUpdate(Zona, {}, { sede: false });
     }
-    zona.nombre = input.nombre;
-    await em.flush();
-    res.status(200).json({ message: 'Zona actualizada correctamente', data: zona });
-  } catch (err) {
-    res.status(400).json({ message: 'Error al actualizar zona' });
+    const nueva = em.create(Zona, req.body);
+    await em.persistAndFlush(nueva);
+    return res.status(201).json({ data: nueva });
+  } catch (err: any) {
+    console.error(err.stack);
+    return res.status(500).json({ error: 'Error interno al crear zona' });
   }
 }
 
-async function remove(req: Request, res: Response) {
+export async function putUpdate(req: Request, res: Response) {
   const em = orm.em.fork();
   try {
-    const id = parseInt(req.params.id); 
-    const zona = await em.findOne(Zona, { id });
-    if (!zona) {
-      return res.status(404).json({ message: 'Zona no encontrada' });
+    const zona = await em.findOneOrFail(Zona, { id: +req.params.id });
+    if (req.body.sede) {
+      await em.nativeUpdate(Zona, {}, { sede: false });
+    }
+    em.assign(zona, req.body);
+    await em.flush();
+    return res.json({ data: zona });
+  } catch (err: any) {
+    const code = err.name === 'NotFoundError' ? 404 : 500;
+    console.error(err.stack);
+    return res.status(code).json({ error: 'Error al actualizar zona' });
+  }
+}
+
+export async function patchUpdate(req: Request, res: Response) {
+  return putUpdate(req, res);
+}
+
+export async function remove(req: Request, res: Response) {
+  const em = orm.em.fork();
+  try {
+    const zona = await em.findOneOrFail(Zona, { id: +req.params.id });
+    if (zona.sede) {
+      return res.status(400).json({ error: 'No se puede eliminar la zona sede central sin designar otra como sede.' });
     }
     await em.removeAndFlush(zona);
-    res.status(200).json({ message: 'Zona eliminada exitosamente' });
-  } catch (err) {
-    res.status(400).json({ message: 'Error al eliminar zona' });
+    return res.status(204).send();
+  } catch (err: any) {
+    const code = err.name === 'NotFoundError' ? 404 : 500;
+    console.error(err.stack);
+    return res.status(code).json({ error: 'Error al eliminar zona' });
   }
 }
-
-export {
-  findAll,
-  findOne,
-  add,
-  update,
-  remove,
-};
