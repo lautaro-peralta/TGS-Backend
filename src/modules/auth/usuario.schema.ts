@@ -9,7 +9,7 @@ export const usernameSchema = z
   
 export const crearUsuarioSchema = z.object({
   nombre: z.string().min(1, "Nombre obligatorio"),
-  username:usernameSchema,
+  username: usernameSchema,
   email: z.email("Email inválido"),
   password: z.string().min(8, "Contraseña muy corta"),
   rol: z.enum(Object.values(Rol)).optional(),
@@ -18,7 +18,7 @@ export const crearUsuarioSchema = z.object({
 export const cambiarRolSchema = {
   params: z.object({ id: z.uuid("ID inválido") }),
   body: z.object({
-    rol: z.enum(["ADMIN", "CLIENTE", "SOCIO", "DISTRIBUIDOR"]),
+    rol: z.enum(["ADMIN", "CLIENTE", "SOCIO", "DISTRIBUIDOR", "AUTORIDAD"]),
   }),
 };
 

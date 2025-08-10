@@ -5,6 +5,8 @@ import { Detalle } from "./detalle.entity.js";
 import { Cliente } from "../cliente/cliente.entity.js";
 import { Producto } from "../producto/producto.entity.js";
 import { Autoridad } from "../autoridad/autoridad.entity.js";
+import { SobornoPendiente } from '../sobornoPendiente/soborno.entity.js';
+import { Usuario, Rol } from "../auth/usuario.entity.js";
 
 const em =orm.em.fork()
 
@@ -43,11 +45,33 @@ async function findOne(req: Request, res: Response) {
 
 
 async function add(req: Request, res: Response) {
-  const { clienteNombre, detalles } = res.locals.validated.body;
+  const { clienteDni, detalles } = res.locals.validated.body;
 
   try {
-    const cliente = await em.findOne(Cliente, { nombre: clienteNombre });
-    if (!cliente) return res.status(404).send({ message: "Cliente no encontrado" });
+    if (!clienteDni) {
+      return res.status(400).send({ message: "DNI del cliente requerido" });
+    }
+
+    // Buscamos el cliente por DNI de su usuario
+    let cliente = await em.findOne(Cliente, { usuario: { dni: clienteDni } }, { populate: ['usuario'] });
+
+    if (!cliente) {
+      // No existe el cliente, buscamos el usuario
+      const usuario = await em.findOne(Usuario, { dni: clienteDni });
+      if (!usuario) {
+        return res.status(404).send({ message: `No existe un usuario con DNI ${clienteDni}` });
+      }
+
+      // Si el usuario existe pero no tiene el rol CLIENTE, se lo agregamos
+      if (!usuario.roles.includes(Rol.CLIENTE)) {
+        usuario.roles.push(Rol.CLIENTE);
+        em.persist(usuario); // Se guarda el cambio de rol
+      }
+
+      // Creamos el cliente y lo asociamos al usuario existente
+      cliente = em.create(Cliente, { usuario });
+      em.persist(cliente);
+    }
 
     const nuevaVenta = em.create(Venta, {
       cliente,
@@ -57,14 +81,13 @@ async function add(req: Request, res: Response) {
     });
 
     let hayProductoIlegal = false;
+    let montoIlegalTotal = 0;
 
     for (const detalle of detalles) {
       const producto = await em.findOne(Producto, { id: detalle.productoId });
       if (!producto) {
         return res.status(400).send({ message: `Producto con ID ${detalle.productoId} no encontrado` });
       }
-
-      if (producto.esIlegal) hayProductoIlegal = true;
 
       const nuevoDetalle = em.create(Detalle, {
         producto,
@@ -74,17 +97,32 @@ async function add(req: Request, res: Response) {
         venta: nuevaVenta,
       });
 
+      if (producto.esIlegal) {
+        hayProductoIlegal = true;
+        montoIlegalTotal += detalle.subtotal;
+      }
+
       nuevaVenta.detalles.add(nuevoDetalle);
     }
-//ACÁ FALTA AGREGAR QUE SE ACUMULE EL PORCENTAJE DEL MONTO TOTAL DE
-//  LOS DETALLES CON PRODUCTOS ILEGALES' EN SOBORNO PENDIENTE(RELACIÓN A AUTORIDAD)
 
     nuevaVenta.montoVenta = nuevaVenta.detalles.getItems().reduce((acc, d) => acc + d.subtotal, 0);
 
     if (hayProductoIlegal) {
       const autoridad = await em.findOne(Autoridad, {}, { orderBy: { rango: 'asc' } });
+
       if (autoridad) {
         nuevaVenta.autoridad = autoridad;
+
+        const porcentaje = Autoridad.rangoToComision(autoridad.rango);
+        const soborno = em.create(SobornoPendiente, {
+          autoridad,
+          monto: parseFloat((montoIlegalTotal * porcentaje).toFixed(2)),
+          venta: nuevaVenta,
+          fechaCreacion: new Date(),
+          pagado: false,
+        });
+
+        em.persist(soborno);
       } else {
         console.warn("Producto ilegal detectado, pero no hay autoridad disponible.");
       }
@@ -92,12 +130,16 @@ async function add(req: Request, res: Response) {
 
     await em.persistAndFlush(nuevaVenta);
 
-    return res.status(201).send({ message: "Venta registrada exitosamente", data: nuevaVenta.toDTO() });
+    return res.status(201).send({
+      message: "Venta registrada exitosamente",
+      data: nuevaVenta.toDTO(),
+    });
   } catch (err: any) {
     console.error("Error al registrar venta:", err);
     return res.status(500).send({ message: err.message || "Error al registrar la venta" });
   }
 }
+
 
 async function remove(req: Request, res: Response) {
   try {
@@ -111,7 +153,7 @@ async function remove(req: Request, res: Response) {
     await em.removeAndFlush(venta);
 
     const msgAutoridad = autoridad
-      ? ` (Controlada por ${autoridad.nombre} - DNI ${autoridad.dni})`
+      ? ` (Controlada por ${autoridad.usuario.nombre} - DNI ${autoridad.usuario.dni})`
       : "";
 
     return res.status(200).send({

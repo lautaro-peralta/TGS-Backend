@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secreto-ultra-seguro';
 
 export interface JwtPayload {
   id: string;
-  rol: Rol;
+  roles: Rol[];
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -23,8 +23,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    console.log('✅ [authMiddleware] Payload decodificado:', payload);
-    (req as any).user = payload;
+    (req as any).user = {
+      id: payload.id,
+      roles: payload.roles,
+    };
     next();
   } catch (error) {
     console.error('❌ [authMiddleware] Token inválido o expirado:', error);
@@ -32,20 +34,21 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export function adminMiddleware(req: Request, res: Response, next: NextFunction) {
-  const user = (req as any).user as JwtPayload | undefined;
-  console.log('👤 [adminMiddleware] Usuario autenticado:', user);
 
-  if (!user) {
-    console.warn('⚠️ [adminMiddleware] No autenticado');
-    return res.status(401).json({ message: 'No autenticado' });
-  }
+export function rolesMiddleware(rolesPermitidos: Rol[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
 
-  if (user.rol !== Rol.ADMIN) {
-    console.warn('⛔ [adminMiddleware] Acceso denegado. Rol requerido: ADMIN');
-    return res.status(403).json({ message: 'No autorizado: se requiere rol ADMIN' });
-  }
+    if (!user || !user.roles) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
 
-  console.log('✅ [adminMiddleware] Acceso autorizado para ADMIN');
-  next();
+    const tieneRol = user.roles.some((rol: Rol) => rolesPermitidos.includes(rol));
+
+    if (!tieneRol) {
+      return res.status(403).json({ message: 'No tienes permisos para acceder a este recurso' });
+    }
+
+    next();
+  };
 }

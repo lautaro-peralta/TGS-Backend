@@ -19,3 +19,7 @@ export const parcialActualizarAutoridadSchema = z.object({
   rango: z.enum(['0', '1', '2', '3']).transform(Number).optional(),
   zonaId: z.number().int().positive().optional(),
 });
+
+export const pagarSobornosSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1),
+});

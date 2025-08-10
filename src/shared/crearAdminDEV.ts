@@ -22,12 +22,14 @@ export async function crearAdminDev() {
   const hashedPassword = await argon2.hash(passwordAdmin);
 
   const nuevoAdmin = em.create(Usuario, {
-    nombre: 'Administrador',
     username:'elAdmin123',
-    email: emailAdmin,
+    roles: [Rol.ADMIN],
     password: hashedPassword,
-    rol: Rol.ADMIN,
-    dni:'87654321'
+    dni:'87654321',
+    nombre: 'Administrador',
+    email: emailAdmin,
+    telefono:'0000000000',
+    direccion:''
   });
 
   await em.persistAndFlush(nuevoAdmin);

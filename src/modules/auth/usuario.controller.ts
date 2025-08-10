@@ -25,12 +25,13 @@ export class UsuarioController {
   }
 
   // Cambiar rol de un usuario (solo admin)
-  static async updateRol(req: Request, res: Response, next: NextFunction) {
+  static async updateRoles(req: Request, res: Response, next: NextFunction) {
     try {
       const em = orm.em.fork();
-        const { id } = res.locals.validated.params;
-        const { rol } = res.locals.validated.body;
-      if (![Rol.CLIENTE, Rol.SOCIO, Rol.DISTRIBUIDOR, Rol.ADMIN].includes(rol)) {
+      const { id } = res.locals.validated.params;
+      const { rol } = res.locals.validated.body;
+
+      if (!Object.values(Rol).includes(rol)) {
         return res.status(400).json({ message: 'Rol inválido' });
       }
 
@@ -39,10 +40,13 @@ export class UsuarioController {
         return res.status(404).json({ message: 'Usuario no encontrado' });
       }
 
-      usuario.rol = rol;
-      await em.flush();
+      if (!usuario.roles.includes(rol)) {
+        usuario.roles.push(rol);
+        await em.flush();
+        return res.status(200).json({ message: `Rol ${rol} agregado correctamente` });
+      }
 
-      res.status(200).json({ message: 'Rol actualizado correctamente' });
+      return res.status(200).json({ message: `El usuario ya tiene el rol ${rol}` });
     } catch (err) {
       next(err);
     }

@@ -31,12 +31,14 @@ export class AuthController {
 
       // Crear el usuario incluyendo el rol, que es obligatorio
     const userNew = em.create(Usuario, {
-      dni,
-      nombre,
       username,
-      email,
+      dni,
+      roles: [Rol.CLIENTE], // Asignamos un rol por defecto
+      nombre,
       password: hashedPassword,
-      rol: Rol.CLIENTE, // Asignamos un rol por defecto
+      email,
+      telefono:'',
+      direccion:''
     });
 
       await em.persistAndFlush(userNew);
@@ -58,7 +60,7 @@ export class AuthController {
       }
 
       const token = jwt.sign(
-        { id: usuario.id, rol: usuario.rol },
+        { id: usuario.id, roles: usuario.roles },
         JWT_SECRET,
         { expiresIn: '1h' }
       );
