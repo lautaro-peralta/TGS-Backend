@@ -6,15 +6,20 @@ export abstract class BaseEntityPersona {
   @PrimaryKey({type:'uuid'})
   id!: string;
 
-    @Property({unique:true})
+  @Property({unique:true})
   dni!:string;
 
   @Property({nullable:false})
   nombre!: string;
 
-  constructor() {
-    if (!this.id) this.id = uuidv4();
-  }
+  @Property({nullable:false})
+  email!: string;
+
+  @Property({nullable:false})
+  telefono!: string;
+
+  @Property({nullable:false})
+  direccion!: string;
 }
 
 /*
