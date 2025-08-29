@@ -1,9 +1,10 @@
-import { Entity, Property, OneToOne } from '@mikro-orm/core';
+import { Entity, Property, OneToOne, Rel } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
 import { Cliente } from '../cliente/cliente.entity.js';
 //import {Socio} from '../socio/socio.entity.js';
 //import{Distribuidor} from '../distrib/distrib.entity.js';
+
 export enum Rol {
   ADMIN = 'ADMIN',
   SOCIO = 'SOCIO',
@@ -33,11 +34,10 @@ export class Usuario extends BaseEntityPersona {
   //@OneToOne(() => Distribuidor, distribuidor => distribuidor.usuario, { nullable: true })
   //distribuidor?: Distribuidor;
 
-  @OneToOne(() => Autoridad, autoridad => autoridad.usuario, { nullable: true })
-  autoridad?: Autoridad;
+  @OneToOne(() => Autoridad, { mappedBy: 'usuario', nullable: true })
+  autoridad?: Rel<Autoridad>;
 
-
-    constructor(nombre: string, username: string, email: string, password: string, roles: Rol[] = [Rol.CLIENTE]) {
+  constructor(nombre: string, username: string, email: string, password: string, roles: Rol[] = [Rol.CLIENTE]) {
     super();
     this.nombre = nombre;
     this.username = username;

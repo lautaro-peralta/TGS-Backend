@@ -1,4 +1,4 @@
-import { Entity, DateTimeType, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mikro-orm/core"
+import { Entity, DateTimeType, Rel, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mikro-orm/core"
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js"
 import { Cliente } from "../cliente/cliente.entity.js"
 import { Detalle } from "./detalle.entity.js"
@@ -23,7 +23,7 @@ export class Venta extends BaseEntityObjeto{
   detalles = new Collection<Detalle>(this);
 
   @ManyToOne(() => Autoridad, { nullable: true })
-  autoridad?: Autoridad;
+  autoridad?: Rel<Autoridad>;
 
   toDTO() {
       return {
