@@ -1,4 +1,4 @@
-import { Entity, Property, OneToMany, OneToOne, Collection } from '@mikro-orm/core';
+import { Entity, OneToMany, OneToOne, Collection, Rel } from '@mikro-orm/core';
 import { Venta } from '../venta/venta.entity.js';
 import { Usuario } from '../auth/usuario.entity.js';
 
@@ -8,8 +8,8 @@ export class Cliente{
   @OneToMany(() => 'Venta', 'cliente')
   regCompras = new Collection<Venta>(this);
 
-  @OneToOne(() => Usuario, usuario => usuario.cliente, { nullable:true })
-  usuario!: Usuario;
+  @OneToOne(() => Usuario, usuario => usuario.cliente, { nullable:true, owner: true })
+  usuario!: Rel<Usuario>;
 
   toDTO() {
     return {

@@ -1,4 +1,4 @@
-import { Entity, Property, ManyToOne } from "@mikro-orm/core";
+import { Entity, Rel, Property, ManyToOne } from "@mikro-orm/core";
 import { Venta } from "../venta/venta.entity.js";
 import { Autoridad } from "../autoridad/autoridad.entity.js";
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js";
@@ -15,11 +15,11 @@ export class SobornoPendiente extends BaseEntityObjeto{
   @Property()
   fechaCreacion: Date = new Date();
   
-  @ManyToOne()
-  autoridad!: Autoridad;
+  @ManyToOne(() => Autoridad, {nullable: false})
+  autoridad!: Rel<Autoridad>;
 
-  @ManyToOne()
-  venta!: Venta;
+  @ManyToOne(()=> Venta, {nullable:false})
+  venta!: Rel<Venta>;
 
   toDTO(){
     return{

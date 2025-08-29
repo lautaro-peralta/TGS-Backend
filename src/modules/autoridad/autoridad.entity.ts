@@ -1,4 +1,4 @@
-import { Entity, OneToMany, ManyToOne,OneToOne, Property, Collection} from '@mikro-orm/core';
+import { Entity, OneToMany, ManyToOne,OneToOne, Property, Rel, Collection} from '@mikro-orm/core';
 import { Venta } from '../venta/venta.entity.js';
 import { Zona } from '../zona/zona.entity.js';
 import { SobornoPendiente} from '../sobornoPendiente/soborno.entity.js'
@@ -19,8 +19,8 @@ export class Autoridad{
   @OneToMany(() => SobornoPendiente, soborno => soborno.autoridad)
   sobornosPendientes = new Collection<SobornoPendiente>(this);
 
-  @OneToOne(() => Usuario)
-  usuario!: Usuario;
+  @OneToOne(() => Usuario, usuario => usuario.autoridad, { owner: true })
+  usuario!: Rel<any>;
 
   static calcularPorcentajePorRango(rango: number): number {
   const mapa: Record<number, number> = {
