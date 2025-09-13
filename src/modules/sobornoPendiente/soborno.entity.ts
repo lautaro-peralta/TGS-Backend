@@ -15,10 +15,10 @@ export class SobornoPendiente extends BaseEntityObjeto{
   @Property()
   fechaCreacion: Date = new Date();
   
-  @ManyToOne(() => Autoridad, {nullable: false})
+  @ManyToOne({entity: () => Autoridad, nullable: false})
   autoridad!: Rel<Autoridad>;
 
-  @ManyToOne(()=> Venta, {nullable:false})
+  @ManyToOne({entity: ()=> Venta, nullable: false})
   venta!: Rel<Venta>;
 
   toDTO(){
@@ -27,8 +27,8 @@ export class SobornoPendiente extends BaseEntityObjeto{
       pagado:this.pagado,
       fechaCreacion: this.fechaCreacion,
       autoridad: {
-        dni: this.autoridad.usuario.dni,
-        nombre: this.autoridad.usuario.nombre
+        dni: this.autoridad.dni,
+        nombre: this.autoridad.nombre
       },
       venta: {
         id: this.venta.id,
