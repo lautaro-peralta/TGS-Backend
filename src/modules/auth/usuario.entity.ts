@@ -1,9 +1,7 @@
-import { Entity, Property, OneToOne, Rel } from '@mikro-orm/core';
+import { Entity, Property, OneToOne, Rel, PrimaryKey } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
-import { Autoridad } from '../autoridad/autoridad.entity.js';
-import { Cliente } from '../cliente/cliente.entity.js';
-//import {Socio} from '../socio/socio.entity.js';
-//import{Distribuidor} from '../distrib/distrib.entity.js';
+import {v7 as uuidv7} from 'uuid';
+
 
 export enum Rol {
   ADMIN = 'ADMIN',
@@ -14,34 +12,31 @@ export enum Rol {
 }
 
 @Entity({tableName:'usuarios'})
-export class Usuario extends BaseEntityPersona {
+export class Usuario{
 
-  @Property()
+  @PrimaryKey({ 
+    type: 'uuid',
+    onCreate: () => uuidv7() })
+  id!: string;
+
+  @Property({ unique: true })
   username!: string;
+
+  @Property({ unique: true })
+  email!: string;
 
   @Property()
   password!: string;
 
   @Property({ type: 'string[]' })
   roles: Rol[] = [Rol.CLIENTE];
-  
-  @OneToOne(() => Cliente, cliente => cliente.usuario, { nullable: true })
-  cliente?: Cliente;
 
-  //@OneToOne(() => Socio, socio => socio.usuario, { nullable: true })
-  //socio?: Socio;
+  @OneToOne({entity: () => BaseEntityPersona, eager: true, owner:true })
+  persona!: Rel<BaseEntityPersona>;
 
-  //@OneToOne(() => Distribuidor, distribuidor => distribuidor.usuario, { nullable: true })
-  //distribuidor?: Distribuidor;
-
-  @OneToOne(() => Autoridad, { mappedBy: 'usuario', nullable: true })
-  autoridad?: Rel<Autoridad>;
-
-  constructor(nombre: string, username: string, email: string, password: string, roles: Rol[] = [Rol.CLIENTE]) {
-    super();
-    this.nombre = nombre;
+  constructor( username: string, email: string, password: string, roles: Rol[] = [Rol.CLIENTE]) {
     this.username = username;
-    this.email = email;
+    this.email= email;
     this.password = password;
     this.roles = roles;
   }
@@ -49,7 +44,6 @@ export class Usuario extends BaseEntityPersona {
   toDTO() {
     return {
       id: this.id,
-      nombre: this.nombre,
       username: this.username,
       email: this.email,
       roles: this.roles,

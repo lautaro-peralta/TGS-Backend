@@ -1,8 +1,5 @@
 import cors from 'cors';
-import dotenv from 'dotenv';
-import 'reflect-metadata';
 import express from 'express';
-
 import { RequestContext } from '@mikro-orm/core';
 import { orm, syncSchema } from './shared/db/orm.js';
 
@@ -16,27 +13,15 @@ import { ventaRouter } from './modules/venta/venta.routes.js';
 import { productoRouter } from './modules/producto/producto.routes.js';
 import { autoridadRouter } from './modules/autoridad/autoridad.routes.js';
 import { zonaRouter } from './modules/zona/zona.routes.js';
-import {sobornoRouter } from './modules/sobornoPendiente/soborno.routes.js';
-
-dotenv.config();
+import { sobornoRouter } from './modules/sobornoPendiente/soborno.routes.js';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-
 app.use((req, res, next) => {
   RequestContext.create(orm.em, next);
 });
-
-console.log('Rutas cargadas:');
-console.log('/api/clientes');
-console.log('/api/auth');
-console.log('/api/usuarios');
-console.log('/api/ventas');
-console.log('/api/autoridades');
-console.log('/api/zonas');
-console.log('/api/productos');
 
 app.use('/api/auth', authRouter);
 app.use('/api/usuarios', usuarioRouter);
@@ -45,15 +30,25 @@ app.use('/api/ventas', ventaRouter);
 app.use('/api/productos', productoRouter);
 app.use('/api/zonas', zonaRouter);
 app.use('/api/autoridades', autoridadRouter);
-app.use('/api/sobornosPendientes',sobornoRouter)
+app.use('/api/sobornosPendientes',sobornoRouter);
 
-await syncSchema(); // en desarrollo, remover o manejar según ambiente en producción
+app.use((req, res) => {
+  res.status(404).json({ message: 'Ruta no encontrada' });
+});
 
-if (process.env.NODE_ENV === 'development') {
-  await crearAdminDev();
-  await crearZonaDev();
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err);
+  res.status(err.status || 500).json({ message: err.message || 'Error interno del servidor' });
+});
+
+export const initDev = async () => {
+  if (process.env.NODE_ENV === 'development') {
+    await syncSchema();
+    await crearAdminDev();
+    await crearZonaDev();
+    console.log('Rutas cargadas:');
+    console.log('/api/clientes', '/api/auth', '/api/usuarios', '/api/ventas', '/api/autoridades', '/api/zonas', '/api/productos');
+  }
 }
 
-app.listen(3000, () => {
-  console.log('Servidor corriendo en http://localhost:3000/');
-});
+export { app };

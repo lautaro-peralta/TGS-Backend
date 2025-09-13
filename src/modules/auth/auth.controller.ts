@@ -3,11 +3,12 @@ import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { orm } from '../../shared/db/orm.js';
+import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secreto-ultra-seguro';
 
 export class AuthController {
-  static async signup(req: Request, res: Response, next: NextFunction) {
+  async signup(req: Request, res: Response, next: NextFunction) {
     const em = orm.em.fork();
     try {
       console.log('Request body:', req.body);
@@ -16,29 +17,46 @@ export class AuthController {
       if ( !nombre || !password ||!dni|| !email || !username ) {
         return res.status(400).json({ message: 'Faltan datos obligatorios' });
       }
-
+    
+      //VALIDACION DE USUARIO
     const existingUsername = await em.findOne(Usuario, { username });
     if (existingUsername) {
       return res.status(409).json({ message: 'El nombre de usuario ya está registrado' });
     }
-
     const existingEmail = await em.findOne(Usuario, { email });
     if (existingEmail) {
       return res.status(409).json({ message: 'El email ya está registrado' });
     }
 
-    const hashedPassword = await argon2.hash(password);
+    //VALIDACION DE PERSONA (NO EXISTE EL USER)
+    let persona = await em.findOne(BaseEntityPersona, { dni });
+    //REVISAR YA QUE PERMITE QUE ALGUIEN MODIFIQUE LOS DATOS DE OTRA PERSONA SI QUIERE
+    if (persona) {    
+        if (persona.email !== email) {
+        console.log("La persona ya está registrada. ¿Desea asociar el email ingresado(Y) o mantener el anterior(N)?")
+        //AGREGAR VALIDACION POR SI LO QUIERE CAMBIAR O NO
+        persona.email = email;
+        await em.flush();
+      }
+    }else{
+      persona=em.create(BaseEntityPersona,{
+        dni,
+        nombre,
+        email,
+        telefono:'',
+        direccion:''
+      })
+      await em.persistAndFlush(persona);
+    }
 
+    const hashedPassword = await argon2.hash(password);
       // Crear el usuario incluyendo el rol, que es obligatorio
     const userNew = em.create(Usuario, {
       username,
-      dni,
       roles: [Rol.CLIENTE], // Asignamos un rol por defecto
-      nombre,
       password: hashedPassword,
       email,
-      telefono:'',
-      direccion:''
+      persona: em.getReference(BaseEntityPersona, persona.id),
     });
 
       await em.persistAndFlush(userNew);
@@ -49,7 +67,7 @@ export class AuthController {
     }
   }
 
-  static async login(req: Request, res: Response, next: NextFunction) {
+  async login(req: Request, res: Response, next: NextFunction) {
     const em = orm.em.fork();
     try {
       const { email, password } = req.body;
