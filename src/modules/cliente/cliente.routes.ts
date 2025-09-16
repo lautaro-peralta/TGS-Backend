@@ -1,12 +1,28 @@
-import {Router} from 'express';
-import { findAll,findOne,crear, patchUpdate, remove } from './cliente.controller.js';
-import { actualizarClienteSchema, crearClienteSchema} from './cliente.schema.js'
+import { Router } from 'express';
+import { ClienteController } from './cliente.controller.js';
+import { actualizarClienteSchema, crearClienteSchema } from './cliente.schema.js'
 import { validarConSchema } from '../../shared/validation/zod.middleware.js';
 
 export const clienteRouter = Router()
+const clienteController = new ClienteController();
 
-clienteRouter.get('/',findAll)
-clienteRouter.get('/:dni',findOne)
-clienteRouter.post('/',validarConSchema({ body: crearClienteSchema }), crear)
-clienteRouter.patch('/:dni', validarConSchema({ body: actualizarClienteSchema }),patchUpdate)
-clienteRouter.delete('/:dni',remove)
+
+clienteRouter.get('/',
+  clienteController.getAllClientes
+)
+
+clienteRouter.get('/:dni',
+  clienteController.getOneClienteByDni
+)
+
+clienteRouter.post('/',validarConSchema({ body: crearClienteSchema }),
+  clienteController.createCliente
+)
+
+clienteRouter.patch('/:dni', validarConSchema({ body: actualizarClienteSchema }),
+  clienteController.patchUpdateCliente
+)
+
+clienteRouter.delete('/:dni',
+  clienteController.deleteCliente
+)

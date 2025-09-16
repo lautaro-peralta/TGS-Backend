@@ -1,26 +1,23 @@
-import { Entity, OneToMany, ManyToOne,OneToOne, Property, Collection} from '@mikro-orm/core';
+import { Entity, OneToMany, ManyToOne,OneToOne, Property, Rel, Collection} from '@mikro-orm/core';
 import { Venta } from '../venta/venta.entity.js';
 import { Zona } from '../zona/zona.entity.js';
 import { SobornoPendiente} from '../sobornoPendiente/soborno.entity.js'
-import { Usuario } from '../auth/usuario.entity.js';
+import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
 @Entity({tableName:'autoridades'})
-export class Autoridad{
+export class Autoridad extends BaseEntityPersona{
 
   @Property()
   rango!: number;
 
-  @OneToMany(() => Venta, venta => venta.autoridad)
+  @OneToMany({entity: () => Venta, mappedBy: venta => venta.autoridad})
   ventas = new Collection<Venta>(this);
 
-  @ManyToOne(() => Zona)
-  zona!: Zona;      
+  @ManyToOne({entity: () => Zona, nullable:false})
+  zona!: Rel<Zona>;      
   
-  @OneToMany(() => SobornoPendiente, soborno => soborno.autoridad)
+  @OneToMany({entity: () => SobornoPendiente, mappedBy: soborno => soborno.autoridad})
   sobornosPendientes = new Collection<SobornoPendiente>(this);
-
-  @OneToOne(() => Usuario)
-  usuario!: Usuario;
 
   static calcularPorcentajePorRango(rango: number): number {
   const mapa: Record<number, number> = {
@@ -38,8 +35,8 @@ export class Autoridad{
 
   toDTO() {
     return {
-      dni: this.usuario.dni,
-      nombre: this.usuario.nombre,
+      dni: this.dni,
+      nombre: this.nombre,
       zona: this.zona,
       rango:this.rango,
       sobornosPendientes: this.sobornosPendientes.getItems().map(s => s.toDTO()),

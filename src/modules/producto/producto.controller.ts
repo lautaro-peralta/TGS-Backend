@@ -5,107 +5,101 @@ import { crearProductoSchema, actualizarProductoSchema } from "./producto.schema
 
 const em = orm.em.fork();
 
-// Obtener todos los productos
-async function findAll(req: Request, res: Response) {
-  try {
-    const productos = await em.find(Producto, {});
-    return res.status(200).json({
-      message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${productos.length} producto${productos.length !== 1 ? 's' : ''}`,
-      data: productos.map(p => p.toDTO())
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Error al obtener productos' });
-  }
-}
-
-// Obtener un producto por ID
-async function findOne(req: Request, res: Response) {
-  try {
-    const id = parseInt(req.params.id);
-    const producto = await em.findOne(Producto, { id });
-    if (!producto) {
-      return res.status(404).json({ message: 'Producto no encontrado' });
-    }
-    res.json({ data: producto });
-  } catch (err) {
-    res.status(400).json({ message: 'Error al buscar producto' });
-  }
-}
-
-// Crear producto con validación Zod
-async function add(req: Request, res: Response) {
-  try {
-    // Validar datos entrantes
-    const datosValidados = crearProductoSchema.parse(req.body);
-
-    // Crear producto
-    const producto = new Producto(
-      datosValidados.precio,
-      datosValidados.stock,
-      datosValidados.descripcion,
-      datosValidados.esIlegal
-    );
-
-    await em.persistAndFlush(producto);
-    res.status(201).json({ message: 'Producto creado', data: producto });
-  } catch (err: any) {
-    if (err.errors) {
-      res.status(400).json({ errores: err.errors });
-    } else {
-      res.status(400).json({ message: err.message || 'Error al crear producto' });
+export class ProductoController{
+  // Obtener todos los productos
+  async getAllProductos(req: Request, res: Response) {
+    try {
+      const productos = await em.find(Producto, {});
+      return res.status(200).json({
+        message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${productos.length} producto${productos.length !== 1 ? 's' : ''}`,
+        data: productos.map(p => p.toDTO())
+      });
+    } catch (err) {
+      res.status(500).json({ message: 'Error al obtener productos' });
     }
   }
-}
 
-// Actualizar producto con validación Zod
-async function update(req: Request, res: Response) {
-  try {
-    const id = parseInt(req.params.id);
-
-    // Validar datos entrantes (todos opcionales)
-    const datosValidados = actualizarProductoSchema.parse(req.body);
-
-    const producto = await em.findOne(Producto, { id });
-    if (!producto) {
-      return res.status(404).json({ message: 'Producto no encontrado' });
-    }
-
-    // Actualizar solo los campos enviados
-    if (datosValidados.descripcion !== undefined) producto.descripcion = datosValidados.descripcion;
-    if (datosValidados.precio !== undefined) producto.precio = datosValidados.precio;
-    if (datosValidados.stock !== undefined) producto.stock = datosValidados.stock;
-    if (datosValidados.esIlegal !== undefined) producto.esIlegal = datosValidados.esIlegal;
-
-    await em.flush();
-    res.status(200).json({ message: 'Producto actualizado correctamente', data: producto });
-  } catch (err: any) {
-    if (err.errors) {
-      res.status(400).json({ errores: err.errors });
-    } else {
-      res.status(400).json({ message: 'Error al actualizar producto' });
+  // Obtener un producto por ID
+  async getOneProductoById(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const producto = await em.findOne(Producto, { id });
+      if (!producto) {
+        return res.status(404).json({ message: 'Producto no encontrado' });
+      }
+      res.json({ data: producto });
+    } catch (err) {
+      res.status(400).json({ message: 'Error al buscar producto' });
     }
   }
-}
 
-// Eliminar producto
-async function remove(req: Request, res: Response) {
-  try {
-    const id = parseInt(req.params.id);
-    const producto = await em.findOne(Producto, { id });
-    if (!producto) {
-      return res.status(404).json({ message: 'Producto no encontrado' });
+  // Crear producto con validación Zod
+  async createProducto(req: Request, res: Response) {
+    try {
+      // Validar datos entrantes
+      const datosValidados = crearProductoSchema.parse(req.body);
+
+      // Crear producto
+      const producto = new Producto(
+        datosValidados.precio,
+        datosValidados.stock,
+        datosValidados.descripcion,
+        datosValidados.esIlegal
+      );
+
+      await em.persistAndFlush(producto);
+      res.status(201).json({ message: 'Producto creado', data: producto });
+    } catch (err: any) {
+      if (err.errors) {
+        res.status(400).json({ errores: err.errors });
+      } else {
+        res.status(400).json({ message: err.message || 'Error al crear producto' });
+      }
     }
-    await em.removeAndFlush(producto);
-    res.status(200).json({ message: 'Producto eliminado exitosamente' });
-  } catch (err) {
-    res.status(400).json({ message: 'Error al eliminar producto' });
   }
-}
 
-export {
-  findAll,
-  findOne,
-  add,
-  update,
-  remove,
+  // Actualizar producto con validación Zod
+  async updateProducto(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+
+      // Validar datos entrantes (todos opcionales)
+      const datosValidados = actualizarProductoSchema.parse(req.body);
+
+      const producto = await em.findOne(Producto, { id });
+      if (!producto) {
+        return res.status(404).json({ message: 'Producto no encontrado' });
+      }
+
+      // Actualizar solo los campos enviados
+      if (datosValidados.descripcion !== undefined) producto.descripcion = datosValidados.descripcion;
+      if (datosValidados.precio !== undefined) producto.precio = datosValidados.precio;
+      if (datosValidados.stock !== undefined) producto.stock = datosValidados.stock;
+      if (datosValidados.esIlegal !== undefined) producto.esIlegal = datosValidados.esIlegal;
+
+      await em.flush();
+      res.status(200).json({ message: 'Producto actualizado correctamente', data: producto });
+    } catch (err: any) {
+      if (err.errors) {
+        res.status(400).json({ errores: err.errors });
+      } else {
+        res.status(400).json({ message: 'Error al actualizar producto' });
+      }
+    }
+  }
+
+  // Eliminar producto
+  async deleteProducto(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const producto = await em.findOne(Producto, { id });
+      if (!producto) {
+        return res.status(404).json({ message: 'Producto no encontrado' });
+      }
+      await em.removeAndFlush(producto);
+      res.status(200).json({ message: 'Producto eliminado exitosamente' });
+    } catch (err) {
+      res.status(400).json({ message: 'Error al eliminar producto' });
+    }
+  }
 };

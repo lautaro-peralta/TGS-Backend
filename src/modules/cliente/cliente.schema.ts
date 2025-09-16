@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { crearUsuarioSchema } from "../auth/usuario.schema.js";
+
 export const crearClienteSchema = z.object({
   dni: z.string().min(1, "DNI requerido"),
   nombre: z.string().min(1, "Nombre requerido"),

@@ -1,6 +1,7 @@
 import argon2 from 'argon2';
 import { orm } from '../shared/db/orm.js';
 import { Usuario, Rol } from '../modules/auth/usuario.entity.js';
+import { BaseEntityPersona } from './db/base.persona.entity.js';
 
 export async function crearAdminDev() {
   if (process.env.NODE_ENV !== 'development') {
@@ -21,17 +22,21 @@ export async function crearAdminDev() {
 
   const hashedPassword = await argon2.hash(passwordAdmin);
 
-  const nuevoAdmin = em.create(Usuario, {
-    username:'elAdmin123',
-    roles: [Rol.ADMIN],
-    password: hashedPassword,
+  const nuevoAdmin = em.create(BaseEntityPersona,{
     dni:'87654321',
     nombre: 'Administrador',
     email: emailAdmin,
-    telefono:'0000000000',
-    direccion:''
+    telefono:'-',
+    direccion:'-'
+  })
+  const userAdmin = em.create(Usuario, {
+    username:'elAdmin123',
+    email: emailAdmin,
+    roles: [Rol.ADMIN],
+    password: hashedPassword,
+    persona: nuevoAdmin
   });
 
-  await em.persistAndFlush(nuevoAdmin);
+  await em.persistAndFlush([nuevoAdmin,userAdmin]);
   console.log('Admin de desarrollo creado con éxito');
 }

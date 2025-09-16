@@ -1,4 +1,4 @@
-import { Entity, DateTimeType, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mikro-orm/core"
+import { Entity, DateTimeType, Property, OneToMany, ManyToOne, Collection, Rel, Cascade } from "@mikro-orm/core"
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js"
 import { Venta } from "./venta.entity.js"
 import { Producto } from "../producto/producto.entity.js";
@@ -15,11 +15,11 @@ export class Detalle extends BaseEntityObjeto{
   @Property({ type: 'decimal', precision: 10, scale: 2 })
   subtotal!: number
   
-  @ManyToOne(()=>Venta,{nullable:false})
-  venta!:Venta
+  @ManyToOne({entity: () => Venta, nullable:false})
+  venta!:Rel<Venta>
   
-  @ManyToOne(() => Producto,{nullable:false})
-  producto!: Producto; 
+  @ManyToOne({entity: () => Producto, nullable:false})
+  producto!: Rel<Producto>; 
 
   toDTO() {
     return {
