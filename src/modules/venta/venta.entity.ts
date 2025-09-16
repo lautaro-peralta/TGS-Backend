@@ -1,8 +1,13 @@
-import { Entity, DateTimeType, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mikro-orm/core"
+import { Entity, wrap, DateTimeType, Ref,Loaded, Property, OneToMany, ManyToOne, Collection, Cascade } from "@mikro-orm/core"
 import { BaseEntityObjeto } from "../../shared/db/base.objeto.entity.js"
 import { Cliente } from "../cliente/cliente.entity.js"
 import { Detalle } from "./detalle.entity.js"
 import { Autoridad } from "../../modules/autoridad/autoridad.entity.js"
+
+function callToDTO<T extends { toDTO(): any }>(ref: Ref<T>|Loaded<T>): any {
+  const entity = wrap(ref).toObject() as T;
+  return entity.toDTO();
+}
 
 @Entity({ tableName: 'ventas' })
 export class Venta extends BaseEntityObjeto{ 
@@ -16,27 +21,24 @@ export class Venta extends BaseEntityObjeto{
   @Property()
   montoVenta!: number
   
-  @ManyToOne(() => Cliente, {nullable: true})
-  cliente?: Cliente;
+  @ManyToOne({entity: () => Cliente, nullable: true})
+  cliente?: Ref<Cliente>|Loaded<Cliente>;
 
-  @OneToMany(() => 'Detalle', 'venta', { cascade: [Cascade.ALL] })
+  @OneToMany({entity: () => Detalle, mappedBy:'venta', cascade: [Cascade.ALL]})
   detalles = new Collection<Detalle>(this);
 
-  @ManyToOne(() => Autoridad, { nullable: true })
-  autoridad?: Autoridad;
+  @ManyToOne({entity: () => Autoridad,  nullable: true })
+  autoridad?: Ref<Autoridad> | Loaded<Autoridad>;
 
   toDTO() {
-      return {
+    return {
       id: this.id,
       descripcion: this.descripcion || null,
-      fecha: this.fechaVenta instanceof Date ? this.fechaVenta.toISOString() : this.fechaVenta,
+      fecha: this.fechaVenta.toISOString(),
       monto: this.montoVenta,
-      cliente: this.cliente?.usuario? {
-            dni: this.cliente.usuario.dni,
-            nombre: this.cliente.usuario.nombre,
-          }: null,
       detalles: this.detalles.getItems().map(d => d.toDTO()),
-      autoridad: this.autoridad ? this.autoridad.toDTO() : null,
+      cliente: this.cliente ? callToDTO(this.cliente) : null,
+      autoridad: this.autoridad ? callToDTO(this.autoridad) : null,
     };
-  }
+    }
 }

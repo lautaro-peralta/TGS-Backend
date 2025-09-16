@@ -4,8 +4,9 @@ import { validarConSchema } from '../../shared/validation/zod.middleware.js';
 import { loginSchema, registroSchema } from './auth.schema.js';
 
 const authRouter = Router();
+const authController = new AuthController();
 
-authRouter.post('/register',validarConSchema({ body: registroSchema }), AuthController.signup);
-authRouter.post('/login', validarConSchema({ body: loginSchema }), AuthController.login);
+authRouter.post('/register',validarConSchema({ body: registroSchema }), authController.signup);
+authRouter.post('/login', validarConSchema({ body: loginSchema }), authController.login);
 
 export {authRouter};

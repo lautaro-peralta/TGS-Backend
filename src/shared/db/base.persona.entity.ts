@@ -1,9 +1,12 @@
-import { PrimaryKey, Property, DateTimeType } from '@mikro-orm/core'
-import { v4 as uuidv4} from 'uuid';
+import { PrimaryKey, Property, DateTimeType, OneToOne, Ref, Entity } from '@mikro-orm/core'
+import { Usuario } from '../../modules/auth/usuario.entity.js';
+import { v7 as uuidv7 } from 'uuid';
 
-
-export abstract class BaseEntityPersona {
-  @PrimaryKey({type:'uuid'})
+@Entity({tableName:'personas'})
+export class BaseEntityPersona {
+  @PrimaryKey({ 
+    type: 'uuid',
+    onCreate: () => uuidv7() })
   id!: string;
 
   @Property({unique:true})
@@ -20,6 +23,9 @@ export abstract class BaseEntityPersona {
 
   @Property({nullable:false})
   direccion!: string;
+  
+  @OneToOne({entity:() => Usuario, nullable: true })
+  usuario?: Ref<Usuario>;
 }
 
 /*

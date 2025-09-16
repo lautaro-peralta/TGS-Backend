@@ -16,6 +16,8 @@ export class Producto extends BaseEntityObjeto {
   @Property({default:false})
   esIlegal!:boolean;
 
+  //@OneToMany con ventas???
+
   constructor(precio: number, stock: number, descripcion: string, esIlegal:boolean) {
     super();
     this.precio = precio;
