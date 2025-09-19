@@ -108,6 +108,7 @@ export const initDev = async () => {
     await syncSchema();
     await crearAdminDev();
     await crearZonaDev();
+
     console.log();
     logRoutes([
       '/api/clientes',
