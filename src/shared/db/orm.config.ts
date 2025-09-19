@@ -2,7 +2,6 @@ import { Options } from '@mikro-orm/core';
 import { MySqlDriver } from '@mikro-orm/mysql';
 import { SqlHighlighter } from '@mikro-orm/sql-highlighter';
 
-
 export default {
   driver: MySqlDriver,
   entities: ['dist/**/*.entity.js'],
@@ -13,15 +12,15 @@ export default {
   host: 'localhost',
   port: 3307,
   highlighter: new SqlHighlighter(),
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
   migrations: {
-    path: './src/migrations',  // Ruta para almacenar migraciones
+    path: './src/migrations', // Ruta para almacenar migraciones
     snapshot: false,
-    disableForeignKeys: false
+    disableForeignKeys: false,
   },
   schemaGenerator: {
-    disableForeignKeys: false,  // Mantener claves foráneas
+    disableForeignKeys: false, // Mantener claves foráneas
     createForeignKeyConstraints: true,
-    ignoreSchema: []
+    ignoreSchema: [],
   },
 } as Options;

@@ -1,18 +1,23 @@
-import { Request, Response} from 'express';
+import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Producto } from './producto.entity.js';
-import { crearProductoSchema, actualizarProductoSchema } from "./producto.schema.js";
+import {
+  crearProductoSchema,
+  actualizarProductoSchema,
+} from './producto.schema.js';
 
 const em = orm.em.fork();
 
-export class ProductoController{
+export class ProductoController {
   // Obtener todos los productos
   async getAllProductos(req: Request, res: Response) {
     try {
       const productos = await em.find(Producto, {});
       return res.status(200).json({
-        message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${productos.length} producto${productos.length !== 1 ? 's' : ''}`,
-        data: productos.map(p => p.toDTO())
+        message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${
+          productos.length
+        } producto${productos.length !== 1 ? 's' : ''}`,
+        data: productos.map((p) => p.toDTO()),
       });
     } catch (err) {
       res.status(500).json({ message: 'Error al obtener productos' });
@@ -53,7 +58,9 @@ export class ProductoController{
       if (err.errors) {
         res.status(400).json({ errores: err.errors });
       } else {
-        res.status(400).json({ message: err.message || 'Error al crear producto' });
+        res
+          .status(400)
+          .json({ message: err.message || 'Error al crear producto' });
       }
     }
   }
@@ -72,13 +79,22 @@ export class ProductoController{
       }
 
       // Actualizar solo los campos enviados
-      if (datosValidados.descripcion !== undefined) producto.descripcion = datosValidados.descripcion;
-      if (datosValidados.precio !== undefined) producto.precio = datosValidados.precio;
-      if (datosValidados.stock !== undefined) producto.stock = datosValidados.stock;
-      if (datosValidados.esIlegal !== undefined) producto.esIlegal = datosValidados.esIlegal;
+      if (datosValidados.descripcion !== undefined)
+        producto.descripcion = datosValidados.descripcion;
+      if (datosValidados.precio !== undefined)
+        producto.precio = datosValidados.precio;
+      if (datosValidados.stock !== undefined)
+        producto.stock = datosValidados.stock;
+      if (datosValidados.esIlegal !== undefined)
+        producto.esIlegal = datosValidados.esIlegal;
 
       await em.flush();
-      res.status(200).json({ message: 'Producto actualizado correctamente', data: producto });
+      res
+        .status(200)
+        .json({
+          message: 'Producto actualizado correctamente',
+          data: producto,
+        });
     } catch (err: any) {
       if (err.errors) {
         res.status(400).json({ errores: err.errors });
@@ -102,4 +118,4 @@ export class ProductoController{
       res.status(400).json({ message: 'Error al eliminar producto' });
     }
   }
-};
+}
