@@ -8,5 +8,8 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 app.listen(env.PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${env.PORT}/ [${process.env.NODE_ENV}]`);
+  console.log();
+  console.log(
+    `Servidor corriendo en http://localhost:${env.PORT}/ [${process.env.NODE_ENV}]`
+  );
 });
