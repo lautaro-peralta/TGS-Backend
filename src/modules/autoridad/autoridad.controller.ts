@@ -4,21 +4,40 @@ import { Autoridad } from './autoridad.entity.js';
 import { Zona } from '../zona/zona.entity.js';
 import { Rol, Usuario } from '../auth/usuario.entity.js';
 import { SobornoPendiente } from '../../modules/sobornoPendiente/soborno.entity.js';
-import argon2 from 'argon2'
+import argon2 from 'argon2';
 
-export class AutoridadController{
+export class AutoridadController {
   async createAutoridad(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const { dni, nombre, email, direccion, telefono, username, password, rango, zonaId } = res.locals.validated.body;
+      const {
+        dni,
+        nombre,
+        email,
+        direccion,
+        telefono,
+        username,
+        password,
+        rango,
+        zonaId,
+      } = res.locals.validated.body;
 
-      if (!dni || !nombre || !email || !username || !password || rango === undefined) {
+      if (
+        !dni ||
+        !nombre ||
+        !email ||
+        !username ||
+        !password ||
+        rango === undefined
+      ) {
         return res.status(400).json({ message: 'Faltan datos obligatorios' });
       }
 
-      const existeDNI = await em.findOne(Autoridad, {dni});
+      const existeDNI = await em.findOne(Autoridad, { dni });
       if (existeDNI) {
-        return res.status(409).json({ error: 'Ya existe una autoridad con ese DNI' });
+        return res
+          .status(409)
+          .json({ error: 'Ya existe una autoridad con ese DNI' });
       }
 
       const existeZona = await em.count(Zona, { id: zonaId });
@@ -26,18 +45,25 @@ export class AutoridadController{
         return res.status(404).json({ error: 'Zona no encontrada' });
       }
 
-      let usuario = await em.findOne(Usuario, {persona:{dni}}, { populate: ['roles','persona'] });
+      let usuario = await em.findOne(
+        Usuario,
+        { persona: { dni } },
+        { populate: ['roles', 'persona'] }
+      );
       const hashedPassword = await argon2.hash(password);
 
       let autoridad: Autoridad;
 
       if (usuario) {
         const rolesIncompatibles = [Rol.ADMIN, Rol.SOCIO, Rol.DISTRIBUIDOR];
-        const tieneRolIncompatible = usuario.roles.some(rol => rolesIncompatibles.includes(rol));
+        const tieneRolIncompatible = usuario.roles.some((rol) =>
+          rolesIncompatibles.includes(rol)
+        );
 
         if (tieneRolIncompatible) {
           return res.status(400).json({
-            error: 'El usuario ya tiene un rol incompatible con Autoridad (ADMIN, SOCIO o DISTRIBUIDOR)',
+            error:
+              'El usuario ya tiene un rol incompatible con Autoridad (ADMIN, SOCIO o DISTRIBUIDOR)',
           });
         }
 
@@ -54,9 +80,8 @@ export class AutoridadController{
           rango,
           zona: em.getReference(Zona, zonaId),
         });
-        usuario.persona = autoridad
+        usuario.persona = autoridad;
         await em.persistAndFlush([autoridad, usuario]);
-        
       } else {
         autoridad = em.create(Autoridad, {
           dni,
@@ -73,7 +98,7 @@ export class AutoridadController{
           email,
           password: hashedPassword,
           roles: [Rol.AUTORIDAD],
-          persona: autoridad
+          persona: autoridad,
         });
         await em.persistAndFlush([autoridad, usuario]);
       }
@@ -82,7 +107,6 @@ export class AutoridadController{
         message: 'Autoridad creada exitosamente',
         data: autoridad.toDTO(),
       });
-
     } catch (error) {
       console.error('Error creando autoridad:', error);
       return res.status(500).json({ message: 'Error interno del servidor' });
@@ -92,10 +116,16 @@ export class AutoridadController{
   async getAllAutoridades(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const autoridades = await em.find(Autoridad, {}, { populate: ['zona', 'usuario'], orderBy:{nombre:'ASC'} });
+      const autoridades = await em.find(
+        Autoridad,
+        {},
+        { populate: ['zona', 'usuario'], orderBy: { nombre: 'ASC' } }
+      );
       return res.status(200).json({
-        message: `Se ${autoridades.length === 1 ? 'encontró' : 'encontraron'} ${autoridades.length} autoridad${autoridades.length !== 1 ? 'es' : ''}`,
-        data: autoridades.map(a => a.toDTO()),
+        message: `Se ${autoridades.length === 1 ? 'encontró' : 'encontraron'} ${
+          autoridades.length
+        } autoridad${autoridades.length !== 1 ? 'es' : ''}`,
+        data: autoridades.map((a) => a.toDTO()),
       });
     } catch (error) {
       console.error('Error al listar autoridades:', error);
@@ -108,7 +138,11 @@ export class AutoridadController{
     const dni = req.params.dni;
 
     try {
-      const autoridad = await em.findOne(Autoridad,{dni}, { populate: ['zona', 'usuario'] });
+      const autoridad = await em.findOne(
+        Autoridad,
+        { dni },
+        { populate: ['zona', 'usuario'] }
+      );
 
       if (!autoridad) {
         return res.status(404).json({ error: 'Autoridad no encontrada' });
@@ -126,7 +160,11 @@ export class AutoridadController{
     const dni = req.params.dni;
 
     try {
-      const autoridad = await em.findOne(Autoridad, {dni}, { populate: ['zona', 'usuario'] });
+      const autoridad = await em.findOne(
+        Autoridad,
+        { dni },
+        { populate: ['zona', 'usuario'] }
+      );
 
       if (!autoridad) {
         return res.status(404).json({ error: 'Autoridad no encontrada' });
@@ -135,7 +173,9 @@ export class AutoridadController{
       const { nombre, rango, zonaId } = res.locals.validated.body;
 
       if (!nombre || rango === undefined || zonaId === undefined) {
-        return res.status(400).json({ message: 'Faltan datos obligatorios para actualizar' });
+        return res
+          .status(400)
+          .json({ message: 'Faltan datos obligatorios para actualizar' });
       }
 
       const existeZona = await em.count(Zona, { id: zonaId });
@@ -151,9 +191,8 @@ export class AutoridadController{
 
       return res.status(200).json({
         message: 'Autoridad actualizada correctamente',
-        data: autoridad.toDTO()
+        data: autoridad.toDTO(),
       });
-
     } catch (error) {
       console.error('Error actualizando autoridad:', error);
       return res.status(500).json({ message: 'Error interno del servidor' });
@@ -165,7 +204,11 @@ export class AutoridadController{
     const dni = req.params.dni;
 
     try {
-      const autoridad = await em.findOne(Autoridad, {dni}, { populate: ['zona', 'usuario'] });
+      const autoridad = await em.findOne(
+        Autoridad,
+        { dni },
+        { populate: ['zona', 'usuario'] }
+      );
 
       if (!autoridad) {
         return res.status(404).json({ error: 'Autoridad no encontrada' });
@@ -191,7 +234,6 @@ export class AutoridadController{
         message: 'Autoridad modificada parcialmente con éxito',
         data: autoridad.toDTO(),
       });
-
     } catch (error) {
       console.error('Error en patchUpdate autoridad:', error);
       return res.status(500).json({ message: 'Error interno del servidor' });
@@ -203,36 +245,45 @@ export class AutoridadController{
     const user = (req as any).user;
 
     try {
-    // Si es ADMIN
+      // Si es ADMIN
       if (user.roles.includes(Rol.ADMIN)) {
-        const dniAutoridad = req.query.dniAutoridad as string|undefined; // opcional
+        const dniAutoridad = req.query.dniAutoridad as string | undefined; // opcional
         let sobornos: SobornoPendiente[];
 
-      if (dniAutoridad) {
+        if (dniAutoridad) {
+          if (typeof dniAutoridad !== 'string' || !dniAutoridad.trim()) {
+            return res.status(400).json({
+              message: 'dniAutoridad debe ser un string válido',
+            });
+          }
 
-        if (typeof dniAutoridad !== 'string' || !dniAutoridad.trim()) {
-          return res.status(400).json({ 
-            message: 'dniAutoridad debe ser un string válido' 
-          });
-        }
+          const usuario = await em.findOne(
+            Usuario,
+            { persona: { dni: dniAutoridad.trim() } },
+            { populate: ['persona'] }
+          );
+          if (!usuario) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+          }
 
-        const usuario = await em.findOne(Usuario, {persona:{dni:dniAutoridad.trim()}},{populate:['persona']});
-        if (!usuario){
-          return res.status(404).json({ message: 'Usuario no encontrado' });
+          const autoridad = await em.findOne(
+            Autoridad,
+            { dni: dniAutoridad.trim() },
+            { populate: ['sobornosPendientes'] }
+          );
+          if (!autoridad) {
+            return res
+              .status(404)
+              .json({ message: 'El usuario no es una autoridad registrada' });
+          }
+          //Existe usuario y es autoridad
+          sobornos = autoridad.sobornosPendientes.getItems();
+        } else {
+          sobornos = await em.find(SobornoPendiente, {});
         }
-
-        const autoridad = await em.findOne(Autoridad, {dni:dniAutoridad.trim()},{populate:['sobornosPendientes']});
-        if (!autoridad){
-          return res.status(404).json({ message: 'El usuario no es una autoridad registrada' });
-        }
-        //Existe usuario y es autoridad
-        sobornos = autoridad.sobornosPendientes.getItems();
-      } else {
-        sobornos = await em.find(SobornoPendiente, {});
-      }
 
         return res.json({
-          sobornos: sobornos.map(s => ({
+          sobornos: sobornos.map((s) => ({
             id: s.id,
             monto: s.monto,
             pagado: s.pagado,
@@ -240,21 +291,29 @@ export class AutoridadController{
         });
       }
 
-  // Si es AUTORIDAD
+      // Si es AUTORIDAD
       if (user.roles.includes(Rol.AUTORIDAD)) {
-        const usuario = await em.findOne(Usuario, { id: user.id }, {
-          populate: ['persona'],
-        });
-        const autoridad = await em.findOne(Autoridad,{dni:usuario!.persona!.dni}, {populate:['sobornosPendientes']})
+        const usuario = await em.findOne(
+          Usuario,
+          { id: user.id },
+          {
+            populate: ['persona'],
+          }
+        );
+        const autoridad = await em.findOne(
+          Autoridad,
+          { dni: usuario!.persona!.dni },
+          { populate: ['sobornosPendientes'] }
+        );
         if (!autoridad) {
-          return res.status(403).json({ 
-            message: 'El usuario no es una autoridad registrada' 
+          return res.status(403).json({
+            message: 'El usuario no es una autoridad registrada',
           });
         }
         const sobornos = autoridad!.sobornosPendientes.getItems();
 
         return res.json({
-          sobornos: sobornos.map(s => ({
+          sobornos: sobornos.map((s) => ({
             id: s.id,
             monto: s.monto,
             pagado: s.pagado,
@@ -263,12 +322,14 @@ export class AutoridadController{
       }
 
       // Otros roles → prohibido
-      return res.status(403).json({ message: 'No tienes permisos para ver sobornos' });
-
-
+      return res
+        .status(403)
+        .json({ message: 'No tienes permisos para ver sobornos' });
     } catch (err: any) {
-      console.error("Error al obtener los sobornos:", err);
-      return res.status(500).send({ message: "Error del servidor", error: err.message });
+      console.error('Error al obtener los sobornos:', err);
+      return res
+        .status(500)
+        .send({ message: 'Error del servidor', error: err.message });
     }
   }
 
@@ -277,7 +338,11 @@ export class AutoridadController{
     const dni = req.params.dni;
 
     try {
-      const autoridad = await em.findOne(Autoridad, {dni}, { populate: ['usuario'] });
+      const autoridad = await em.findOne(
+        Autoridad,
+        { dni },
+        { populate: ['usuario'] }
+      );
 
       if (!autoridad) {
         return res.status(404).json({ error: 'Autoridad no encontrada' });
@@ -289,11 +354,9 @@ export class AutoridadController{
       return res.status(200).json({
         message: `${nombre}, DNI ${dni} eliminado/a exitosamente de la lista de autoridades`,
       });
-
     } catch (error) {
       console.error('Error eliminando autoridad:', error);
       return res.status(500).json({ message: 'Error interno del servidor' });
     }
   }
-
 }

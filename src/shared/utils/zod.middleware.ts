@@ -1,9 +1,8 @@
-import { z, ZodType } from "zod";
-import { Request, Response, NextFunction } from "express";
+import { ZodType } from 'zod';
+import { Request, Response, NextFunction } from 'express';
 
-/**
- * Middleware para validar distintas partes del request usando Zod.
- */
+//Middleware para validar distintas partes del request usando Zod.
+
 export const validarConSchema = (schemas: {
   body?: ZodType<any>;
   params?: ZodType<any>;
@@ -18,8 +17,8 @@ export const validarConSchema = (schemas: {
       if (!result.success) {
         errores.push(
           ...result.error.issues.map((e) => ({
-            origen: "body",
-            campo: e.path.join("."),
+            origen: 'body',
+            campo: e.path.join('.'),
             mensaje: e.message,
           }))
         );
@@ -33,8 +32,8 @@ export const validarConSchema = (schemas: {
       if (!result.success) {
         errores.push(
           ...result.error.issues.map((e) => ({
-            origen: "params",
-            campo: e.path.join("."),
+            origen: 'params',
+            campo: e.path.join('.'),
             mensaje: e.message,
           }))
         );
@@ -48,8 +47,8 @@ export const validarConSchema = (schemas: {
       if (!result.success) {
         errores.push(
           ...result.error.issues.map((e) => ({
-            origen: "query",
-            campo: e.path.join("."),
+            origen: 'query',
+            campo: e.path.join('.'),
             mensaje: e.message,
           }))
         );
@@ -60,7 +59,7 @@ export const validarConSchema = (schemas: {
 
     if (errores.length > 0) {
       return res.status(400).json({
-        mensaje: "Error de validación",
+        mensaje: 'Error de validación',
         errores,
       });
     }
