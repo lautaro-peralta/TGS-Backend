@@ -14,22 +14,22 @@ zonaRouter.get('/:id', zonaController.getOneZonaById);
 zonaRouter.post(
   '/',
   validarConSchema({ body: crearZonaSchema }),
-  authMiddleware,
-  rolesMiddleware,
+  //authMiddleware,
+  //rolesMiddleware,
   zonaController.createZona
 );
 
 zonaRouter.patch(
   '/:id',
   validarConSchema({ body: actualizarZonaSchema }),
-  authMiddleware,
-  rolesMiddleware,
+  //authMiddleware,
+  //rolesMiddleware,
   zonaController.updateZona
 );
 
 zonaRouter.delete(
   '/:id',
-  authMiddleware,
-  rolesMiddleware,
+  //authMiddleware,
+  //rolesMiddleware,
   zonaController.deleteZona
 );

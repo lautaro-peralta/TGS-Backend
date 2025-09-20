@@ -5,34 +5,19 @@ import { Zona } from '../zona/zona.entity.js';
 import { Rol, Usuario } from '../auth/usuario.entity.js';
 import { SobornoPendiente } from '../../modules/sobornoPendiente/soborno.entity.js';
 import argon2 from 'argon2';
+import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
 export class AutoridadController {
   async createAutoridad(req: Request, res: Response) {
     const em = orm.em.fork();
+
     try {
-      const {
-        dni,
-        nombre,
-        email,
-        direccion,
-        telefono,
-        username,
-        password,
-        rango,
-        zonaId,
-      } = res.locals.validated.body;
+      console.log('🔍 Datos recibidos:', res.locals.validated?.body);
 
-      if (
-        !dni ||
-        !nombre ||
-        !email ||
-        !username ||
-        !password ||
-        rango === undefined
-      ) {
-        return res.status(400).json({ message: 'Faltan datos obligatorios' });
-      }
+      const { dni, nombre, email, direccion, telefono, rango, zonaId } =
+        res.locals.validated.body;
 
+      // Verificar DNI existente en Autoridad
       const existeDNI = await em.findOne(Autoridad, { dni });
       if (existeDNI) {
         return res
@@ -40,75 +25,54 @@ export class AutoridadController {
           .json({ error: 'Ya existe una autoridad con ese DNI' });
       }
 
+      // Verificar zona
       const existeZona = await em.count(Zona, { id: zonaId });
       if (!existeZona) {
         return res.status(404).json({ error: 'Zona no encontrada' });
       }
 
-      let usuario = await em.findOne(
-        Usuario,
-        { persona: { dni } },
-        { populate: ['roles', 'persona'] }
-      );
-      const hashedPassword = await argon2.hash(password);
-
-      let autoridad: Autoridad;
-
-      if (usuario) {
-        const rolesIncompatibles = [Rol.ADMIN, Rol.SOCIO, Rol.DISTRIBUIDOR];
-        const tieneRolIncompatible = usuario.roles.some((rol) =>
-          rolesIncompatibles.includes(rol)
-        );
-
-        if (tieneRolIncompatible) {
-          return res.status(400).json({
-            error:
-              'El usuario ya tiene un rol incompatible con Autoridad (ADMIN, SOCIO o DISTRIBUIDOR)',
-          });
-        }
-
-        if (!usuario.roles.includes(Rol.AUTORIDAD)) {
-          usuario.roles.push(Rol.AUTORIDAD);
-        }
-
-        autoridad = em.create(Autoridad, {
+      // Buscar o crear persona base por DNI
+      let personaBase = await em.findOne(BaseEntityPersona, { dni });
+      if (!personaBase) {
+        console.log('🏛️ Creando persona base...');
+        personaBase = em.create(BaseEntityPersona, {
           dni,
           nombre,
           email,
-          direccion: direccion ?? '-',
           telefono: telefono ?? '-',
-          rango,
-          zona: em.getReference(Zona, zonaId),
-        });
-        usuario.persona = autoridad;
-        await em.persistAndFlush([autoridad, usuario]);
-      } else {
-        autoridad = em.create(Autoridad, {
-          dni,
-          nombre,
-          email,
           direccion: direccion ?? '-',
-          telefono: telefono ?? '-',
-          rango,
-          zona: em.getReference(Zona, zonaId),
         });
-
-        usuario = em.create(Usuario, {
-          username,
-          email,
-          password: hashedPassword,
-          roles: [Rol.AUTORIDAD],
-          persona: autoridad,
-        });
-        await em.persistAndFlush([autoridad, usuario]);
+        await em.persistAndFlush(personaBase);
+        console.log('✅ Persona base creada');
       }
+
+      // Crear Autoridad
+      const autoridad = em.create(Autoridad, {
+        dni,
+        nombre,
+        email,
+        direccion: direccion ?? '-',
+        telefono: telefono ?? '-',
+        rango,
+        zona: em.getReference(Zona, zonaId),
+      });
+      await em.persistAndFlush(autoridad);
+      console.log('✅ Autoridad creada');
+
+      // Respuesta
+      const autoridadData = autoridad.toDTO?.() ?? {
+        id: autoridad.id,
+        dni: autoridad.dni,
+        nombre: autoridad.nombre,
+        email: autoridad.email,
+      };
 
       return res.status(201).json({
         message: 'Autoridad creada exitosamente',
-        data: autoridad.toDTO(),
+        data: autoridadData,
       });
-    } catch (error) {
-      console.error('Error creando autoridad:', error);
+    } catch (error: any) {
+      console.error('💥 Error completo:', error);
       return res.status(500).json({ message: 'Error interno del servidor' });
     }
   }

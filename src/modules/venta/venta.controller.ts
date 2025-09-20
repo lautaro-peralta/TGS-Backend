@@ -7,6 +7,7 @@ import { Producto } from '../producto/producto.entity.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
 import { SobornoPendiente } from '../sobornoPendiente/soborno.entity.js';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
+import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
 const em = orm.em.fork();
 
@@ -62,23 +63,17 @@ export class VentaController {
         return res.status(400).send({ message: 'DNI del cliente requerido' });
       }
       // Buscamos el usuario por el DNI de su persona
-      const usuario = await em.findOne(
-        Usuario,
-        { persona: { dni: clienteDni } },
-        { populate: ['persona'] }
-      );
-
-      if (!usuario) {
-        throw new Error(`No existe un usuario con DNI ${clienteDni}`);
-      }
-
-      // Verificamos si la persona ya es un Cliente (por herencia)
       let cliente = await em.findOne(Cliente, { dni: clienteDni });
 
       if (!cliente) {
-        // La persona existe pero no es Cliente, necesitamos "promoverla"
-        // Esto requiere crear una nueva instancia Cliente con los datos de Persona
-        const persona = usuario.persona;
+        // Si no existe, buscamos persona y la promovemos a cliente
+        const persona = await em.findOne(BaseEntityPersona, {
+          dni: clienteDni,
+        });
+
+        if (!persona) {
+          throw new Error(`No existe persona con DNI ${clienteDni}`);
+        }
 
         // Creamos el Cliente copiando los datos de Persona
         cliente = em.create(Cliente, {
@@ -89,19 +84,14 @@ export class VentaController {
           direccion: persona.direccion,
         });
 
-        // IMPORTANTE: Necesitamos actualizar la referencia del usuario
-        // para que apunte al nuevo Cliente en lugar de a Persona
-        usuario.persona = cliente;
-
-        em.persist(cliente);
-        em.persist(usuario);
+        await em.persistAndFlush(cliente);
       }
 
       // Agregamos el rol CLIENTE si no lo tiene
-      if (!usuario.roles.includes(Rol.CLIENTE)) {
-        usuario.roles.push(Rol.CLIENTE);
-        em.persist(usuario);
-      }
+      //if (!usuario.roles.includes(Rol.CLIENTE)) {
+      //  usuario.roles.push(Rol.CLIENTE);
+      //}
+      //await em.persistAndFlush(usuario);
 
       const nuevaVenta = em.create(Venta, {
         cliente,
@@ -116,11 +106,9 @@ export class VentaController {
       for (const detalle of detalles) {
         const producto = await em.findOne(Producto, { id: detalle.productoId });
         if (!producto) {
-          return res
-            .status(400)
-            .send({
-              message: `Producto con ID ${detalle.productoId} no encontrado`,
-            });
+          return res.status(400).send({
+            message: `Producto con ID ${detalle.productoId} no encontrado`,
+          });
         }
 
         const nuevoDetalle = em.create(Detalle, {
@@ -146,7 +134,7 @@ export class VentaController {
       if (hayProductoIlegal) {
         const autoridad = await em.findOne(
           Autoridad,
-          {},
+          { id: { $ne: null } },
           { orderBy: { rango: 'asc' } }
         );
 
@@ -172,9 +160,15 @@ export class VentaController {
 
       await em.persistAndFlush(nuevaVenta);
 
+      const venta = await em.findOne(
+        Venta,
+        { id: nuevaVenta.id },
+        { populate: ['detalles', 'cliente', 'autoridad'] }
+      );
+
       return res.status(201).send({
         message: 'Venta registrada exitosamente',
-        data: nuevaVenta.toDTO(),
+        data: venta ? venta.toDTO() : null,
       });
     } catch (err: any) {
       console.error('Error al registrar venta:', err);
@@ -192,7 +186,7 @@ export class VentaController {
       const venta = await em.findOne(
         Venta,
         { id },
-        { populate: ['autoridad'] }
+        { populate: ['autoridad', 'detalles'] }
       );
       if (!venta)
         return res.status(404).send({ message: 'Venta no encontrada' });

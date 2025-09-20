@@ -8,20 +8,22 @@ Content-Type: application/json
 
 ###obtener todas las autoridades
 GET http://localhost:3000/api/autoridades
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzNDcxMDA4LCJleHAiOjE3NTM0NzQ2MDh9.uda19RwcOq_wZSS0U8ShNo5kw-9w_iiMQHgOb5CHu2g
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMzMDc2NywiZXhwIjoxNzU4MzM0MzY3fQ.tgZXdRmrLiQjuI3qUX9VOFgdKneyqDcosJhcMKbNXrU
 
 ###obtener una autoridad
-GET http://localhost:3000/api/autoridades/12345678
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzNDcxMDA4LCJleHAiOjE3NTM0NzQ2MDh9.uda19RwcOq_wZSS0U8ShNo5kw-9w_iiMQHgOb5CHu2g
+GET http://localhost:3000/api/autoridades/10101013
 
 ### Crear nueva autoridad
-POST http://localhost:3000/api/autoridades/
+POST http://localhost:3000/api/autoridades
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzNDcxMDA4LCJleHAiOjE3NTM0NzQ2MDh9.uda19RwcOq_wZSS0U8ShNo5kw-9w_iiMQHgOb5CHu2g
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMzMDc2NywiZXhwIjoxNzU4MzM0MzY3fQ.tgZXdRmrLiQjuI3qUX9VOFgdKneyqDcosJhcMKbNXrU
 
 {
-  "dni": "12345678",
+  "dni": "10101013",
   "nombre": "Lautaro Herrera",
+  "email":"lauHerrera@gmail.com",
+  "username": "lau",
+  "password":"1234",
   "rango": "1",
   "zonaId": 1
 }
@@ -29,9 +31,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwL
 
 
 ###modificar autoridad (PUT - idempotente, modificaciones completas)
-PUT http://localhost:3000/api/autoridades/12345678
+PUT http://localhost:3000/api/autoridades/10101013
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzNDcxMDA4LCJleHAiOjE3NTM0NzQ2MDh9.uda19RwcOq_wZSS0U8ShNo5kw-9w_iiMQHgOb5CHu2g
 
 {
   "dni": "12345678",
@@ -42,14 +43,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwL
 
 
 ###modificar autoridad (PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/autoridades/12345678
+PATCH http://localhost:3000/api/autoridades/10101013
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzNDcxMDA4LCJleHAiOjE3NTM0NzQ2MDh9.uda19RwcOq_wZSS0U8ShNo5kw-9w_iiMQHgOb5CHu2g
 
 {
   "rango":"2"
 }
 
 ###borrar una autoridad
-DELETE http://localhost:3000/api/autoridades/12345678
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzNDcxMDA4LCJleHAiOjE3NTM0NzQ2MDh9.uda19RwcOq_wZSS0U8ShNo5kw-9w_iiMQHgOb5CHu2g
+DELETE http://localhost:3000/api/autoridades/10101013

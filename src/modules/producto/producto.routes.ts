@@ -19,22 +19,22 @@ productoRouter.get('/:id', productoController.getOneProductoById);
 productoRouter.post(
   '/',
   validarConSchema({ body: crearProductoSchema }),
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   productoController.createProducto
 );
 
 productoRouter.put(
   '/:id',
   validarConSchema({ body: actualizarProductoSchema }),
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   productoController.updateProducto
 );
 
 productoRouter.delete(
   '/:id',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   productoController.deleteProducto
 );
