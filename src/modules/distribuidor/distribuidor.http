@@ -1,0 +1,77 @@
+### Listar
+GET http://localhost:3000/distribuidores
+
+
+### Obtener por ID
+GET http://localhost:3000/distribuidores/1
+
+
+### Crear
+POST http://localhost:3000/distribuidores
+Content-Type: application/json
+
+
+{
+"dni": "16254545",
+"nombre": "Delprato Luca",
+"direccion": "Av. Siempreviva 742",
+"telefonos": ["+54 341 555-1111", "+54 341 555-2222"],
+"emails": ["delpra@gmail.com"],
+"productosIds": [1,2,5]
+}
+
+
+### Actualizar
+PUT http://localhost:3000/distribuidores/1
+Content-Type: application/json
+
+
+{
+"direccion": "San Martín 1234",
+"productosIds": [2,3]
+}
+
+
+### Eliminar
+DELETE http://localhost:3000/distribuidores/1
+```http
+### Listar
+GET http://localhost:3000/distribuidores
+
+
+### Buscar por texto (nombre o dni)
+GET http://localhost:3000/distribuidores?q=juan
+
+
+### Obtener por ID
+GET http://localhost:3000/distribuidores/1
+
+
+### Crear
+POST http://localhost:3000/distribuidores
+Content-Type: application/json
+
+
+{
+"dni": "39564587",
+"nombre": "Splivago Tomas",
+"direccion": "Av. Peron 452",
+"telefonos": ["+54 341 555-1211", "+54 341 555-2522"],
+"emails": ["tomas@gmail.com"],
+"productosIds": [1,2,5]
+}
+
+
+### Actualizar (reemplaza productos asociados si envías productosIds)
+PUT http://localhost:3000/distribuidores/1
+Content-Type: application/json
+
+
+{
+"direccion": "San Martín 1234",
+"productosIds": [2,3]
+}
+
+
+### Eliminar
+DELETE http://localhost:3000/distribuidores/1

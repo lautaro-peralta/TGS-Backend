@@ -17,6 +17,7 @@ import { productoRouter } from './modules/producto/producto.routes.js';
 import { autoridadRouter } from './modules/autoridad/autoridad.routes.js';
 import { zonaRouter } from './modules/zona/zona.routes.js';
 import { sobornoRouter } from './modules/sobornoPendiente/soborno.routes.js';
+import { distribuidorRouter } from './modules/distribuidor/distribuidor.routes.js';
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/productos', productoRouter);
 app.use('/api/zonas', zonaRouter);
 app.use('/api/autoridades', autoridadRouter);
 app.use('/api/sobornosPendientes', sobornoRouter);
+app.use('/distribuidores', distribuidorRouter);
 
 //ERROR HANDLERS
 
