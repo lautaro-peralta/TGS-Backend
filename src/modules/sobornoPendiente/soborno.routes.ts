@@ -10,29 +10,29 @@ const sobornoController = new SobornoController();
 
 sobornoRouter.get(
   '/',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   sobornoController.getAllSobornos
 );
 
 sobornoRouter.get(
   '/:id',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   sobornoController.getOneSobornoById
 );
 
 sobornoRouter.patch(
   '/:id/pagar',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   validarConSchema({ body: actualizarSobornoSchema }),
   sobornoController.pagarSobornos
 );
 
 sobornoRouter.delete(
   '/:id',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   sobornoController.deleteSoborno
 );

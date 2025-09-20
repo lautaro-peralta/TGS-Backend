@@ -2,8 +2,11 @@
 import { z } from 'zod';
 
 export const crearAutoridadSchema = z.object({
-  nombre: z.string().min(1),
   dni: z.string().min(1),
+  nombre: z.string().min(1),
+  email: z.email(),
+  direccion: z.string().optional(),
+  telefono: z.string().optional(),
   rango: z.enum(['0', '1', '2', '3']).transform(Number),
   zonaId: z.number().int().positive(),
 });

@@ -3,7 +3,8 @@ import { Usuario, Rol } from './usuario.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { validate as isUuid } from 'uuid';
 import { wrap } from '@mikro-orm/core';
-
+import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import argon2 from 'argon2';
 export class UsuarioController {
   // Obtener perfil del usuario autenticado
   async getPerfilUsuario(req: Request, res: Response, next: NextFunction) {
@@ -49,7 +50,7 @@ export class UsuarioController {
       }
 
       if (!usuario) {
-        return res.status(404).json({ message: "Usuario no encontrado" });
+        return res.status(404).json({ message: 'Usuario no encontrado' });
       }
 
       const { password, ...usuarioSafe } = wrap(usuario).toJSON();
@@ -58,7 +59,7 @@ export class UsuarioController {
       next(err);
     }
   }
-  
+
   // Cambiar rol de un usuario (solo admin)
   async updateRolesUsuario(req: Request, res: Response, next: NextFunction) {
     try {
@@ -78,12 +79,55 @@ export class UsuarioController {
       if (!usuario.roles.includes(rol)) {
         usuario.roles.push(rol);
         await em.flush();
-        return res.status(200).json({ message: `Rol ${rol} agregado correctamente` });
+        return res
+          .status(200)
+          .json({ message: `Rol ${rol} agregado correctamente` });
       }
 
-      return res.status(200).json({ message: `El usuario ya tiene el rol ${rol}` });
+      return res
+        .status(200)
+        .json({ message: `El usuario ya tiene el rol ${rol}` });
     } catch (err) {
       next(err);
     }
+  }
+
+  async createUsuario(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const { personaId, username, email, password, roles } =
+      res.locals.validated.body;
+
+    // Buscar persona existente
+    const persona = await em.findOne(BaseEntityPersona, { id: personaId });
+    if (!persona)
+      return res.status(404).json({ error: 'Persona no encontrada' });
+
+    // Verificar si la persona ya tiene usuario
+    if (persona.usuario)
+      return res.status(400).json({ error: 'La persona ya tiene un usuario' });
+
+    // Verificar que no exista username/email duplicado
+    const existeUsername = await em.findOne(Usuario, { username });
+    const existeEmail = await em.findOne(Usuario, { email });
+    if (existeUsername || existeEmail) {
+      return res.status(409).json({ error: 'Username o email ya existen' });
+    }
+
+    // Crear usuario
+    const hashedPassword = await argon2.hash(password);
+    const usuario = em.create(Usuario, {
+      username,
+      email,
+      password: hashedPassword,
+      roles,
+      persona,
+    });
+
+    await em.persistAndFlush(usuario);
+
+    return res.status(201).json({
+      message: 'Usuario creado exitosamente',
+      data: usuario.toDTO(),
+    });
   }
 }

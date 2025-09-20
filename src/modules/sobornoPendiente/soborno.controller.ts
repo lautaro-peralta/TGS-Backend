@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
 import { SobornoPendiente } from './soborno.entity.js';
-
+import { Venta } from '.././venta/venta.entity.js';
 export class SobornoController {
   async getAllSobornos(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -58,6 +58,50 @@ export class SobornoController {
     }
   }
 
+  async createSoborno(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const { monto, autoridadId, ventaId } = res.locals.validated.body;
+
+    try {
+      const autoridad = await em.findOne(Autoridad, { id: autoridadId });
+
+      if (!autoridad) {
+        return res.status(404).json({ message: 'Autoridad no encontrada' });
+      }
+
+      const venta = await em.findOne(Venta, { id: ventaId });
+
+      if (!venta) {
+        return res.status(404).json({ message: 'Venta no encontrada' });
+      }
+
+      const soborno = em.create(SobornoPendiente, {
+        monto,
+        autoridad,
+        venta,
+        pagado: false,
+        fechaCreacion: new Date(),
+      });
+
+      await em.persistAndFlush(soborno);
+
+      const sobornoCreado = await em.findOne(
+        SobornoPendiente,
+        { id: soborno.id },
+        {
+          populate: ['autoridad', 'venta'],
+        }
+      );
+
+      return res.status(201).json(sobornoCreado!.toDTO());
+    } catch (err: any) {
+      console.error('Error al crear soborno:', err);
+      return res
+        .status(500)
+        .json({ message: 'Error del servidor', error: err.message });
+    }
+  }
+
   async pagarSobornos(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni;
@@ -77,12 +121,10 @@ export class SobornoController {
         .getItems()
         .filter((s) => ids.includes(s.id));
       if (!sobornosSeleccionados.length)
-        return res
-          .status(404)
-          .send({
-            message:
-              'No se encontraron sobornos con esos IDs para esta autoridad',
-          });
+        return res.status(404).send({
+          message:
+            'No se encontraron sobornos con esos IDs para esta autoridad',
+        });
 
       sobornosSeleccionados.forEach((s) => (s.pagado = true));
 

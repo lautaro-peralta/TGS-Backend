@@ -1,11 +1,13 @@
-import { config } from "dotenv";
-import { z } from "zod";
+import { config } from 'dotenv';
+import { z } from 'zod';
 
 // Carga el archivo correcto según NODE_ENV (default: development)
-config({ path: `.env.${process.env.NODE_ENV ?? "development"}` });
+config({ path: `.env.${process.env.NODE_ENV ?? 'development'}` });
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   PORT: z.coerce.number().default(3000),
 
   DB_HOST: z.string(),
@@ -14,10 +16,10 @@ const envSchema = z.object({
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
 
-  JWT_SECRET: z.string().min(10, "JWT_SECRET es demasiado corto."),
-  JWT_EXPIRATION: z.string().default("1h"),
+  JWT_SECRET: z.string().min(10, 'JWT_SECRET es demasiado corto.'),
+  JWT_EXPIRATION: z.string().default('1h'),
 
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 
 export const env = envSchema.parse(process.env);
