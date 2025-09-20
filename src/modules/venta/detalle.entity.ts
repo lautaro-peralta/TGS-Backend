@@ -18,9 +18,6 @@ export class Detalle extends BaseEntityObjeto {
   cantidad!: number;
 
   @Property({ type: 'decimal', precision: 10, scale: 2 })
-  precioUnitario!: number;
-
-  @Property({ type: 'decimal', precision: 10, scale: 2 })
   subtotal!: number;
 
   @ManyToOne({ entity: () => Venta, nullable: false })
@@ -34,9 +31,9 @@ export class Detalle extends BaseEntityObjeto {
       producto: {
         id: this.producto.id,
         nombre: this.producto.descripcion,
+        precioUnitario: this.producto.precio,
       },
       cantidad: this.cantidad,
-      precioUnitario: this.precioUnitario,
       subtotal: this.subtotal,
     };
   }

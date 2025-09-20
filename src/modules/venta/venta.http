@@ -1,39 +1,25 @@
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@local.dev",
-  "password": "admin123"
-}
-
-
 ###listar las ventas
 
 GET http://localhost:3000/api/ventas
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMyNjk0MCwiZXhwIjoxNzU4MzMwNTQwfQ.I0zji1BZP3SuhaBjWvoeedb5DtuA5ON70167wxj6dMI
-
 
 ###Crear venta
 
 POST http://localhost:3000/api/ventas
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMyNjk0MCwiZXhwIjoxNzU4MzMwNTQwfQ.I0zji1BZP3SuhaBjWvoeedb5DtuA5ON70167wxj6dMI
 
 {
-  "clienteDni": "12345678",
+  "clienteDni": "20909090",
+  "persona": {
+    "nombre":"juan",
+    "email":"juanq@email.com"
+  },
   "detalles": [
     {
       "productoId": 1,
-      "cantidad": 2,
-      "precioUnitario": 3500,
-      "subtotal": 7000
+      "cantidad": 3
     }
   ]
 }
 
 ###Borrar una venta
-
-DELETE http://localhost:3000/api/ventas/15
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMyNjk0MCwiZXhwIjoxNzU4MzMwNTQwfQ.I0zji1BZP3SuhaBjWvoeedb5DtuA5ON70167wxj6dMI
+DELETE http://localhost:3000/api/ventas/21

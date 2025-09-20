@@ -5,7 +5,7 @@ import { Detalle } from './detalle.entity.js';
 import { Cliente } from '../cliente/cliente.entity.js';
 import { Producto } from '../producto/producto.entity.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
-import { SobornoPendiente } from '../sobornoPendiente/soborno.entity.js';
+import { Soborno } from '../soborno/soborno.entity.js';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
@@ -56,42 +56,44 @@ export class VentaController {
   }
 
   async createVenta(req: Request, res: Response) {
-    const { clienteDni, detalles } = res.locals.validated.body;
+    const { clienteDni, detalles, persona } = res.locals.validated.body;
+
+    let cliente = await em.findOne(Cliente, { dni: clienteDni });
 
     try {
-      if (!clienteDni) {
-        return res.status(400).send({ message: 'DNI del cliente requerido' });
-      }
-      // Buscamos el usuario por el DNI de su persona
-      let cliente = await em.findOne(Cliente, { dni: clienteDni });
-
       if (!cliente) {
-        // Si no existe, buscamos persona y la promovemos a cliente
-        const persona = await em.findOne(BaseEntityPersona, {
+        let personaBase = await em.findOne(BaseEntityPersona, {
           dni: clienteDni,
         });
 
-        if (!persona) {
-          throw new Error(`No existe persona con DNI ${clienteDni}`);
+        if (!personaBase) {
+          // Aquí pedimos que venga el objeto persona
+          if (!persona) {
+            return res.status(400).json({
+              message:
+                'La persona no existe, se requieren los datos para crearla',
+            });
+          }
+
+          personaBase = em.create(BaseEntityPersona, {
+            dni: clienteDni,
+            nombre: persona.nombre,
+            email: persona.email,
+            telefono: persona.telefono ?? '-',
+            direccion: persona.direccion ?? '-',
+          });
+          await em.persistAndFlush(personaBase);
         }
 
-        // Creamos el Cliente copiando los datos de Persona
         cliente = em.create(Cliente, {
-          dni: persona.dni,
-          nombre: persona.nombre,
-          email: persona.email,
-          telefono: persona.telefono,
-          direccion: persona.direccion,
+          dni: personaBase.dni,
+          nombre: personaBase.nombre,
+          email: personaBase.email,
+          telefono: personaBase.telefono,
+          direccion: personaBase.direccion,
         });
-
         await em.persistAndFlush(cliente);
       }
-
-      // Agregamos el rol CLIENTE si no lo tiene
-      //if (!usuario.roles.includes(Rol.CLIENTE)) {
-      //  usuario.roles.push(Rol.CLIENTE);
-      //}
-      //await em.persistAndFlush(usuario);
 
       const nuevaVenta = em.create(Venta, {
         cliente,
@@ -114,14 +116,13 @@ export class VentaController {
         const nuevoDetalle = em.create(Detalle, {
           producto,
           cantidad: detalle.cantidad,
-          precioUnitario: detalle.precioUnitario,
-          subtotal: detalle.subtotal,
+          subtotal: producto.precio * detalle.cantidad,
           venta: nuevaVenta,
         });
 
         if (producto.esIlegal) {
           hayProductoIlegal = true;
-          montoIlegalTotal += detalle.subtotal;
+          montoIlegalTotal += nuevoDetalle.subtotal;
         }
 
         nuevaVenta.detalles.add(nuevoDetalle);
@@ -141,8 +142,8 @@ export class VentaController {
         if (autoridad) {
           nuevaVenta.autoridad = em.getReference(Autoridad, autoridad.id);
 
-          const porcentaje = Autoridad.rangoToComision(autoridad.rango);
-          const soborno = em.create(SobornoPendiente, {
+          const porcentaje = Autoridad.rangoToComision(autoridad.rango) ?? 0;
+          const soborno = em.create(Soborno, {
             autoridad,
             monto: parseFloat((montoIlegalTotal * porcentaje).toFixed(2)),
             venta: nuevaVenta,
@@ -190,6 +191,16 @@ export class VentaController {
       );
       if (!venta)
         return res.status(404).send({ message: 'Venta no encontrada' });
+
+      // Buscamos si hay sobornos asociados a esa venta
+      const sobornoAsociado = await em.count(Soborno, {
+        venta: venta.id,
+      });
+      if (sobornoAsociado > 0) {
+        return res.status(400).send({
+          message: 'No se puede eliminar la venta: tiene sobornos asociados',
+        });
+      }
 
       await em.removeAndFlush(venta);
 

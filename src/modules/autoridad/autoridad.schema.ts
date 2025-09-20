@@ -8,19 +8,19 @@ export const crearAutoridadSchema = z.object({
   direccion: z.string().optional(),
   telefono: z.string().optional(),
   rango: z.enum(['0', '1', '2', '3']).transform(Number),
-  zonaId: z.number().int().positive(),
+  zonaId: z.string().transform(Number),
 });
 
 export const actualizarAutoridadSchema = z.object({
   nombre: z.string().min(1),
   rango: z.enum(['0', '1', '2', '3']).transform(Number),
-  zonaId: z.number().int().positive(),
+  zonaId: z.string().transform(Number),
 });
 
 export const parcialActualizarAutoridadSchema = z.object({
   nombre: z.string().min(1).optional(),
   rango: z.enum(['0', '1', '2', '3']).transform(Number).optional(),
-  zonaId: z.number().int().positive().optional(),
+  zonaId: z.string().transform(Number).optional(),
 });
 
 export const pagarSobornosSchema = z.object({
