@@ -5,14 +5,21 @@ import {
   crearProductoSchema,
   actualizarProductoSchema,
 } from './producto.schema.js';
+import { ZodError } from 'zod';
 
 const em = orm.em.fork();
 
 export class ProductoController {
-  // Obtener todos los productos
+  // Obtener todos los productos (con búsqueda opcional por ?q=)
   async getAllProductos(req: Request, res: Response) {
     try {
-      const productos = await em.find(Producto, {});
+      const { q } = req.query as { q?: string };
+
+      // búsqueda parcial en descripcion si viene q
+      const where = q ? { descripcion: { $like: `%${q}%` } } : {};
+
+      const productos = await em.find(Producto, where);
+
       return res.status(200).json({
         message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${
           productos.length
@@ -20,31 +27,31 @@ export class ProductoController {
         data: productos.map((p) => p.toDTO()),
       });
     } catch (err) {
-      res.status(500).json({ message: 'Error al obtener productos' });
+      console.error('Error al obtener productos:', err);
+      return res.status(500).json({ message: 'Error al obtener productos' });
     }
   }
 
   // Obtener un producto por ID
   async getOneProductoById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = Number(req.params.id);
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
         return res.status(404).json({ message: 'Producto no encontrado' });
       }
-      res.json({ data: producto });
+      return res.json({ data: producto.toDTO() });
     } catch (err) {
-      res.status(400).json({ message: 'Error al buscar producto' });
+      console.error('Error al buscar producto:', err);
+      return res.status(400).json({ message: 'Error al buscar producto' });
     }
   }
 
   // Crear producto con validación Zod
   async createProducto(req: Request, res: Response) {
     try {
-      // Validar datos entrantes
       const datosValidados = crearProductoSchema.parse(req.body);
 
-      // Crear producto
       const producto = new Producto(
         datosValidados.precio,
         datosValidados.stock,
@@ -53,24 +60,25 @@ export class ProductoController {
       );
 
       await em.persistAndFlush(producto);
-      res.status(201).json({ message: 'Producto creado', data: producto });
+
+      return res
+        .status(201)
+        .json({ message: 'Producto creado', data: producto.toDTO() });
     } catch (err: any) {
-      if (err.errors) {
-        res.status(400).json({ errores: err.errors });
-      } else {
-        res
-          .status(400)
-          .json({ message: err.message || 'Error al crear producto' });
+      if (err instanceof ZodError) {
+        return res.status(400).json({ errores: err.issues });
       }
+      console.error('Error creando producto:', err);
+      return res
+        .status(400)
+        .json({ message: err.message || 'Error al crear producto' });
     }
   }
 
   // Actualizar producto con validación Zod
   async updateProducto(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
-
-      // Validar datos entrantes (todos opcionales)
+      const id = Number(req.params.id);
       const datosValidados = actualizarProductoSchema.parse(req.body);
 
       const producto = await em.findOne(Producto, { id });
@@ -89,33 +97,39 @@ export class ProductoController {
         producto.esIlegal = datosValidados.esIlegal;
 
       await em.flush();
-      res
-        .status(200)
-        .json({
-          message: 'Producto actualizado correctamente',
-          data: producto,
-        });
+
+      return res.status(200).json({
+        message: 'Producto actualizado correctamente',
+        data: producto.toDTO(),
+      });
     } catch (err: any) {
-      if (err.errors) {
-        res.status(400).json({ errores: err.errors });
-      } else {
-        res.status(400).json({ message: 'Error al actualizar producto' });
+      if (err instanceof ZodError) {
+        return res.status(400).json({ errores: err.issues });
       }
+      console.error('Error actualizando producto:', err);
+      return res
+        .status(400)
+        .json({ message: err.message || 'Error al actualizar producto' });
     }
   }
 
   // Eliminar producto
   async deleteProducto(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = Number(req.params.id);
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
         return res.status(404).json({ message: 'Producto no encontrado' });
       }
+
       await em.removeAndFlush(producto);
-      res.status(200).json({ message: 'Producto eliminado exitosamente' });
+
+      return res
+        .status(200)
+        .json({ message: `Producto ${id} eliminado exitosamente` });
     } catch (err) {
-      res.status(400).json({ message: 'Error al eliminar producto' });
+      console.error('Error al eliminar producto:', err);
+      return res.status(400).json({ message: 'Error al eliminar producto' });
     }
   }
 }
