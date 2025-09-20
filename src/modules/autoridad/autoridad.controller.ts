@@ -3,7 +3,7 @@ import { orm } from '../../shared/db/orm.js';
 import { Autoridad } from './autoridad.entity.js';
 import { Zona } from '../zona/zona.entity.js';
 import { Rol, Usuario } from '../auth/usuario.entity.js';
-import { SobornoPendiente } from '../../modules/sobornoPendiente/soborno.entity.js';
+import { Soborno } from '../../modules/soborno/soborno.entity.js';
 import argon2 from 'argon2';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
@@ -83,7 +83,7 @@ export class AutoridadController {
       const autoridades = await em.find(
         Autoridad,
         {},
-        { populate: ['zona', 'usuario'], orderBy: { nombre: 'ASC' } }
+        { populate: ['zona', 'sobornos'], orderBy: { nombre: 'ASC' } }
       );
       return res.status(200).json({
         message: `Se ${autoridades.length === 1 ? 'encontró' : 'encontraron'} ${
@@ -105,7 +105,7 @@ export class AutoridadController {
       const autoridad = await em.findOne(
         Autoridad,
         { dni },
-        { populate: ['zona', 'usuario'] }
+        { populate: ['zona', 'sobornos'] }
       );
 
       if (!autoridad) {
@@ -212,7 +212,7 @@ export class AutoridadController {
       // Si es ADMIN
       if (user.roles.includes(Rol.ADMIN)) {
         const dniAutoridad = req.query.dniAutoridad as string | undefined; // opcional
-        let sobornos: SobornoPendiente[];
+        let sobornos: Soborno[];
 
         if (dniAutoridad) {
           if (typeof dniAutoridad !== 'string' || !dniAutoridad.trim()) {
@@ -233,7 +233,7 @@ export class AutoridadController {
           const autoridad = await em.findOne(
             Autoridad,
             { dni: dniAutoridad.trim() },
-            { populate: ['sobornosPendientes'] }
+            { populate: ['sobornos'] }
           );
           if (!autoridad) {
             return res
@@ -241,9 +241,9 @@ export class AutoridadController {
               .json({ message: 'El usuario no es una autoridad registrada' });
           }
           //Existe usuario y es autoridad
-          sobornos = autoridad.sobornosPendientes.getItems();
+          sobornos = autoridad.sobornos.getItems();
         } else {
-          sobornos = await em.find(SobornoPendiente, {});
+          sobornos = await em.find(Soborno, {});
         }
 
         return res.json({
@@ -267,14 +267,14 @@ export class AutoridadController {
         const autoridad = await em.findOne(
           Autoridad,
           { dni: usuario!.persona!.dni },
-          { populate: ['sobornosPendientes'] }
+          { populate: ['sobornos'] }
         );
         if (!autoridad) {
           return res.status(403).json({
             message: 'El usuario no es una autoridad registrada',
           });
         }
-        const sobornos = autoridad!.sobornosPendientes.getItems();
+        const sobornos = autoridad!.sobornos.getItems();
 
         return res.json({
           sobornos: sobornos.map((s) => ({
@@ -305,11 +305,18 @@ export class AutoridadController {
       const autoridad = await em.findOne(
         Autoridad,
         { dni },
-        { populate: ['usuario'] }
+        { populate: ['sobornos'] }
       );
 
       if (!autoridad) {
         return res.status(404).json({ error: 'Autoridad no encontrada' });
+      }
+
+      if (autoridad.sobornos.count() > 0) {
+        return res.status(400).json({
+          error:
+            'No se puede eliminar la autoridad porque tiene sobornos pendientes asociados',
+        });
       }
 
       const nombre = autoridad.nombre;

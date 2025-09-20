@@ -1,21 +1,13 @@
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@local.dev",
-  "password": "admin123"
-}
 
 ### Obtener todos los productos
 GET http://localhost:3000/api/productos
 
 ### Obtener un producto por ID
-GET http://localhost:3000/api/productos/3
+GET http://localhost:3000/api/productos/1
 
 ### Crear nuevo producto
 POST http://localhost:3000/api/productos
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMyMzMyNSwiZXhwIjoxNzU4MzI2OTI1fQ.D6PVjtrkwLxjwEMPJ5AZVlm1UDJ8gDDrzLx4vMmaNB0
 
 {
   "descripcion": "Fernet Branca",
@@ -27,8 +19,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhL
 ### Modificar producto (PUT - reemplazo completo)
 PUT http://localhost:3000/api/productos/3
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
-
 
 {
   "descripcion": "Alfajor Havanna",

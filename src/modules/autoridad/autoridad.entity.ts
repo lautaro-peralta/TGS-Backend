@@ -9,7 +9,7 @@ import {
 } from '@mikro-orm/core';
 import { Venta } from '../venta/venta.entity.js';
 import { Zona } from '../zona/zona.entity.js';
-import { SobornoPendiente } from '../sobornoPendiente/soborno.entity.js';
+import { Soborno } from '../soborno/soborno.entity.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 
 @Entity({ tableName: 'autoridades' })
@@ -24,10 +24,10 @@ export class Autoridad extends BaseEntityPersona {
   zona!: Rel<Zona>;
 
   @OneToMany({
-    entity: () => SobornoPendiente,
+    entity: () => Soborno,
     mappedBy: (soborno) => soborno.autoridad,
   })
-  sobornosPendientes = new Collection<SobornoPendiente>(this);
+  sobornos = new Collection<Soborno>(this);
 
   static calcularPorcentajePorRango(rango: number): number {
     const mapa: Record<number, number> = {
@@ -47,12 +47,11 @@ export class Autoridad extends BaseEntityPersona {
     return {
       dni: this.dni,
       nombre: this.nombre,
-      zona: this.zona,
       rango: this.rango,
-      sobornosPendientes:
-        this.sobornosPendientes.isInitialized() &&
-        this.sobornosPendientes.length > 0
-          ? this.sobornosPendientes.getItems()
+      zona: this.zona,
+      sobornos:
+        this.sobornos.isInitialized() && this.sobornos.length > 0
+          ? this.sobornos.getItems().map((soborno) => soborno.toSinAutDTO())
           : 'Sin sobornos aún...',
     };
   }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
-import { SobornoPendiente } from './soborno.entity.js';
+import { Soborno } from './soborno.entity.js';
 import { Venta } from '.././venta/venta.entity.js';
 export class SobornoController {
   async getAllSobornos(req: Request, res: Response) {
@@ -9,7 +9,7 @@ export class SobornoController {
 
     try {
       const sobornos = await em.find(
-        SobornoPendiente,
+        Soborno,
         {},
         {
           orderBy: { id: 'ASC' },
@@ -38,7 +38,7 @@ export class SobornoController {
 
     try {
       const soborno = await em.findOne(
-        SobornoPendiente,
+        Soborno,
         { id },
         {
           populate: ['autoridad.usuario', 'venta'],
@@ -75,7 +75,7 @@ export class SobornoController {
         return res.status(404).json({ message: 'Venta no encontrada' });
       }
 
-      const soborno = em.create(SobornoPendiente, {
+      const soborno = em.create(Soborno, {
         monto,
         autoridad,
         venta,
@@ -86,7 +86,7 @@ export class SobornoController {
       await em.persistAndFlush(soborno);
 
       const sobornoCreado = await em.findOne(
-        SobornoPendiente,
+        Soborno,
         { id: soborno.id },
         {
           populate: ['autoridad', 'venta'],
@@ -108,26 +108,44 @@ export class SobornoController {
     const { ids } = res.locals.validated.body;
 
     try {
-      const autoridad = await em.findOne(
-        Autoridad,
-        { dni },
-        { populate: ['sobornosPendientes'] }
-      );
+      let sobornosSeleccionados: Soborno[] = [];
 
-      if (!autoridad)
-        return res.status(404).send({ message: 'Autoridad no encontrada' });
+      if (dni) {
+        // Caso 1: pagar sobornos de una autoridad específica
+        const autoridad = await em.findOne(
+          Autoridad,
+          { dni },
+          { populate: ['sobornos'] }
+        );
 
-      const sobornosSeleccionados = autoridad.sobornosPendientes
-        .getItems()
-        .filter((s) => ids.includes(s.id));
-      if (!sobornosSeleccionados.length)
-        return res.status(404).send({
-          message:
-            'No se encontraron sobornos con esos IDs para esta autoridad',
+        if (!autoridad) {
+          return res.status(404).send({ message: 'Autoridad no encontrada' });
+        }
+
+        sobornosSeleccionados = autoridad.sobornos
+          .getItems()
+          .filter((s) => ids.includes(s.id));
+
+        if (!sobornosSeleccionados.length) {
+          return res.status(404).send({
+            message:
+              'No se encontraron sobornos con esos IDs para esta autoridad',
+          });
+        }
+      } else {
+        // Caso 2: pagar sobornos sin filtrar por autoridad
+        sobornosSeleccionados = await em.find(Soborno, {
+          id: { $in: ids },
         });
 
-      sobornosSeleccionados.forEach((s) => (s.pagado = true));
+        if (!sobornosSeleccionados.length) {
+          return res.status(404).send({
+            message: 'No se encontraron sobornos con esos IDs',
+          });
+        }
+      }
 
+      sobornosSeleccionados.forEach((s) => (s.pagado = true));
       await em.persistAndFlush(sobornosSeleccionados);
 
       return res.status(200).send({
@@ -154,7 +172,7 @@ export class SobornoController {
     }
 
     try {
-      const soborno = await em.findOne(SobornoPendiente, { id });
+      const soborno = await em.findOne(Soborno, { id });
 
       if (!soborno) {
         return res.status(404).json({ message: 'Soborno no encontrado' });

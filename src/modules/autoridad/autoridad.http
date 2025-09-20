@@ -1,14 +1,5 @@
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@local.dev",
-  "password": "admin123"
-}
-
 ###obtener todas las autoridades
 GET http://localhost:3000/api/autoridades
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMzMDc2NywiZXhwIjoxNzU4MzM0MzY3fQ.tgZXdRmrLiQjuI3qUX9VOFgdKneyqDcosJhcMKbNXrU
 
 ###obtener una autoridad
 GET http://localhost:3000/api/autoridades/10101013
@@ -16,29 +7,25 @@ GET http://localhost:3000/api/autoridades/10101013
 ### Crear nueva autoridad
 POST http://localhost:3000/api/autoridades
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk0NDBhLWJjZTUtNzRmOC05OGZhLTFlYzRjM2I1MTZkNyIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMzMDc2NywiZXhwIjoxNzU4MzM0MzY3fQ.tgZXdRmrLiQjuI3qUX9VOFgdKneyqDcosJhcMKbNXrU
 
 {
-  "dni": "10101013",
-  "nombre": "Lautaro Herrera",
-  "email":"lauHerrera@gmail.com",
-  "username": "lau",
-  "password":"1234",
+  "dni": "10101015",
+  "nombre": "Juan Fernandez",
+  "email":"jferndez@gmail.com",
+  "direccion":"",
+  "telefono":"",
   "rango": "1",
-  "zonaId": 1
+  "zonaId": "1"
 }
-
-
 
 ###modificar autoridad (PUT - idempotente, modificaciones completas)
 PUT http://localhost:3000/api/autoridades/10101013
 Content-Type: application/json
 
 {
-  "dni": "12345678",
   "nombre": "Lautaro FERNANDEZ",
-  "rango": "1",
-  "zonaId": 1
+  "rango": "3",
+  "zonaId": "1"
 }
 
 
@@ -51,4 +38,4 @@ Content-Type: application/json
 }
 
 ###borrar una autoridad
-DELETE http://localhost:3000/api/autoridades/10101013
+DELETE http://localhost:3000/api/autoridades/10101015

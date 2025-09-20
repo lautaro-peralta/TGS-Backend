@@ -16,7 +16,7 @@ import { ventaRouter } from './modules/venta/venta.routes.js';
 import { productoRouter } from './modules/producto/producto.routes.js';
 import { autoridadRouter } from './modules/autoridad/autoridad.routes.js';
 import { zonaRouter } from './modules/zona/zona.routes.js';
-import { sobornoRouter } from './modules/sobornoPendiente/soborno.routes.js';
+import { sobornoRouter } from './modules/soborno/soborno.routes.js';
 
 const app = express();
 
@@ -75,7 +75,7 @@ app.use('/api/ventas', ventaRouter);
 app.use('/api/productos', productoRouter);
 app.use('/api/zonas', zonaRouter);
 app.use('/api/autoridades', autoridadRouter);
-app.use('/api/sobornosPendientes', sobornoRouter);
+app.use('/api/sobornos', sobornoRouter);
 
 //ERROR HANDLERS
 

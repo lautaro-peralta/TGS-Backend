@@ -45,7 +45,7 @@ autoridadRouter.get(
 );
 
 autoridadRouter.get(
-  '/sobornos',
+  '/:dni/sobornos',
   //authMiddleware,
   //rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
   autoridadController.getSobornosAutoridad
