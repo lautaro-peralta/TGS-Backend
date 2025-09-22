@@ -24,7 +24,7 @@ productoRouter.post(
   productoController.createProducto
 );
 
-productoRouter.put(
+productoRouter.patch(
   '/:id',
   validarConSchema({ body: actualizarProductoSchema }),
   //authMiddleware,
