@@ -2,20 +2,17 @@
 GET http://localhost:3000/api/zonas
 
 ###obtener una zona
-GET http://localhost:3000/api/zonas/2
+GET http://localhost:3000/api/zonas/1
 
 ### Crear nueva zona
-POST http://localhost:3000/api/zonas/
-Content-Type: application/json
+POST http://localhost:3000/api/zonas
 
 {
-  "nombre": "Zona Oeste",
-  "esSedeCentral": true
+  "nombre": "Zona centro"
 }
 
 ###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/zonas/2
-Content-Type: application/json
+PATCH http://localhost:3000/api/zonas/1
 
 {
   "esSedeCentral":false
