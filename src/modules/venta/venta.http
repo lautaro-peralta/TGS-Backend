@@ -15,11 +15,15 @@ Content-Type: application/json
   },
   "detalles": [
     {
-      "productoId": 1,
+      "productoId": 3,
       "cantidad": 3
+    },
+    {
+      "productoId": 2,
+      "cantidad": 1
     }
   ]
 }
 
 ###Borrar una venta
-DELETE http://localhost:3000/api/ventas/21
+DELETE http://localhost:3000/api/ventas/27

@@ -6,17 +6,19 @@ GET http://localhost:3000/api/zonas/1
 
 ### Crear nueva zona
 POST http://localhost:3000/api/zonas
+Content-Type: application/json
 
 {
   "nombre": "Zona centro"
 }
 
 ###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/zonas/1
+PATCH http://localhost:3000/api/zonas/4
+Content-Type: application/json
 
 {
   "esSedeCentral":false
 }
 
 ###borrar una zona
-DELETE http://localhost:3000/api/zonas/3
+DELETE http://localhost:3000/api/zonas/4
