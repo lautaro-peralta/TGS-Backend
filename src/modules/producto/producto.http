@@ -1,4 +1,3 @@
-
 ### Obtener todos los productos
 GET http://localhost:3000/api/productos
 
@@ -13,7 +12,7 @@ Content-Type: application/json
   "descripcion": "Fernet Branca",
   "precio": 1200,
   "stock": 50,
-  "esIlegal": true
+  "esIlegal": false
 }
 
 ### Modificar producto (PUT - reemplazo completo)
@@ -30,7 +29,6 @@ Content-Type: application/json
 ### Modificar producto (PATCH - actualización parcial)
 PATCH http://localhost:3000/api/productos/4
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
 
 {
   "stock": 120
@@ -38,5 +36,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwL
 
 ### Borrar un producto
 DELETE http://localhost:3000/api/productos/3
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
 

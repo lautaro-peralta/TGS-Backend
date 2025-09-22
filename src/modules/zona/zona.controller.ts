@@ -52,49 +52,61 @@ export class ZonaController {
   }
 
   async updateZona(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      const id = parseInt(req.params.id);
-      const input = res.locals.validated.body;
+  const em = orm.em.fork();
+  try {
+    const id = parseInt(req.params.id);
+    const input = res.locals.validated.body;
 
-      const zona = await em.findOne(Zona, { id });
-      if (!zona) {
-        return res.status(404).json({ mensaje: 'Zona no encontrada' });
-      }
-
-      // Actualizar nombre si se proporciona
-      if (input.nombre !== undefined) {
-        zona.nombre = input.nombre;
-      }
-
-      // Lógica para sede central
-      if (input.esSedeCentral === true) {
-        // Buscar la zona que actualmente es sede central (y no sea la misma que estamos actualizando)
-        const sedeActual = await em.findOne(Zona, {
-          esSedeCentral: true,
-          id: { $ne: zona.id },
-        });
-
-        if (sedeActual) {
-          sedeActual.esSedeCentral = false;
-          await em.persistAndFlush(sedeActual); // Guardamos el cambio
-        }
-
-        zona.esSedeCentral = true;
-      } else if (input.esSedeCentral === false) {
-        // Si explícitamente se quiere quitar como sede central
-        zona.esSedeCentral = false;
-      }
-
-      await em.flush();
-      res
-        .status(200)
-        .json({ mensaje: 'Zona actualizada correctamente', data: zona });
-    } catch (err) {
-      console.error(err);
-      res.status(400).json({ mensaje: 'Error al actualizar zona' });
+    const zona = await em.findOne(Zona, { id });
+    if (!zona) {
+      return res.status(404).json({ mensaje: 'Zona no encontrada' });
     }
+
+    // Actualizar nombre si se proporciona
+    if (input.nombre !== undefined) {
+      zona.nombre = input.nombre;
+    }
+
+    if (input.esSedeCentral === true) {
+      // Si la quieren marcar como sede central
+      const sedeActual = await em.findOne(Zona, {
+        esSedeCentral: true,
+        id: { $ne: zona.id },
+      });
+
+      if (sedeActual) {
+        sedeActual.esSedeCentral = false;
+        await em.persistAndFlush(sedeActual);
+      }
+
+      zona.esSedeCentral = true;
+
+    } else if (input.esSedeCentral === false) {
+      const otrasCentrales = await em.count(Zona, {
+        esSedeCentral: true,
+        id: { $ne: zona.id },
+      });
+
+      if (otrasCentrales === 0) {
+        return res.status(400).json({
+          mensaje:
+            'No se puede quitar la sede central porque quedaría el sistema sin ninguna. ' +
+            'Debe existir al menos otra zona como sede central.',
+        });
+      }
+
+      zona.esSedeCentral = false;
+    }
+
+    await em.flush();
+    res
+      .status(200)
+      .json({ mensaje: 'Zona actualizada correctamente', data: zona });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ mensaje: 'Error al actualizar zona' });
   }
+}
 
   async deleteZona(req: Request, res: Response) {
     const em = orm.em.fork();
