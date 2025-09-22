@@ -1,5 +1,6 @@
 POST http://localhost:3000/api/auth/login
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk2M2UwLWEzZGItNzJlOC05NGRmLWRiM2QzODNhNjU0MCIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODMyMTE5NSwiZXhwIjoxNzU4MzI0Nzk1fQ.LW7BsH64bO46Enik78LAQNotdwa5C_7414b9slfablM
 
 {
   "email": "admin@local.dev",
@@ -15,13 +16,13 @@ GET http://localhost:3000/api/productos/3
 ### Crear nuevo producto
 POST http://localhost:3000/api/productos
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk2M2UwLWEzZGItNzJlOC05NGRmLWRiM2QzODNhNjU0MCIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODM4MDg3MiwiZXhwIjoxNzU4Mzg0NDcyfQ.AxTbSDNlipBx8npNE3jJtNPvtXp1AADfkizbvD04o9g
 
 {
   "descripcion": "Fernet Branca",
   "precio": 1200,
   "stock": 50,
-  "esIlegal": true
+  "esIlegal": false
 }
 
 ### Modificar producto (PUT - reemplazo completo)
