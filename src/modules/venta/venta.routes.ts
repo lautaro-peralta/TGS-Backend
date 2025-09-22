@@ -12,8 +12,8 @@ const ventaController = new VentaController();
 
 ventaRouter.get(
   '/',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   ventaController.getAllVentas
 );
 
@@ -24,8 +24,8 @@ ventaRouter.get(
 
 ventaRouter.get(
   '/:id',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   ventaController.getOneVentaById
 );
 
@@ -36,15 +36,15 @@ ventaRouter.get(
 
 ventaRouter.post(
   '/',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]) /* --> distribMiddleware, */,
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]) /* --> distribMiddleware, */,
   validarConSchema({ body: crearVentaSchema }),
   ventaController.createVenta
 );
 
 ventaRouter.delete(
   '/:id',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   ventaController.deleteVenta
 );
