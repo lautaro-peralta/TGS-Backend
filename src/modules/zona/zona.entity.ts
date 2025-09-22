@@ -12,8 +12,6 @@ export class Zona extends BaseEntityObjeto{
   @Property({ default: false })
   esSedeCentral: boolean = false;
 
-  @OneToMany({entity:()=> Autoridad, nullable:false, mappedBy:autoridad => autoridad.zona})
-  autoridad!:Autoridad
 
 //@OneToMany({entity:()=> Distribuidor, nullable:true, mappedBy:distribuidor => distribuidor.zona})
 //distribuidor!:Distribuidor

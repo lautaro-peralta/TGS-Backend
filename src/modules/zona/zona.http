@@ -16,10 +16,10 @@ GET http://localhost:3000/api/zonas/1
 ### Crear nueva zona
 POST http://localhost:3000/api/zonas
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk2M2UwLWEzZGItNzJlOC05NGRmLWRiM2QzODNhNjU0MCIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODM5MTc2OCwiZXhwIjoxNzU4Mzk1MzY4fQ.-iHYPWIWkaDMRC_8GcNiZHW-cKAIP56kHoPIFO59ARM
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk2M2UwLWEzZGItNzJlOC05NGRmLWRiM2QzODNhNjU0MCIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODU4MjA5NywiZXhwIjoxNzU4NTg1Njk3fQ.c9DH8bAMAapasBmQgy4nAToWanKpFBxEdcB55aFUtFE
 
 {
-  "nombre": "Zona centro"
+  "nombre": "Centro"
 }
 
 
@@ -34,12 +34,12 @@ Content-Type: application/json
 
 
 ###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/zonas/1
+PATCH http://localhost:3000/api/zonas/10
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk2M2UwLWEzZGItNzJlOC05NGRmLWRiM2QzODNhNjU0MCIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODM4ODk3NywiZXhwIjoxNzU4MzkyNTc3fQ.jXuiH4GZdyzVBUB16CjTsPC2Pz5TOJB0hbcnIq1T0KM
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTk2M2UwLWEzZGItNzJlOC05NGRmLWRiM2QzODNhNjU0MCIsInJvbGVzIjpbIkFETUlOIl0sImlhdCI6MTc1ODU4MjA5NywiZXhwIjoxNzU4NTg1Njk3fQ.c9DH8bAMAapasBmQgy4nAToWanKpFBxEdcB55aFUtFE
 
 {
-  "esSedeCentral": false
+  "nombre": "sur"
 }
 
 ###borrar una zona
