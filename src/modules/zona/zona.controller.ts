@@ -34,20 +34,44 @@ export class ZonaController {
     const em = orm.em.fork();
     try {
       const input = res.locals.validated.body;
-      if (input.esSedeCentral) {
-        const actual = await em.findOne(Zona, { esSedeCentral: true });
+      const { nombre, esSedeCentral } = input as { nombre: string; esSedeCentral?: boolean };
 
-        // Si existe otra sede central, la desactivamos
+      // 1) Validar nombre requerido
+      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+        return res.status(400).json({ mensaje: 'El nombre es requerido.' });
+      }
+      const nombreTrim = nombre.trim();
+
+      // 2) Verificar duplicado (case-insensitive)
+      const rows = await em.getConnection().execute(
+        `SELECT id FROM zonas WHERE LOWER(nombre) = ?`,
+        [nombreTrim.toLowerCase()]
+      );
+      if (rows.length > 0) {
+        return res
+          .status(409)
+          .json({ mensaje: 'Ya existe una zona con ese nombre (sin importar mayúsculas/minúsculas).' });
+      }
+
+      // 3) Si la nueva es sede central, desmarcar la anterior
+      if (esSedeCentral === true) {
+        const actual = await em.findOne(Zona, { esSedeCentral: true });
         if (actual) {
           actual.esSedeCentral = false;
-          await em.persistAndFlush(actual); // Guardamos el cambio
+          await em.persistAndFlush(actual);
         }
       }
-      const nueva = em.create(Zona, input);
+
+      // 4) Crear y guardar
+      const nueva = em.create(Zona, { nombre: nombreTrim, esSedeCentral: Boolean(esSedeCentral) });
       await em.persistAndFlush(nueva);
-      res.status(201).json({ mensaje: 'Zona creada', data: nueva });
+
+      return res.status(201).json({ mensaje: 'Zona creada', data: nueva });
     } catch (err: any) {
-      res.status(400).json({ mensaje: err.message || 'Error al crear zona' });
+      if (err?.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ mensaje: 'Nombre de zona duplicado.' });
+      }
+      return res.status(400).json({ mensaje: err.message || 'Error al crear zona' });
     }
   }
 
@@ -62,9 +86,26 @@ export class ZonaController {
       return res.status(404).json({ mensaje: 'Zona no encontrada' });
     }
 
-    // Actualizar nombre si se proporciona
+    // Validación de nombre duplicado (case-insensitive)
     if (input.nombre !== undefined) {
-      zona.nombre = input.nombre;
+      const nuevo = input.nombre.trim();
+      if (!nuevo) {
+        return res.status(400).json({ mensaje: 'El nombre no puede ser vacío.' });
+      }
+
+      if (nuevo.toLowerCase() !== zona.nombre.toLowerCase()) {
+        const rows = await em.getConnection().execute(
+          `SELECT id FROM zonas WHERE LOWER(nombre) = ? AND id <> ?`,
+          [nuevo.toLowerCase(), id]
+        );
+        if (rows.length > 0) {
+          return res
+            .status(409)
+            .json({ mensaje: 'Ya existe una zona con ese nombre (sin importar mayúsculas/minúsculas).' });
+        }
+      }
+
+      zona.nombre = nuevo;
     }
 
     if (input.esSedeCentral === true) {
@@ -107,6 +148,7 @@ export class ZonaController {
     res.status(400).json({ mensaje: 'Error al actualizar zona' });
   }
 }
+
 
   async deleteZona(req: Request, res: Response) {
     const em = orm.em.fork();
