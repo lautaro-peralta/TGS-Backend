@@ -23,53 +23,53 @@ const dniParamSchema = z.object({
 
 autoridadRouter.post(
   '/',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   validarConSchema({ body: crearAutoridadSchema }),
   autoridadController.createAutoridad
 );
 
 autoridadRouter.get(
   '/',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   autoridadController.getAllAutoridades
 );
 
 autoridadRouter.get(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN]),
   validarConSchema({ params: dniParamSchema }),
   autoridadController.getOneAutoridadByDni
 );
 
 autoridadRouter.get(
-  '/sobornos',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
+  '/:dni/sobornos',
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
   autoridadController.getSobornosAutoridad
 );
 
 autoridadRouter.put(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
   validarConSchema({ body: actualizarAutoridadSchema }),
   autoridadController.putUpdateAutoridad
 );
 
 autoridadRouter.patch(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
+  //uthMiddleware,
+  //rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
   validarConSchema({ body: parcialActualizarAutoridadSchema }),
   autoridadController.patchUpdateAutoridad
 );
 
 autoridadRouter.delete(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN, Rol.AUTORIDAD]),
   autoridadController.deleteAutoridad
 );
