@@ -1,0 +1,25 @@
+###listar las ventas
+
+GET http://localhost:3000/api/ventas
+
+###Crear venta
+
+POST http://localhost:3000/api/ventas
+Content-Type: application/json
+
+{
+  "clienteDni": "20909090",
+  "persona": {
+    "nombre":"juan",
+    "email":"juanq@email.com"
+  },
+  "detalles": [
+    {
+      "productoId": 1,
+      "cantidad": 3
+    }
+  ]
+}
+
+###Borrar una venta
+DELETE http://localhost:3000/api/ventas/21
