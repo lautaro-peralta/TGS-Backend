@@ -29,4 +29,4 @@ Content-Type: application/json
 }
 
 ###borrar una zona
-DELETE http://localhost:3000/api/zonas/3
+DELETE http://localhost:3000/api/zonas/4

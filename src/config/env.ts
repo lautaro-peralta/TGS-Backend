@@ -17,7 +17,7 @@ const envSchema = z.object({
   DB_NAME: z.string(),
 
   JWT_SECRET: z.string().min(10, 'JWT_SECRET es demasiado corto.'),
-  JWT_EXPIRATION: z.string().default('1h'),
+  JWT_EXPIRES_IN: z.string().default('1h'),
 
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
