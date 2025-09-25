@@ -9,10 +9,7 @@ export const usuarioRouter = Router();
 const usuarioController = new UsuarioController();
 
 // Obtener perfil del usuario autenticado
-usuarioRouter.get(
-  '/me', //authMiddleware,
-  usuarioController.getPerfilUsuario
-);
+usuarioRouter.get('/me', authMiddleware, usuarioController.getPerfilUsuario);
 
 // Cambiar rol de un usuario (solo ADMIN)
 usuarioRouter.patch(
@@ -26,7 +23,7 @@ usuarioRouter.patch(
 // Obtener todos los usuarios (opcionalmente protegido solo para ADMIN)
 usuarioRouter.get(
   '/',
-  //authMiddleware,
+  authMiddleware,
   //rolesMiddleware([Rol.ADMIN]),
   usuarioController.getAllUsuarios
 );

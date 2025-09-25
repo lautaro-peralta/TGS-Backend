@@ -5,6 +5,7 @@ import { validate as isUuid } from 'uuid';
 import { wrap } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import argon2 from 'argon2';
+
 export class UsuarioController {
   // Obtener perfil del usuario autenticado
   async getPerfilUsuario(req: Request, res: Response, next: NextFunction) {

@@ -264,9 +264,23 @@ export class AutoridadController {
             populate: ['persona'],
           }
         );
+        if (!usuario || !usuario.persona) {
+          return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        const persona = usuario.persona.isInitialized()
+          ? usuario.persona.unwrap()
+          : await usuario.persona.load();
+
+        if (!persona?.dni) {
+          return res
+            .status(404)
+            .json({ message: 'El usuario no tiene DNI registrado' });
+        }
+
+        // Buscar autoridad usando dni
         const autoridad = await em.findOne(
           Autoridad,
-          { dni: usuario!.persona!.dni },
+          { dni: persona.dni },
           { populate: ['sobornos'] }
         );
         if (!autoridad) {

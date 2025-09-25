@@ -4,60 +4,37 @@ import jwt from 'jsonwebtoken';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { registerSchema } from './auth.schema.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secreto-ultra-seguro';
 
 export class AuthController {
-  async signup(req: Request, res: Response, next: NextFunction) {
+  async register(req: Request, res: Response, next: NextFunction) {
     const em = orm.em.fork();
     try {
-      console.log('Request body:', req.body);
-      const { nombre, email, password, username,dni } = req.body||{};
+      const validatedData = registerSchema.parse(req.body);
+      const { username, email, password } = validatedData;
 
-      if ( !nombre || !password ||!dni|| !email || !username ) {
-        return res.status(400).json({ message: 'Faltan datos obligatorios' });
-      }
-    
       //VALIDACION DE USUARIO
-    const existingUsername = await em.findOne(Usuario, { username });
-    if (existingUsername) {
-      return res.status(409).json({ message: 'El nombre de usuario ya está registrado' });
-    }
-    const existingEmail = await em.findOne(Usuario, { email });
-    if (existingEmail) {
-      return res.status(409).json({ message: 'El email ya está registrado' });
-    }
-
-    //VALIDACION DE PERSONA (NO EXISTE EL USER)
-    let persona = await em.findOne(BaseEntityPersona, { dni });
-    //REVISAR YA QUE PERMITE QUE ALGUIEN MODIFIQUE LOS DATOS DE OTRA PERSONA SI QUIERE
-    if (persona) {    
-        if (persona.email !== email) {
-        console.log("La persona ya está registrada. ¿Desea asociar el email ingresado(Y) o mantener el anterior(N)?")
-        //AGREGAR VALIDACION POR SI LO QUIERE CAMBIAR O NO
-        persona.email = email;
-        await em.flush();
+      const existingUsername = await em.findOne(Usuario, { username });
+      if (existingUsername) {
+        return res
+          .status(409)
+          .json({ message: 'El nombre de usuario ya está registrado' });
       }
-    }else{
-      persona=em.create(BaseEntityPersona,{
-        dni,
-        nombre,
-        email,
-        telefono:'',
-        direccion:''
-      })
-      await em.persistAndFlush(persona);
-    }
+      const existingEmail = await em.findOne(Usuario, { email });
+      if (existingEmail) {
+        return res.status(409).json({ message: 'El email ya está registrado' });
+      }
 
-    const hashedPassword = await argon2.hash(password);
+      const hashedPassword = await argon2.hash(password);
       // Crear el usuario incluyendo el rol, que es obligatorio
-    const userNew = em.create(Usuario, {
-      username,
-      roles: [Rol.CLIENTE], // Asignamos un rol por defecto
-      password: hashedPassword,
-      email,
-      persona: em.getReference(BaseEntityPersona, persona.id),
-    });
+      const userNew = em.create(Usuario, {
+        username,
+        roles: [Rol.CLIENTE], // Asignamos un rol por defecto
+        password: hashedPassword,
+        email,
+      });
 
       await em.persistAndFlush(userNew);
 
@@ -83,9 +60,23 @@ export class AuthController {
         { expiresIn: '1h' }
       );
 
-      return res.status(200).json({ token });
+      res
+        .cookie('access_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 1000 * 60 * 60,
+        })
+        .send(usuario.toDTO());
     } catch (err) {
       next(err);
     }
+  }
+
+  async logout(req: Request, res: Response) {
+    res
+      .clearCookie('access_token')
+      .json({ message: 'Cierre de sesión exitoso.' });
+    //SE PUEDE POENR UNA REDIRECCION A HOME POR EJEMPLO
   }
 }
