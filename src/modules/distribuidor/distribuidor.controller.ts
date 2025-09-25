@@ -10,7 +10,7 @@ export class DistribuidorController {
       const distribuidores = await em.find(
         Distribuidor,
         {},
-        { populate: ['productos', 'regVentas'] } // <- corregido
+        { populate: ['productos', 'regVentas'] }
       );
       return res.status(200).json({
         message: `Se ${distribuidores.length === 1 ? 'encontró' : 'encontraron'} ${distribuidores.length} distribuidor${distribuidores.length !== 1 ? 'es' : ''}`,
@@ -30,7 +30,7 @@ export class DistribuidorController {
       const distribuidor = await em.findOne(
         Distribuidor,
         { dni },
-        { populate: ['productos', 'regVentas'] } // <- corregido
+        { populate: ['productos', 'regVentas'] }
       );
       if (!distribuidor) {
         return res.status(404).json({ error: 'Distribuidor no encontrado' });
@@ -51,12 +51,12 @@ export class DistribuidorController {
         dni,
         nombre,
         direccion,
-        telefonos,   // string[] opcional
-        emails,      // string[] opcional
+        telefono,    // string requerido
+        email,       // string requerido
         productosIds // number[] opcional
       } = res.locals.validated?.body ?? req.body;
 
-      if (!dni || !nombre) {
+      if (!dni || !nombre || !telefono || !email) {
         return res.status(400).json({ message: 'Faltan datos obligatorios' });
       }
 
@@ -65,18 +65,12 @@ export class DistribuidorController {
         return res.status(409).json({ error: 'Ya existe un distribuidor con ese DNI' });
       }
 
-      // IMPORTANTÍSIMO: BaseEntityPersona requiere email y telefono (strings)
-      const telefono = Array.isArray(telefonos) && telefonos.length ? String(telefonos[0]) : '';
-      const email    = Array.isArray(emails)    && emails.length    ? String(emails[0])    : '';
-
       const distribuidor = em.create(Distribuidor, {
         dni,
         nombre,
         direccion: direccion ?? '',
-        telefono,             // <- requerido por BaseEntityPersona
-        email,                // <- requerido por BaseEntityPersona
-        telefonos: Array.isArray(telefonos) ? telefonos : [],
-        emails: Array.isArray(emails) ? emails : [],
+        telefono,
+        email,
       });
 
       if (Array.isArray(productosIds) && productosIds.length > 0) {
@@ -110,23 +104,15 @@ export class DistribuidorController {
         return res.status(404).json({ error: 'Distribuidor no encontrado' });
       }
 
-      const { productosIds, telefonos, emails, ...updates } =
+      const { productosIds, telefono, email, ...updates } =
         res.locals.validated?.body ?? req.body;
 
       // ⚠️ En tu versión de MikroORM no existe mergeObjects en AssignOptions
-      em.assign(distribuidor, updates); // <- sin mergeObjects
-
-      // actualizar arrays explícitamente si vienen
-      if (Array.isArray(telefonos)) distribuidor.telefonos = telefonos;
-      if (Array.isArray(emails))    distribuidor.emails    = emails;
-
-      // sincronizar los campos simples heredados si llegan vacíos y tenés arrays
-      if (!distribuidor.telefono && Array.isArray(telefonos) && telefonos.length) {
-        distribuidor.telefono = String(telefonos[0]);
-      }
-      if (!distribuidor.email && Array.isArray(emails) && emails.length) {
-        distribuidor.email = String(emails[0]);
-      }
+      em.assign(distribuidor, {
+        ...updates,
+        ...(telefono !== undefined ? { telefono } : {}),
+        ...(email !== undefined ? { email } : {}),
+      }); // <- sin mergeObjects
 
       // Reemplazar productos N:M si viene productosIds
       if (Array.isArray(productosIds)) {

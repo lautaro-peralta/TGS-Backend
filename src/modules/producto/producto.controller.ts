@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Producto } from './producto.entity.js';
+import { Detalle } from '../venta/detalle.entity.js';
 import {
   crearProductoSchema,
   actualizarProductoSchema,
@@ -117,9 +118,21 @@ export class ProductoController {
   async deleteProducto(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      const producto = await em.findOne(Producto, { id });
+      const producto = await em.findOne(Producto, { id }, { populate: ['distribuidores', 'detalles'] });
       if (!producto) {
         return res.status(404).json({ message: 'Producto no encontrado' });
+      }
+
+      // Si hay detalles que referencian a este producto, eliminarlos primero
+      // Alternativa: devolver 409 si hay referencias y no se desea borrado en cascada
+      if (producto.detalles.isInitialized() && producto.detalles.length > 0) {
+        await em.nativeDelete(Detalle, { producto: id });
+      }
+
+      // Limpiar relaciones N:M con distribuidores
+      if (producto.distribuidores.isInitialized() && producto.distribuidores.length > 0) {
+        producto.distribuidores.removeAll();
+        await em.flush();
       }
 
       await em.removeAndFlush(producto);
