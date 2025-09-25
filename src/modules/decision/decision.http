@@ -1,0 +1,25 @@
+### Obtener todas las decisiones estratégicas
+GET http://localhost:3000/api/decisiones
+###
+GET http://localhost:3000/api/decisiones/1
+###
+POST http://localhost:3000/api/decisiones
+Content-Type: application/json
+
+{
+  "descripcion":"Esta es la primer decisión de todas",
+  "fechaInicio":"2026-03-03",
+  "fechaFin":"2026-04-05",
+  "tematicaId": 5
+}
+
+###
+PATCH http://localhost:3000/api/decisiones/1
+Content-Type: application/json
+
+{
+    "descripcion":"I want some pizza"
+}
+
+###
+DELETE http://localhost:3000/api/decisiones/3
