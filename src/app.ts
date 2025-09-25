@@ -17,6 +17,8 @@ import { productoRouter } from './modules/producto/producto.routes.js';
 import { autoridadRouter } from './modules/autoridad/autoridad.routes.js';
 import { zonaRouter } from './modules/zona/zona.routes.js';
 import { sobornoRouter } from './modules/soborno/soborno.routes.js';
+import { decisionRouter } from './modules/decision/decision.routes.js';
+import { tematicaRouter } from './modules/tematica/tematica.routes.js';
 
 const app = express();
 
@@ -76,6 +78,8 @@ app.use('/api/productos', productoRouter);
 app.use('/api/zonas', zonaRouter);
 app.use('/api/autoridades', autoridadRouter);
 app.use('/api/sobornos', sobornoRouter);
+app.use('/api/decisiones', decisionRouter);
+app.use('/api/tematicas', tematicaRouter);
 
 //ERROR HANDLERS
 
@@ -118,6 +122,8 @@ export const initDev = async () => {
       '/api/autoridades',
       '/api/zonas',
       '/api/productos',
+      '/api/sobornos',
+      '/api/decisiones',
     ]);
   }
 };

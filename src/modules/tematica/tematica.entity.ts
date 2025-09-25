@@ -20,8 +20,26 @@ export class Tematica extends BaseEntityObjeto {
 
   @OneToMany({
     entity: () => DecisionEstrategica,
-    mappedBy: 'tematica',
-    nullable: true,
+    mappedBy: (decision) => decision.tematica,
   })
-  decision?: DecisionEstrategica;
+  decisiones = new Collection<DecisionEstrategica>(this);
+
+  toDTO() {
+    return {
+      id: this.id,
+      descripcion: this.descripcion,
+    };
+  }
+  toDetailedDTO() {
+    return {
+      id: this.id,
+      descripcion: this.descripcion,
+      decisiones:
+        this.decisiones.isInitialized() && this.decisiones.length > 0
+          ? this.decisiones
+              .getItems()
+              .map((decisiones) => decisiones.toSimpleDTO())
+          : 'Sin decisiones para esta temática aún...',
+    };
+  }
 }

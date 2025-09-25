@@ -12,7 +12,7 @@ export class ClienteController {
       const clientes = await em.find(
         Cliente,
         {},
-        { populate: ['usuario', 'regCompras'] }
+        { populate: ['usuario', 'regCompras', 'regCompras.detalles'] }
       );
       return res.status(200).json({
         message: `Se ${clientes.length === 1 ? 'encontró' : 'encontraron'} ${

@@ -12,7 +12,7 @@ import {
   Rel,
 } from '@mikro-orm/core';
 import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
-import { Tematica } from 'modules/tematica/tematica.entity.js';
+import { Tematica } from '../../modules/tematica/tematica.entity.js';
 
 @Entity({ tableName: 'decisiones_estrategicas' })
 export class DecisionEstrategica extends BaseEntityObjeto {
@@ -32,6 +32,15 @@ export class DecisionEstrategica extends BaseEntityObjeto {
   tematica!: Rel<Tematica>;
 
   toDTO() {
+    return {
+      id: this.id,
+      descripcion: this.descripcion,
+      fechaInicio: this.fechaInicio,
+      fechaFin: this.fechaFin,
+      tematica: this.tematica,
+    };
+  }
+  toSimpleDTO() {
     return {
       id: this.id,
       descripcion: this.descripcion,
