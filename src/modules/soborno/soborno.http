@@ -1,11 +1,3 @@
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@local.dev",
-  "password": "admin123"
-}
-
 ###obtener todos los sobornos
 GET http://localhost:3000/api/sobornos
 
@@ -27,10 +19,10 @@ Content-Type: application/json
 {
   "ids":
   [
-    
+    2,3,5
   ]
 }
 
 ###borrar un soborno
-DELETE http://localhost:3000/api/sobornos/2
+DELETE http://localhost:3000/api/sobornos/4
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTkxNzE1LCJleHAiOjE3NTM5OTUzMTV9.K9wBzBTXSim665LFFhPvCfejzoCiVl2UQ9zENLnKQ8E
