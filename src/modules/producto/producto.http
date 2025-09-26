@@ -1,11 +1,3 @@
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@local.dev",
-  "password": "admin123"
-}
-
 ### Obtener todos los productos
 GET http://localhost:3000/api/productos
 
@@ -15,32 +7,28 @@ GET http://localhost:3000/api/productos/3
 ### Crear nuevo producto
 POST http://localhost:3000/api/productos
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
 
 {
-  "descripcion": "Fernet Branca",
-  "precio": 1200,
-  "stock": 50,
-  "esIlegal": true
+  "descripcion": "Pepsi",
+  "precio": 1000,
+  "stock": 10,
+  "esIlegal": false
 }
 
-### Modificar producto (PUT - reemplazo completo)
-PUT http://localhost:3000/api/productos/3
+### Modificar producto (reemplazo completo)
+PATCH http://localhost:3000/api/productos/3
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
-
 
 {
   "descripcion": "Alfajor Havanna",
   "precio": 800,
-  "stock": 100,
+  "stock": 150,
   "esIlegal": false
 }
 
 ### Modificar producto (PATCH - actualización parcial)
-PATCH http://localhost:3000/api/productos/4
+PATCH http://localhost:3000/api/productos/3
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
 
 {
   "stock": 120
@@ -48,5 +36,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwL
 
 ### Borrar un producto
 DELETE http://localhost:3000/api/productos/3
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTg2MTg1LCJleHAiOjE3NTM5ODk3ODV9.JKnDwVJMuwmoQ1VlFEhgGIkczjcXTOJOvaQpLqqkeaA
 

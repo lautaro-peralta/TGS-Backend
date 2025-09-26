@@ -1,0 +1,24 @@
+###
+GET http://localhost:3000/api/tematicas
+
+###
+GET http://localhost:3000/api/tematicas/5
+
+###
+POST http://localhost:3000/api/tematicas
+Content-Type: application/json
+
+{
+  "descripcion":"Gastronomía"
+}
+
+###
+PATCH http://localhost:3000/api/tematicas/5
+Content-Type: application/json
+
+{
+  "descripcion":"Retenciones"
+}
+
+###
+DELETE http://localhost:3000/api/tematicas/4
