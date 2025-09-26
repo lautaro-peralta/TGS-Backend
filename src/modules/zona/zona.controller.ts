@@ -41,17 +41,38 @@ export class ZonaController {
     const em = orm.em.fork();
     try {
       const input = res.locals.validated.body;
-      if (input.esSedeCentral) {
-        const actual = await em.findOne(Zona, { esSedeCentral: true });
+      const { nombre, esSedeCentral } = input as { nombre: string; esSedeCentral?: boolean };
 
-        // Si existe otra sede central, la desactivamos
+      // 1) Validar nombre requerido
+      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+        return res.status(400).json({ mensaje: 'El nombre es requerido.' });
+      }
+      const nombreTrim = nombre.trim();
+
+      // 2) Verificar duplicado (case-insensitive)
+      const rows = await em.getConnection().execute(
+        `SELECT id FROM zonas WHERE LOWER(nombre) = ?`,
+        [nombreTrim.toLowerCase()]
+      );
+      if (rows.length > 0) {
+        return res
+          .status(409)
+          .json({ mensaje: 'Ya existe una zona con ese nombre (sin importar mayúsculas/minúsculas).' });
+      }
+
+      // 3) Si la nueva es sede central, desmarcar la anterior
+      if (esSedeCentral === true) {
+        const actual = await em.findOne(Zona, { esSedeCentral: true });
         if (actual) {
           actual.esSedeCentral = false;
-          await em.persistAndFlush(actual); // Guardamos el cambio
+          await em.persistAndFlush(actual);
         }
       }
-      const nueva = em.create(Zona, input);
+
+      // 4) Crear y guardar
+      const nueva = em.create(Zona, { nombre: nombreTrim, esSedeCentral: Boolean(esSedeCentral) });
       await em.persistAndFlush(nueva);
+
       return ResponseUtil.created(res, 'Zona creada exitosamente', nueva);
     } catch (err: any) {
       return ResponseUtil.internalError(res, 'Error al crear zona', err);
@@ -68,7 +89,31 @@ export class ZonaController {
         ]);
       }
 
+
       const input = res.locals.validated.body;
+
+    // Validación de nombre duplicado (case-insensitive)
+    if (input.nombre !== undefined) {
+      const nuevo = input.nombre.trim();
+      if (!nuevo) {
+        return res.status(400).json({ mensaje: 'El nombre no puede ser vacío.' });
+      }
+
+      if (nuevo.toLowerCase() !== zona.nombre.toLowerCase()) {
+        const rows = await em.getConnection().execute(
+          `SELECT id FROM zonas WHERE LOWER(nombre) = ? AND id <> ?`,
+          [nuevo.toLowerCase(), id]
+        );
+        if (rows.length > 0) {
+          return res
+            .status(409)
+            .json({ mensaje: 'Ya existe una zona con ese nombre (sin importar mayúsculas/minúsculas).' });
+        }
+      }
+
+      zona.nombre = nuevo;
+    }
+
 
       const zona = await em.findOne(Zona, { id });
       if (!zona) {
@@ -117,6 +162,7 @@ export class ZonaController {
       return ResponseUtil.internalError(res, 'Error al actualizar zona', err);
     }
   }
+
 
   async deleteZona(req: Request, res: Response) {
     const em = orm.em.fork();
