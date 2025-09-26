@@ -1,0 +1,40 @@
+### Listar
+GET http://localhost:3000/distribuidores
+
+
+### Buscar por texto (nombre o dni)
+GET http://localhost:3000/distribuidores?q=juan
+
+
+### Obtener por ID
+GET http://localhost:3000/distribuidores/1
+
+
+### Crear
+POST http://localhost:3000/distribuidores
+Content-Type: application/json
+
+
+{
+"dni": "16254545",
+"nombre": "Delprato Luca",
+"direccion": "Av. Siempreviva 742",
+"telefono": "+54 341 555-1111",
+"email": "delpra@gmail.com",
+"productosIds": [1,2,5]
+}
+
+
+### Actualizar (reemplaza productos asociados si envías productosIds)
+PUT http://localhost:3000/distribuidores/1
+Content-Type: application/json
+
+
+{
+"direccion": "San Martín 1234",
+"productosIds": [2,3]
+}
+
+
+### Eliminar
+DELETE http://localhost:3000/distribuidores/1
