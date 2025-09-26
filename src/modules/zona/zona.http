@@ -9,16 +9,15 @@ POST http://localhost:3000/api/zonas
 Content-Type: application/json
 
 {
-  "nombre": "Centro"
+  "nombre": "Zona norte"
 }
 
 ###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/zonas/10
 Content-Type: application/json
-
 {
-  "nombre": "sur"
+  "nombre": "Centro"
 }
+
 
 ###modificar una zona
 PATCH http://localhost:3000/api/zonas/1
@@ -29,4 +28,4 @@ Content-Type: application/json
 }
 
 ###borrar una zona
-DELETE http://localhost:3000/api/zonas/4
+DELETE http://localhost:3000/api/zonas/1

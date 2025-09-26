@@ -37,10 +37,10 @@ sobornoRouter.patch(
   validarConSchema({ body: pagarSobornosSchema }),
   sobornoController.pagarSobornos
 );
-
+/*
 sobornoRouter.delete(
   '/:id',
   //authMiddleware,
   //rolesMiddleware([Rol.ADMIN]),
   sobornoController.deleteSoborno
-);
+);*/

@@ -4,6 +4,7 @@ import { Cliente } from './cliente.entity.js';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import argon2 from 'argon2';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 export class ClienteController {
   async getAllClientes(req: Request, res: Response) {
@@ -14,15 +15,12 @@ export class ClienteController {
         {},
         { populate: ['usuario', 'regCompras', 'regCompras.detalles'] }
       );
-      return res.status(200).json({
-        message: `Se ${clientes.length === 1 ? 'encontró' : 'encontraron'} ${
-          clientes.length
-        } cliente${clientes.length !== 1 ? 's' : ''}`,
-        data: clientes.map((c) => c.toDetailedDTO()),
-      });
+      
+      const message = ResponseUtil.generateListMessage(clientes.length, 'cliente');
+      return ResponseUtil.successList(res, message, clientes.map((c) => c.toDetailedDTO()));
     } catch (err) {
       console.error('Error al obtener clientes:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
+      return ResponseUtil.internalError(res, 'Error al obtener la lista de clientes', err);
     }
   }
 
@@ -37,12 +35,12 @@ export class ClienteController {
         { populate: ['usuario', 'regCompras'] }
       );
       if (!cliente) {
-        return res.status(404).json({ error: 'Cliente no encontrado' });
+        return ResponseUtil.notFound(res, 'Cliente', dni);
       }
-      return res.json({ data: cliente.toDetailedDTO() });
+      return ResponseUtil.success(res, 'Cliente encontrado exitosamente', cliente.toDetailedDTO());
     } catch (err) {
       console.error('Error al buscar cliente:', err);
-      return res.status(400).json({ error: 'Error al buscar cliente' });
+      return ResponseUtil.internalError(res, 'Error al buscar cliente', err);
     }
   }
 
@@ -53,15 +51,17 @@ export class ClienteController {
         res.locals.validated.body;
 
       if (!dni || !nombre || !email) {
-        return res.status(400).json({ message: 'Faltan datos obligatorios' });
+        return ResponseUtil.validationError(res, 'Faltan datos obligatorios', [
+          { field: 'dni', message: 'DNI es obligatorio' },
+          { field: 'nombre', message: 'Nombre es obligatorio' },
+          { field: 'email', message: 'Email es obligatorio' }
+        ]);
       }
 
       // Verificar si ya existe un cliente con ese cliente con ese DNI
       const existeCliente = await em.findOne(Cliente, { dni });
       if (existeCliente) {
-        return res
-          .status(409)
-          .json({ error: 'Ya existe un cliente con ese DNI' });
+        return ResponseUtil.conflict(res, 'Ya existe un cliente con ese DNI', 'dni');
       }
 
       const crearUsuario = !!(username && password);
@@ -70,9 +70,7 @@ export class ClienteController {
         // Validación adicional cuando se crean credenciales
         const existeUsuario = await em.findOne(Usuario, { username });
         if (existeUsuario) {
-          return res
-            .status(409)
-            .json({ error: 'Ya existe un usuario con ese username' });
+          return ResponseUtil.conflict(res, 'Ya existe un usuario con ese username', 'username');
         }
       }
 
@@ -107,9 +105,7 @@ export class ClienteController {
           await em.persistAndFlush(usuario);
 
           if (!usuario.id) {
-            return res
-              .status(500)
-              .json({ message: 'No se pudo crear el usuario' });
+            return ResponseUtil.internalError(res, 'No se pudo crear el usuario');
           }
         }
       }
@@ -125,28 +121,25 @@ export class ClienteController {
       await em.persistAndFlush(cliente);
 
       // Respuesta diferenciada según el flujo ejecutado
+      const message = crearUsuario
+        ? 'Cliente y usuario creados exitosamente'
+        : 'Cliente creado exitosamente';
+      
       const responseData = {
-        message: crearUsuario
-          ? 'Cliente y usuario creados exitosamente'
-          : 'Cliente creado exitosamente',
-        data: {
-          cliente: cliente.toDTO(),
-          ...(usuario && {
-            usuario: {
-              id: usuario.id,
-              username: usuario.username,
-              email: usuario.email,
-            },
-          }),
-        },
+        cliente: cliente.toDTO(),
+        ...(usuario && {
+          usuario: {
+            id: usuario.id,
+            username: usuario.username,
+            email: usuario.email,
+          },
+        }),
       };
 
-      return res.status(201).json(responseData);
+      return ResponseUtil.created(res, message, responseData);
     } catch (error) {
       console.error('Error creando cliente:', error);
-      return res.status(500).json({
-        message: 'Error interno del servidor',
-      });
+      return ResponseUtil.internalError(res, 'Error al crear cliente', error);
     }
   }
 
@@ -157,7 +150,7 @@ export class ClienteController {
     try {
       const cliente = await em.findOne(Cliente, { dni });
       if (!cliente) {
-        return res.status(404).json({ error: 'Cliente no encontrado' });
+        return ResponseUtil.notFound(res, 'Cliente', dni);
       }
 
       const updates = res.locals.validated.body;
@@ -165,13 +158,10 @@ export class ClienteController {
       em.assign(cliente, updates);
       await em.flush();
 
-      return res.status(200).json({
-        message: 'Cliente actualizado exitosamente',
-        data: cliente.toDTO(),
-      });
+      return ResponseUtil.updated(res, 'Cliente actualizado exitosamente', cliente.toDTO());
     } catch (err) {
       console.error('Error en PATCH cliente:', err);
-      return res.status(500).json({ error: 'Error al actualizar cliente' });
+      return ResponseUtil.internalError(res, 'Error al actualizar cliente', err);
     }
   }
 
@@ -182,18 +172,16 @@ export class ClienteController {
     try {
       const cliente = await em.findOne(Cliente, { dni });
       if (!cliente) {
-        return res.status(404).json({ error: 'Cliente no encontrado' });
+        return ResponseUtil.notFound(res, 'Cliente', dni);
       }
 
       const nombre = cliente.nombre;
       await em.removeAndFlush(cliente);
 
-      return res.status(200).json({
-        message: `${nombre}, DNI ${dni} eliminado/a exitosamente de la lista de clientes`,
-      });
+      return ResponseUtil.deleted(res, `${nombre}, DNI ${dni} eliminado/a exitosamente de la lista de clientes`);
     } catch (err) {
       console.error('Error al eliminar cliente:', err);
-      return res.status(500).json({ error: 'Error al eliminar cliente' });
+      return ResponseUtil.internalError(res, 'Error al eliminar cliente', err);
     }
   }
 }

@@ -3,7 +3,6 @@
 GET http://localhost:3000/api/ventas
 
 ###Crear venta
-
 POST http://localhost:3000/api/ventas
 Content-Type: application/json
 
@@ -25,5 +24,4 @@ Content-Type: application/json
   ]
 }
 
-###Borrar una venta
-DELETE http://localhost:3000/api/ventas/27
+###Borrar una venta: NO PERMITIDO

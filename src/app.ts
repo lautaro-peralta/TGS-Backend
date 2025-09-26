@@ -20,12 +20,13 @@ import { distribuidorRouter } from './modules/distribuidor/distribuidor.routes.j
 import { sobornoRouter } from './modules/soborno/soborno.routes.js';
 import { decisionRouter } from './modules/decision/decision.routes.js';
 import { tematicaRouter } from './modules/tematica/tematica.routes.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-
+app.use(cookieParser());
 app.use((req, res, next) => {
   const start = Date.now();
 
@@ -95,7 +96,7 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Ruta no encontrada' });
 });
 
-app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   logger.error(
     {
       err: error,
@@ -106,7 +107,13 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
     `Unhandled error: ${error.message}`
   );
 
-  next(error);
+  res.status(500).json({
+    message:
+      process.env.NODE_ENV === 'development'
+        ? error.message
+        : 'Error interno del servidor',
+    requestId: req.requestId,
+  });
 });
 
 export const initDev = async () => {
