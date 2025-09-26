@@ -7,7 +7,6 @@ import {
   actualizarProductoSchema,
 } from './producto.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { ZodError } from 'zod';
 
 const em = orm.em.fork();
 
@@ -20,11 +19,16 @@ export class ProductoController {
       const where = q ? { descripcion: { $like: `%${q}%` } } : {};
 
       const productos = await em.find(Producto, where);
-      
-      const message = ResponseUtil.generateListMessage(productos.length, 'producto');
-      return ResponseUtil.successList(res, message, productos.map((p) => p.toDTO()));
-      
-      });
+
+      const message = ResponseUtil.generateListMessage(
+        productos.length,
+        'producto'
+      );
+      return ResponseUtil.successList(
+        res,
+        message,
+        productos.map((p) => p.toDTO())
+      );
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al obtener productos', err);
     }
@@ -38,8 +42,12 @@ export class ProductoController {
       if (!producto) {
         return ResponseUtil.notFound(res, 'Producto', id);
       }
-      
-      return ResponseUtil.success(res, 'Producto encontrado exitosamente', producto.toDTO());
+
+      return ResponseUtil.success(
+        res,
+        'Producto encontrado exitosamente',
+        producto.toDTO()
+      );
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al buscar producto', err);
     }
@@ -59,15 +67,23 @@ export class ProductoController {
 
       await em.persistAndFlush(producto);
 
-      return ResponseUtil.created(res, 'Producto creado exitosamente', producto.toDTO());
+      return ResponseUtil.created(
+        res,
+        'Producto creado exitosamente',
+        producto.toDTO()
+      );
     } catch (err: any) {
       if (err.errors) {
         const validationErrors = err.errors.map((error: any) => ({
           field: error.path?.join('.'),
           message: error.message,
-          code: 'VALIDATION_ERROR'
+          code: 'VALIDATION_ERROR',
         }));
-        return ResponseUtil.validationError(res, 'Error de validación', validationErrors);
+        return ResponseUtil.validationError(
+          res,
+          'Error de validación',
+          validationErrors
+        );
       } else {
         return ResponseUtil.internalError(res, 'Error al crear producto', err);
       }
@@ -101,17 +117,29 @@ export class ProductoController {
 
       await em.flush();
 
-      return ResponseUtil.updated(res, 'Producto actualizado correctamente', producto.toDTO());
+      return ResponseUtil.updated(
+        res,
+        'Producto actualizado correctamente',
+        producto.toDTO()
+      );
     } catch (err: any) {
       if (err.errors) {
         const validationErrors = err.errors.map((error: any) => ({
           field: error.path?.join('.'),
           message: error.message,
-          code: 'VALIDATION_ERROR'
+          code: 'VALIDATION_ERROR',
         }));
-        return ResponseUtil.validationError(res, 'Error de validación', validationErrors);
+        return ResponseUtil.validationError(
+          res,
+          'Error de validación',
+          validationErrors
+        );
       } else {
-        return ResponseUtil.internalError(res, 'Error al actualizar producto', err);
+        return ResponseUtil.internalError(
+          res,
+          'Error al actualizar producto',
+          err
+        );
       }
     }
   }
@@ -120,7 +148,11 @@ export class ProductoController {
   async deleteProducto(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      const producto = await em.findOne(Producto, { id }, { populate: ['distribuidores', 'detalles'] });
+      const producto = await em.findOne(
+        Producto,
+        { id },
+        { populate: ['distribuidores', 'detalles'] }
+      );
       if (!producto) {
         return ResponseUtil.notFound(res, 'Producto', id);
       }
@@ -132,7 +164,10 @@ export class ProductoController {
       }
 
       // Limpiar relaciones N:M con distribuidores
-      if (producto.distribuidores.isInitialized() && producto.distribuidores.length > 0) {
+      if (
+        producto.distribuidores.isInitialized() &&
+        producto.distribuidores.length > 0
+      ) {
         producto.distribuidores.removeAll();
         await em.flush();
       }
