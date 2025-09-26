@@ -24,24 +24,23 @@ productoRouter.get('/:id', productoController.getOneProductoById);
 productoRouter.post(
   '/',
   validarConSchema({ body: crearProductoSchema }),
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.DISTRIBUIDOR]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN], Rol.DISTRIBUIDOR),
   productoController.createProducto
 );
 
-// PUT /productos/:id  (ADMIN o DISTRIBUIDOR)
-productoRouter.put(
+productoRouter.patch(
   '/:id',
   validarConSchema({ body: actualizarProductoSchema }),
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.DISTRIBUIDOR]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN, Rol.DISTRIBUIDOR]),
   productoController.updateProducto
 );
 
 // DELETE /productos/:id  (ADMIN o DISTRIBUIDOR)
 productoRouter.delete(
   '/:id',
-  authMiddleware,
-  rolesMiddleware([Rol.ADMIN, Rol.DISTRIBUIDOR]),
+  //authMiddleware,
+  //rolesMiddleware([Rol.ADMIN], Rol.DISTRIBUIDOR),
   productoController.deleteProducto
 );
