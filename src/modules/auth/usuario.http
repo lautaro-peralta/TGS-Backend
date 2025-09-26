@@ -1,2 +1,31 @@
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev",
+  "password": "admin123"
+}
+###
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "lauti@email.com",
+  "password":"1234a@A1"
+}
+
+###
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "lauta",
+  "email": "lautaa@email.com",
+  "password":"1234a@A1"
+}
+
+###
 GET http://localhost:3000/api/usuarios
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZjNjExNTU1LTQ1OTEtNDA2MS05MGMzLWQ5ZWNhYmExMzUxNyIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUyODc3NzUwLCJleHAiOjE3NTI4ODEzNTB9.HI0ASFOB5yMUMMz4ZCT0teCJ2FdeA0RvhaxaRK6IQu8
+
+###
+POST http://localhost:3000/api/auth/logout

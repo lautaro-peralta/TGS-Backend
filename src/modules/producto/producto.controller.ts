@@ -5,6 +5,7 @@ import {
   crearProductoSchema,
   actualizarProductoSchema,
 } from './producto.schema.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
@@ -13,14 +14,10 @@ export class ProductoController {
   async getAllProductos(req: Request, res: Response) {
     try {
       const productos = await em.find(Producto, {});
-      return res.status(200).json({
-        message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${
-          productos.length
-        } producto${productos.length !== 1 ? 's' : ''}`,
-        data: productos.map((p) => p.toDTO()),
-      });
+      const message = ResponseUtil.generateListMessage(productos.length, 'producto');
+      return ResponseUtil.successList(res, message, productos.map((p) => p.toDTO()));
     } catch (err) {
-      res.status(500).json({ message: 'Error al obtener productos' });
+      return ResponseUtil.internalError(res, 'Error al obtener productos', err);
     }
   }
 
@@ -30,11 +27,11 @@ export class ProductoController {
       const id = parseInt(req.params.id);
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
-        return res.status(404).json({ message: 'Producto no encontrado' });
+        return ResponseUtil.notFound(res, 'Producto', id);
       }
-      res.json({ data: producto });
+      return ResponseUtil.success(res, 'Producto encontrado exitosamente', producto.toDTO());
     } catch (err) {
-      res.status(400).json({ message: 'Error al buscar producto' });
+      return ResponseUtil.internalError(res, 'Error al buscar producto', err);
     }
   }
 
@@ -53,14 +50,17 @@ export class ProductoController {
       );
 
       await em.persistAndFlush(producto);
-      res.status(201).json({ message: 'Producto creado', data: producto });
+      return ResponseUtil.created(res, 'Producto creado exitosamente', producto.toDTO());
     } catch (err: any) {
       if (err.errors) {
-        res.status(400).json({ errores: err.errors });
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR'
+        }));
+        return ResponseUtil.validationError(res, 'Error de validación', validationErrors);
       } else {
-        res
-          .status(400)
-          .json({ message: err.message || 'Error al crear producto' });
+        return ResponseUtil.internalError(res, 'Error al crear producto', err);
       }
     }
   }
@@ -75,7 +75,7 @@ export class ProductoController {
 
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
-        return res.status(404).json({ message: 'Producto no encontrado' });
+        return ResponseUtil.notFound(res, 'Producto', id);
       }
 
       // Actualizar solo los campos enviados
@@ -89,17 +89,17 @@ export class ProductoController {
         producto.esIlegal = datosValidados.esIlegal;
 
       await em.flush();
-      res
-        .status(200)
-        .json({
-          message: 'Producto actualizado correctamente',
-          data: producto,
-        });
+      return ResponseUtil.updated(res, 'Producto actualizado correctamente', producto.toDTO());
     } catch (err: any) {
       if (err.errors) {
-        res.status(400).json({ errores: err.errors });
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR'
+        }));
+        return ResponseUtil.validationError(res, 'Error de validación', validationErrors);
       } else {
-        res.status(400).json({ message: 'Error al actualizar producto' });
+        return ResponseUtil.internalError(res, 'Error al actualizar producto', err);
       }
     }
   }
@@ -110,12 +110,12 @@ export class ProductoController {
       const id = parseInt(req.params.id);
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
-        return res.status(404).json({ message: 'Producto no encontrado' });
+        return ResponseUtil.notFound(res, 'Producto', id);
       }
       await em.removeAndFlush(producto);
-      res.status(200).json({ message: 'Producto eliminado exitosamente' });
+      return ResponseUtil.deleted(res, 'Producto eliminado exitosamente');
     } catch (err) {
-      res.status(400).json({ message: 'Error al eliminar producto' });
+      return ResponseUtil.internalError(res, 'Error al eliminar producto', err);
     }
   }
 }

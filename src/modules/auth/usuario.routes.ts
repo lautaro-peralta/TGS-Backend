@@ -3,7 +3,7 @@ import { UsuarioController } from './usuario.controller.js';
 import { authMiddleware, rolesMiddleware } from './auth.middleware.js';
 import { validarConSchema } from '../../shared/utils/zod.middleware.js';
 import { cambiarRolSchema } from './usuario.schema.js';
-import { Rol, Usuario } from '../auth/usuario.entity.js';
+import { Rol } from '../auth/usuario.entity.js';
 
 export const usuarioRouter = Router();
 const usuarioController = new UsuarioController();

@@ -8,6 +8,7 @@ import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import { DecisionEstrategica } from './decision.entity.js';
 import { Tematica } from '../../modules/tematica/tematica.entity.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
@@ -20,19 +21,12 @@ export class DecisionController {
         { populate: ['tematica'] }
       );
       const decisionesDTO = decisiones.map((d) => d.toDTO());
-      const cantidad = decisionesDTO.length;
-      const mensaje = `Se ${
-        cantidad === 1 ? 'encontró' : 'encontraron'
-      } ${cantidad} decisi${cantidad !== 1 ? 'ones' : 'ón'} estratégica${
-        cantidad !== 1 ? 's' : ''
-      }`;
+      const message = ResponseUtil.generateListMessage(decisionesDTO.length, 'decisión estratégica');
 
-      res.status(200).json({ mensaje, data: decisionesDTO });
+      return ResponseUtil.successList(res, message, decisionesDTO);
     } catch (err) {
       console.error('Error obteniendo decisiones estratégicas:', err);
-      res
-        .status(500)
-        .json({ message: 'Error al obtener decisiones estratégicas' });
+      return ResponseUtil.internalError(res, 'Error al obtener decisiones estratégicas', err);
     }
   }
 
@@ -40,7 +34,9 @@ export class DecisionController {
     try {
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
-        return res.status(400).send({ message: 'ID inválido.' });
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
       }
 
       const decision = await em.findOne(
@@ -49,20 +45,13 @@ export class DecisionController {
         { populate: ['tematica'] }
       );
       if (!decision) {
-        return res
-          .status(404)
-          .send({ message: 'Decisión estratégica no encontrada.' });
+        return ResponseUtil.notFound(res, 'Decisión estratégica', id);
       }
 
-      res.status(200).json({
-        message: 'Se encontró la decisión estratégica.',
-        data: decision.toDTO(),
-      });
+      return ResponseUtil.success(res, 'Decisión estratégica encontrada exitosamente', decision.toDTO());
     } catch (err) {
       console.error('Error buscando decisión estratégica:', err);
-      res
-        .status(500)
-        .send({ message: 'Error al buscar la decisión estratégica.' });
+      return ResponseUtil.internalError(res, 'Error al buscar decisión estratégica', err);
     }
   }
 
@@ -75,9 +64,7 @@ export class DecisionController {
     });
 
     if (decision) {
-      return res.send({
-        message: 'Ya existe una decisión estratégica con esa descripción.',
-      });
+      return ResponseUtil.conflict(res, 'Ya existe una decisión estratégica con esa descripción', 'descripcion');
     }
 
     let tematica = await em.findOne(Tematica, {
@@ -86,7 +73,7 @@ export class DecisionController {
 
     try {
       if (!tematica) {
-        return res.status(404).send({ message: 'Temática no encontrada' });
+        return ResponseUtil.notFound(res, 'Temática', tematicaId);
       }
       const nuevaDecision = em.create(DecisionEstrategica, {
         descripcion,
@@ -97,22 +84,21 @@ export class DecisionController {
 
       await em.persistAndFlush(nuevaDecision);
 
-      return res
-        .status(200)
-        .send({ message: 'Decisión estratégica creada correctamente' })
-        .json(nuevaDecision);
+      return ResponseUtil.created(res, 'Decisión estratégica creada correctamente', nuevaDecision.toDTO());
     } catch (err: any) {
       console.error('Error creando decisión estratégica:', err);
-      res
-        .status(500)
-        .send({ message: 'Error al crear la decisión estratégica' });
+      return ResponseUtil.internalError(res, 'Error al crear decisión estratégica', err);
     }
   }
 
   async updateDecision(req: Request, res: Response) {
     try {
       const id = Number(req.params.id.trim());
-      if (isNaN(id)) return res.status(400).send({ message: 'ID inválido' });
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
+      }
 
       const decision = await em.findOne(
         DecisionEstrategica,
@@ -120,8 +106,9 @@ export class DecisionController {
         { populate: ['tematica'] }
       );
 
-      if (!decision)
-        return res.json({ message: 'Decisión estratégica no encontrada' });
+      if (!decision) {
+        return ResponseUtil.notFound(res, 'Decisión estratégica', id);
+      }
 
       const updates = res.locals.validated.body;
 
@@ -129,7 +116,7 @@ export class DecisionController {
       if (updates.tematicaId) {
         const tematica = await em.findOne(Tematica, { id: updates.tematicaId });
         if (!tematica) {
-          return res.status(404).json({ message: 'Temática no encontrada' });
+          return ResponseUtil.notFound(res, 'Temática', updates.tematicaId);
         }
         decision.tematica = tematica;
         delete updates.tematicaId; // removemos para evitar conflicto en assign
@@ -138,43 +125,36 @@ export class DecisionController {
       em.assign(decision, updates);
       await em.flush();
 
-      return res.status(200).send({
-        message: 'Decisión estratégica actualizada correctamente',
-        data: decision.toDTO(),
-      });
+      return ResponseUtil.updated(res, 'Decisión estratégica actualizada correctamente', decision.toDTO());
     } catch (err) {
       console.error('Error al actualizar decisión estratégica:', err);
-      return res
-        .status(500)
-        .send({ message: 'Error al actualizar decisión estratégica.' });
+      return ResponseUtil.internalError(res, 'Error al actualizar decisión estratégica', err);
     }
   }
 
   async deleteDecision(req: Request, res: Response) {
     try {
       const id = Number(req.params.id.trim());
-      if (isNaN(id)) return res.status(400).send({ message: 'ID inválido' });
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
+      }
 
       const decision = await em.findOne(
         DecisionEstrategica,
         { id },
         { populate: ['tematica'] }
       );
-      if (!decision)
-        return res
-          .status(404)
-          .send({ message: 'Decisión estratégica no encontrada' });
+      if (!decision) {
+        return ResponseUtil.notFound(res, 'Decisión estratégica', id);
+      }
 
       await em.removeAndFlush(decision);
-      return res.status(404).send({
-        message: 'Decisión estratégica eliminada correctamente',
-        data: decision.toDTO(),
-      });
+      return ResponseUtil.deleted(res, 'Decisión estratégica eliminada correctamente');
     } catch (err) {
       console.error('Error al eliminar decisión estratégica:', err);
-      return res
-        .status(500)
-        .send({ message: 'Error al eliminar decisión estratégica' });
+      return ResponseUtil.internalError(res, 'Error al eliminar decisión estratégica', err);
     }
   }
 }

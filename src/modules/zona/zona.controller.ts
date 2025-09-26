@@ -1,18 +1,18 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Zona } from './zona.entity.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { Autoridad } from '../autoridad/autoridad.entity.js';
 
 export class ZonaController {
   async getAllZonas(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       const zonas = await em.find(Zona, {});
-      res.status(200).json({
-        mensaje: `Se encontraron ${zonas.length} zona/s`,
-        data: zonas,
-      });
+      const message = ResponseUtil.generateListMessage(zonas.length, 'zona');
+      return ResponseUtil.successList(res, message, zonas);
     } catch (err) {
-      res.status(500).json({ mensaje: 'Error al obtener zonas' });
+      return ResponseUtil.internalError(res, 'Error al obtener zonas', err);
     }
   }
 
@@ -20,13 +20,20 @@ export class ZonaController {
     const em = orm.em.fork();
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' },
+        ]);
+      }
+
       const zona = await em.findOne(Zona, { id });
       if (!zona) {
-        return res.status(404).json({ message: 'Zona no encontrada' });
+        return ResponseUtil.notFound(res, 'Zona', id);
       }
-      res.json({ data: zona });
+
+      return ResponseUtil.success(res, 'Zona encontrada exitosamente', zona);
     } catch (err) {
-      res.status(400).json({ message: 'Error al buscar zona' });
+      return ResponseUtil.internalError(res, 'Error al buscar zona', err);
     }
   }
 
@@ -45,77 +52,86 @@ export class ZonaController {
       }
       const nueva = em.create(Zona, input);
       await em.persistAndFlush(nueva);
-      res.status(201).json({ mensaje: 'Zona creada', data: nueva });
+      return ResponseUtil.created(res, 'Zona creada exitosamente', nueva);
     } catch (err: any) {
-      res.status(400).json({ mensaje: err.message || 'Error al crear zona' });
+      return ResponseUtil.internalError(res, 'Error al crear zona', err);
     }
   }
 
   async updateZona(req: Request, res: Response) {
-  const em = orm.em.fork();
-  try {
-    const id = parseInt(req.params.id);
-    const input = res.locals.validated.body;
-
-    const zona = await em.findOne(Zona, { id });
-    if (!zona) {
-      return res.status(404).json({ mensaje: 'Zona no encontrada' });
-    }
-
-    // Actualizar nombre si se proporciona
-    if (input.nombre !== undefined) {
-      zona.nombre = input.nombre;
-    }
-
-    if (input.esSedeCentral === true) {
-      // Si la quieren marcar como sede central
-      const sedeActual = await em.findOne(Zona, {
-        esSedeCentral: true,
-        id: { $ne: zona.id },
-      });
-
-      if (sedeActual) {
-        sedeActual.esSedeCentral = false;
-        await em.persistAndFlush(sedeActual);
+    const em = orm.em.fork();
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' },
+        ]);
       }
 
-      zona.esSedeCentral = true;
+      const input = res.locals.validated.body;
 
-    } else if (input.esSedeCentral === false) {
-      const otrasCentrales = await em.count(Zona, {
-        esSedeCentral: true,
-        id: { $ne: zona.id },
-      });
+      const zona = await em.findOne(Zona, { id });
+      if (!zona) {
+        return ResponseUtil.notFound(res, 'Zona', id);
+      }
 
-      if (otrasCentrales === 0) {
-        return res.status(400).json({
-          mensaje:
-            'No se puede quitar la sede central porque quedaría el sistema sin ninguna. ' +
-            'Debe existir al menos otra zona como sede central.',
+      // Actualizar nombre si se proporciona
+      if (input.nombre !== undefined) {
+        zona.nombre = input.nombre;
+      }
+
+      if (input.esSedeCentral === true) {
+        // Si la quieren marcar como sede central
+        const sedeActual = await em.findOne(Zona, {
+          esSedeCentral: true,
+          id: { $ne: zona.id },
         });
+
+        if (sedeActual) {
+          sedeActual.esSedeCentral = false;
+          await em.persistAndFlush(sedeActual);
+        }
+
+        zona.esSedeCentral = true;
+      } else if (input.esSedeCentral === false) {
+        const otrasCentrales = await em.count(Zona, {
+          esSedeCentral: true,
+          id: { $ne: zona.id },
+        });
+
+        if (otrasCentrales === 0) {
+          return ResponseUtil.error(
+            res,
+            'No se puede quitar la sede central porque quedaría el sistema sin ninguna. Debe existir al menos otra zona como sede central.',
+            400
+          );
+        }
+
+        zona.esSedeCentral = false;
       }
 
-      zona.esSedeCentral = false;
+      await em.flush();
+      return ResponseUtil.updated(res, 'Zona actualizada correctamente', zona);
+    } catch (err) {
+      console.error(err);
+      return ResponseUtil.internalError(res, 'Error al actualizar zona', err);
     }
-
-    await em.flush();
-    res
-      .status(200)
-      .json({ mensaje: 'Zona actualizada correctamente', data: zona });
-  } catch (err) {
-    console.error(err);
-    res.status(400).json({ mensaje: 'Error al actualizar zona' });
   }
-}
 
   async deleteZona(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' },
+        ]);
+      }
+
       const zona = await em.findOne(Zona, { id });
 
       if (!zona) {
-        return res.status(404).json({ mensaje: 'Zona no encontrada' });
+        return ResponseUtil.notFound(res, 'Zona', id);
       }
 
       if (zona.esSedeCentral) {
@@ -126,18 +142,26 @@ export class ZonaController {
         });
 
         if (!otraSede) {
-          return res.status(400).json({
-            mensaje:
-              'No se puede eliminar esta zona porque es la sede central actual. ' +
-              'Primero debe marcar otra zona como sede central antes de eliminarla.',
-          });
+          return ResponseUtil.error(
+            res,
+            'No se puede eliminar esta zona porque es la sede central actual. Primero debe marcar otra zona como sede central antes de eliminarla.',
+            400
+          );
         }
       }
+      const autoridades = await em.find(Autoridad, { zona: zona });
 
+      if (autoridades.length > 0) {
+        return ResponseUtil.error(
+          res,
+          `No se puede eliminar la zona porque tiene ${autoridades.length} autoridad(es) asociada(s).`,
+          400
+        );
+      }
       await em.removeAndFlush(zona);
-      res.status(200).json({ mensaje: 'Zona eliminada correctamente' });
+      return ResponseUtil.deleted(res, 'Zona eliminada correctamente');
     } catch (err) {
-      res.status(500).json({ mensaje: 'Error al eliminar zona', error: err });
+      return ResponseUtil.internalError(res, 'Error al eliminar zona', err);
     }
   }
 }
