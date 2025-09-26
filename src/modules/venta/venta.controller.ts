@@ -8,6 +8,7 @@ import { Autoridad } from '../autoridad/autoridad.entity.js';
 import { Soborno } from '../soborno/soborno.entity.js';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
@@ -20,15 +21,12 @@ export class VentaController {
         { populate: ['cliente', 'detalles', 'autoridad'] }
       );
       const ventasDTO = ventas.map((v) => v.toDTO());
-      const cantidad = ventasDTO.length;
-      const mensaje = `Se ${
-        cantidad === 1 ? 'encontró' : 'encontraron'
-      } ${cantidad} venta${cantidad !== 1 ? 's' : ''}`;
-
-      res.status(200).json({ mensaje, data: ventasDTO });
+      const message = ResponseUtil.generateListMessage(ventasDTO.length, 'venta');
+      
+      return ResponseUtil.successList(res, message, ventasDTO);
     } catch (err) {
       console.error('Error obteniendo ventas:', err);
-      res.status(500).json({ message: 'Error al obtener ventas' });
+      return ResponseUtil.internalError(res, 'Error al obtener ventas', err);
     }
   }
 
@@ -36,7 +34,9 @@ export class VentaController {
     try {
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
-        return res.status(400).send({ message: 'ID inválido' });
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
       }
 
       const venta = await em.findOne(
@@ -45,13 +45,13 @@ export class VentaController {
         { populate: ['cliente', 'detalles.producto'] }
       );
       if (!venta) {
-        return res.status(404).send({ message: 'Venta no encontrada' });
+        return ResponseUtil.notFound(res, 'Venta', id);
       }
 
-      res.status(200).json({ data: venta.toDTO() });
+      return ResponseUtil.success(res, 'Venta encontrada exitosamente', venta.toDTO());
     } catch (err) {
       console.error('Error buscando venta:', err);
-      res.status(500).send({ message: 'Error al buscar la venta' });
+      return ResponseUtil.internalError(res, 'Error al buscar la venta', err);
     }
   }
 

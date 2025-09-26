@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Tematica } from './tematica.entity.js';
 import { orm } from '../../shared/db/orm.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
@@ -9,15 +10,12 @@ export class TematicaController {
     try {
       const tematicas = await em.find(Tematica, {});
       const tematicasDTO = tematicas.map((t) => t.toDTO());
-      const cantidad = tematicasDTO.length;
-      const mensaje = `Se ${
-        cantidad === 1 ? 'encontró' : 'encontraron'
-      } ${cantidad} temática${cantidad !== 1 ? 's' : ''}`;
+      const message = ResponseUtil.generateListMessage(tematicasDTO.length, 'temática');
 
-      res.status(200).json({ mensaje, data: tematicasDTO });
+      return ResponseUtil.successList(res, message, tematicasDTO);
     } catch (err) {
       console.error('Error obteniendo temáticas:', err);
-      res.status(500).json({ message: 'Error al obtener temáticas' });
+      return ResponseUtil.internalError(res, 'Error al obtener temáticas', err);
     }
   }
 
@@ -25,7 +23,9 @@ export class TematicaController {
     try {
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
-        return res.status(400).send({ message: 'ID inválido' });
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
       }
 
       const tematica = await em.findOne(
@@ -35,16 +35,13 @@ export class TematicaController {
       );
 
       if (!tematica) {
-        return res.status(404).send({ message: 'Temática no encontrada' });
+        return ResponseUtil.notFound(res, 'Temática', id);
       }
 
-      res.status(200).json({
-        message: 'Temática encontrada',
-        data: tematica.toDetailedDTO(),
-      });
+      return ResponseUtil.success(res, 'Temática encontrada exitosamente', tematica.toDetailedDTO());
     } catch (err) {
       console.error('Error buscando temática:', err);
-      res.status(500).send({ message: 'Error al buscar la temática' });
+      return ResponseUtil.internalError(res, 'Error al buscar temática', err);
     }
   }
 
@@ -58,7 +55,7 @@ export class TematicaController {
 
     try {
       if (tematica) {
-        return res.status(409).send({ message: 'Temática ya existe' });
+        return ResponseUtil.conflict(res, 'Temática ya existe', 'descripcion');
       }
       const nuevaTematica = em.create(Tematica, {
         descripcion,
@@ -66,55 +63,58 @@ export class TematicaController {
 
       await em.persistAndFlush(nuevaTematica);
 
-      return res.status(201).send({
-        message: 'Temática creada correctamente',
-        data: nuevaTematica.toDTO(),
-      });
+      return ResponseUtil.created(res, 'Temática creada correctamente', nuevaTematica.toDTO());
     } catch (err: any) {
       console.error('Error creando Temática:', err);
-      res.status(500).send({ message: 'Error al crear la temática' });
+      return ResponseUtil.internalError(res, 'Error al crear temática', err);
     }
   }
 
   async updateTematica(req: Request, res: Response) {
     try {
       const id = Number(req.params.id.trim());
-      if (isNaN(id)) return res.status(400).send({ message: 'ID inválido' });
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
+      }
+      
       const tematica = await em.findOne(Tematica, { id });
-      if (!tematica) return res.json({ message: 'Temática no encontrada' });
+      if (!tematica) {
+        return ResponseUtil.notFound(res, 'Temática', id);
+      }
 
       const updates = res.locals.validated.body;
 
       em.assign(tematica, updates);
       await em.flush();
 
-      return res.status(200).send({
-        message: 'Temática actualizada correctamente',
-        data: tematica.toDTO(),
-      });
+      return ResponseUtil.updated(res, 'Temática actualizada correctamente', tematica.toDTO());
     } catch (err) {
-      console.error('Error al eliminar temática:', err);
-      return res.status(500).send({ message: 'Error al actualizar temática' });
+      console.error('Error al actualizar temática:', err);
+      return ResponseUtil.internalError(res, 'Error al actualizar temática', err);
     }
   }
 
   async deleteTematica(req: Request, res: Response) {
     try {
       const id = Number(req.params.id.trim());
-      if (isNaN(id)) return res.status(400).send({ message: 'ID inválido' });
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'ID inválido', [
+          { field: 'id', message: 'El ID debe ser un número válido' }
+        ]);
+      }
 
       const tematica = await em.findOne(Tematica, { id });
-      if (!tematica)
-        return res.status(404).send({ message: 'Temática no encontrada' });
+      if (!tematica) {
+        return ResponseUtil.notFound(res, 'Temática', id);
+      }
 
       await em.removeAndFlush(tematica);
-      return res.status(404).send({
-        message: 'Temática eliminada correctamente',
-        data: tematica.toDTO(),
-      });
+      return ResponseUtil.deleted(res, 'Temática eliminada correctamente');
     } catch (err) {
       console.error('Error al eliminar temática:', err);
-      return res.status(500).send({ message: 'Error al eliminar temática' });
+      return ResponseUtil.internalError(res, 'Error al eliminar temática', err);
     }
   }
 }
