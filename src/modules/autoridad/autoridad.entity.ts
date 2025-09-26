@@ -2,7 +2,6 @@ import {
   Entity,
   OneToMany,
   ManyToOne,
-  OneToOne,
   Property,
   Rel,
   Collection,

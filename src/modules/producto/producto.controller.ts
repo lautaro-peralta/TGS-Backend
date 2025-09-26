@@ -6,6 +6,7 @@ import {
   crearProductoSchema,
   actualizarProductoSchema,
 } from './producto.schema.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { ZodError } from 'zod';
 
 const em = orm.em.fork();
@@ -15,21 +16,17 @@ export class ProductoController {
   async getAllProductos(req: Request, res: Response) {
     try {
       const { q } = req.query as { q?: string };
-
       // búsqueda parcial en descripcion si viene q
       const where = q ? { descripcion: { $like: `%${q}%` } } : {};
 
       const productos = await em.find(Producto, where);
-
-      return res.status(200).json({
-        message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${
-          productos.length
-        } producto${productos.length !== 1 ? 's' : ''}`,
-        data: productos.map((p) => p.toDTO()),
+      
+      const message = ResponseUtil.generateListMessage(productos.length, 'producto');
+      return ResponseUtil.successList(res, message, productos.map((p) => p.toDTO()));
+      
       });
     } catch (err) {
-      console.error('Error al obtener productos:', err);
-      return res.status(500).json({ message: 'Error al obtener productos' });
+      return ResponseUtil.internalError(res, 'Error al obtener productos', err);
     }
   }
 
@@ -39,12 +36,12 @@ export class ProductoController {
       const id = Number(req.params.id);
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
-        return res.status(404).json({ message: 'Producto no encontrado' });
+        return ResponseUtil.notFound(res, 'Producto', id);
       }
-      return res.json({ data: producto.toDTO() });
+      
+      return ResponseUtil.success(res, 'Producto encontrado exitosamente', producto.toDTO());
     } catch (err) {
-      console.error('Error al buscar producto:', err);
-      return res.status(400).json({ message: 'Error al buscar producto' });
+      return ResponseUtil.internalError(res, 'Error al buscar producto', err);
     }
   }
 
@@ -62,12 +59,17 @@ export class ProductoController {
 
       await em.persistAndFlush(producto);
 
-      return res
-        .status(201)
-        .json({ message: 'Producto creado', data: producto.toDTO() });
+      return ResponseUtil.created(res, 'Producto creado exitosamente', producto.toDTO());
     } catch (err: any) {
-      if (err instanceof ZodError) {
-        return res.status(400).json({ errores: err.issues });
+      if (err.errors) {
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR'
+        }));
+        return ResponseUtil.validationError(res, 'Error de validación', validationErrors);
+      } else {
+        return ResponseUtil.internalError(res, 'Error al crear producto', err);
       }
       console.error('Error creando producto:', err);
       return res
@@ -84,7 +86,7 @@ export class ProductoController {
 
       const producto = await em.findOne(Producto, { id });
       if (!producto) {
-        return res.status(404).json({ message: 'Producto no encontrado' });
+        return ResponseUtil.notFound(res, 'Producto', id);
       }
 
       // Actualizar solo los campos enviados
@@ -99,18 +101,18 @@ export class ProductoController {
 
       await em.flush();
 
-      return res.status(200).json({
-        message: 'Producto actualizado correctamente',
-        data: producto.toDTO(),
-      });
+      return ResponseUtil.updated(res, 'Producto actualizado correctamente', producto.toDTO());
     } catch (err: any) {
-      if (err instanceof ZodError) {
-        return res.status(400).json({ errores: err.issues });
+      if (err.errors) {
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR'
+        }));
+        return ResponseUtil.validationError(res, 'Error de validación', validationErrors);
+      } else {
+        return ResponseUtil.internalError(res, 'Error al actualizar producto', err);
       }
-      console.error('Error actualizando producto:', err);
-      return res
-        .status(400)
-        .json({ message: err.message || 'Error al actualizar producto' });
     }
   }
 
@@ -120,7 +122,7 @@ export class ProductoController {
       const id = Number(req.params.id);
       const producto = await em.findOne(Producto, { id }, { populate: ['distribuidores', 'detalles'] });
       if (!producto) {
-        return res.status(404).json({ message: 'Producto no encontrado' });
+        return ResponseUtil.notFound(res, 'Producto', id);
       }
 
       // Si hay detalles que referencian a este producto, eliminarlos primero
@@ -137,12 +139,9 @@ export class ProductoController {
 
       await em.removeAndFlush(producto);
 
-      return res
-        .status(200)
-        .json({ message: `Producto ${id} eliminado exitosamente` });
+      return ResponseUtil.deleted(res, 'Producto eliminado exitosamente');
     } catch (err) {
-      console.error('Error al eliminar producto:', err);
-      return res.status(400).json({ message: 'Error al eliminar producto' });
+      return ResponseUtil.internalError(res, 'Error al eliminar producto', err);
     }
   }
 }

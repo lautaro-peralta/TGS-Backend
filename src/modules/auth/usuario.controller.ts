@@ -5,38 +5,53 @@ import { validate as isUuid } from 'uuid';
 import { wrap } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import argon2 from 'argon2';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
+
 export class UsuarioController {
   // Obtener perfil del usuario autenticado
-  async getPerfilUsuario(req: Request, res: Response, next: NextFunction) {
+  async getPerfilUsuario(req: Request, res: Response) {
     try {
       const { id } = (req as any).user;
 
       const em = orm.em.fork();
-      const usuario = await em.findOne(Usuario, { id });
+      const usuario = await em.findOne(
+        Usuario,
+        { id }
+        //{ populate: ['persona'] }
+      );
 
       if (!usuario) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
+        return ResponseUtil.notFound(res, 'Usuario', id);
       }
 
-      res.status(200).json(usuario);
+      return ResponseUtil.success(
+        res,
+        'Cliente encontrado exitosamente',
+        usuario.toDTO()
+      );
     } catch (err) {
-      next(err);
+      console.error('Error al obtener clientes:', err);
+      return ResponseUtil.internalError(res, 'Error al obtener usuario', err);
     }
   }
 
   // Obtener todos los usuarios (solo admin)
-  async getAllUsuarios(req: Request, res: Response, next: NextFunction) {
+  async getAllUsuarios(req: Request, res: Response) {
     try {
       const em = orm.em.fork();
       const usuarios = await em.find(Usuario, {});
-      res.status(200).json(usuarios);
+      return ResponseUtil.success(
+        res,
+        'Usuarios obtenidos exitosamente',
+        usuarios.map((u) => u.toDTO())
+      );
     } catch (err) {
-      next(err);
+      return ResponseUtil.internalError(res, 'Error al obtener usuarios', err);
     }
   }
 
   //
-  async getOneUsuarioById(req: Request, res: Response, next: NextFunction) {
+  async getOneUsuarioById(req: Request, res: Response) {
     const { identificador } = req.params;
     const em = orm.em.fork();
 
@@ -50,45 +65,57 @@ export class UsuarioController {
       }
 
       if (!usuario) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
+        return ResponseUtil.notFound(res, 'Usuario', identificador);
       }
 
       const { password, ...usuarioSafe } = wrap(usuario).toJSON();
-      res.status(200).json(usuarioSafe);
+      return ResponseUtil.success(
+        res,
+        'Usuario obtenido exitosamente',
+        usuarioSafe
+      );
     } catch (err) {
-      next(err);
+      return ResponseUtil.internalError(res, 'Error al obtener usuario', err);
     }
   }
 
   // Cambiar rol de un usuario (solo admin)
-  async updateRolesUsuario(req: Request, res: Response, next: NextFunction) {
+  async updateRolesUsuario(req: Request, res: Response) {
     try {
       const em = orm.em.fork();
       const { id } = res.locals.validated.params;
       const { rol } = res.locals.validated.body;
 
       if (!Object.values(Rol).includes(rol)) {
-        return res.status(400).json({ message: 'Rol inválido' });
+        return ResponseUtil.error(res, 'Rol inválido', 400);
       }
 
       const usuario = await em.findOne(Usuario, { id });
       if (!usuario) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
+        return ResponseUtil.notFound(res, 'Usuario', id);
       }
 
       if (!usuario.roles.includes(rol)) {
         usuario.roles.push(rol);
         await em.flush();
-        return res
-          .status(200)
-          .json({ message: `Rol ${rol} agregado correctamente` });
+        return ResponseUtil.success(
+          res,
+          'Rol agregado exitosamente',
+          usuario.toDTO()
+        );
       }
 
-      return res
-        .status(200)
-        .json({ message: `El usuario ya tiene el rol ${rol}` });
+      return ResponseUtil.success(
+        res,
+        'Usuario actualizado exitosamente',
+        usuario.toDTO()
+      );
     } catch (err) {
-      next(err);
+      return ResponseUtil.internalError(
+        res,
+        'Error al actualizar usuario',
+        err
+      );
     }
   }
 
@@ -99,18 +126,21 @@ export class UsuarioController {
 
     // Buscar persona existente
     const persona = await em.findOne(BaseEntityPersona, { id: personaId });
-    if (!persona)
-      return res.status(404).json({ error: 'Persona no encontrada' });
+    if (!persona) return ResponseUtil.notFound(res, 'Persona', personaId);
 
     // Verificar si la persona ya tiene usuario
     if (persona.usuario)
-      return res.status(400).json({ error: 'La persona ya tiene un usuario' });
+      return ResponseUtil.conflict(
+        res,
+        'La persona ya tiene un usuario asignado'
+      );
 
     // Verificar que no exista username/email duplicado
     const existeUsername = await em.findOne(Usuario, { username });
     const existeEmail = await em.findOne(Usuario, { email });
+
     if (existeUsername || existeEmail) {
-      return res.status(409).json({ error: 'Username o email ya existen' });
+      return ResponseUtil.conflict(res, 'El username o email ya están en uso');
     }
 
     // Crear usuario
@@ -125,9 +155,10 @@ export class UsuarioController {
 
     await em.persistAndFlush(usuario);
 
-    return res.status(201).json({
-      message: 'Usuario creado exitosamente',
-      data: usuario.toDTO(),
-    });
+    return ResponseUtil.success(
+      res,
+      'Usuario creado exitosamente',
+      usuario.toDTO()
+    );
   }
 }

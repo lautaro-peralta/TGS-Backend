@@ -17,11 +17,8 @@ export const actualizarAutoridadSchema = z.object({
   zonaId: z.string().transform(Number),
 });
 
-export const parcialActualizarAutoridadSchema = z.object({
-  nombre: z.string().min(1).optional(),
-  rango: z.enum(['0', '1', '2', '3']).transform(Number).optional(),
-  zonaId: z.string().transform(Number).optional(),
-});
+export const parcialActualizarAutoridadSchema =
+  actualizarAutoridadSchema.partial();
 
 export const pagarSobornosSchema = z.object({
   ids: z.array(z.number().int().positive()).min(1),

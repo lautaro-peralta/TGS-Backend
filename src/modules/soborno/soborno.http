@@ -23,6 +23,4 @@ Content-Type: application/json
   ]
 }
 
-###borrar un soborno
-DELETE http://localhost:3000/api/sobornos/4
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM1NzFkNDYwLWVkMDUtNDcyOC04YjM5LWYxNmI5MTg2MDNiNiIsInJvbCI6IkFETUlOIiwiaWF0IjoxNzUzOTkxNzE1LCJleHAiOjE3NTM5OTUzMTV9.K9wBzBTXSim665LFFhPvCfejzoCiVl2UQ9zENLnKQ8E
+###borrar un soborno: NO PERMITIDO

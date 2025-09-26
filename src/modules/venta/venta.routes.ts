@@ -41,10 +41,10 @@ ventaRouter.post(
   validarConSchema({ body: crearVentaSchema }),
   ventaController.createVenta
 );
-
+/*
 ventaRouter.delete(
   '/:id',
   //authMiddleware,
   //rolesMiddleware([Rol.ADMIN]),
   ventaController.deleteVenta
-);
+);*/
