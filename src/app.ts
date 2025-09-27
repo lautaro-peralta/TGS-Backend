@@ -20,6 +20,7 @@ import { distribuidorRouter } from './modules/distribuidor/distribuidor.routes.j
 import { sobornoRouter } from './modules/soborno/soborno.routes.js';
 import { decisionRouter } from './modules/decision/decision.routes.js';
 import { tematicaRouter } from './modules/tematica/tematica.routes.js';
+import { socioRouter } from './modules/socio/socio.routes.js';
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/distribuidores', distribuidorRouter);
 app.use('/api/sobornos', sobornoRouter);
 app.use('/api/decisiones', decisionRouter);
 app.use('/api/tematicas', tematicaRouter);
+app.use('/api/socios', socioRouter);
 
 //ERROR HANDLERS
 
