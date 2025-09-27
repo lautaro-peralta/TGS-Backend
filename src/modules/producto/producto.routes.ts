@@ -20,7 +20,8 @@ productoRouter.get('/', productoController.getAllProductos);
 
 productoRouter.get('/:id', productoController.getOneProductoById);
 
-// POST /productos  (ADMIN o DISTRIBUIDOR)
+productoRouter.get('/search', productoController.getOneProductoById);
+
 productoRouter.post(
   '/',
   validarConSchema({ body: crearProductoSchema }),

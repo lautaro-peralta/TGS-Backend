@@ -10,7 +10,7 @@ export class Distribuidor extends BaseEntityPersona {
   regVentas = new Collection<Venta>(this);
 
   // N:M con Producto (bidireccional)
-  @ManyToMany({ entity: () => Producto, mappedBy: (p: Producto) => p.distribuidores })
+  @ManyToMany({ entity: () => Producto, owner: true })
   productos = new Collection<Producto>(this);
 
   toDTO() {
@@ -27,14 +27,14 @@ export class Distribuidor extends BaseEntityPersona {
     return {
       ...this.toDTO(),
       regVentas: this.regVentas.isInitialized()
-        ? (this.regVentas.isEmpty()
-            ? 'No hay nada aquí por ahora...'
-            : this.regVentas.getItems().map((v) => v.toDTO?.() ?? v))
+        ? this.regVentas.isEmpty()
+          ? 'No hay nada aquí por ahora...'
+          : this.regVentas.getItems().map((v) => v.toDTO?.() ?? v)
         : 'Información no disponible',
       productos: this.productos.isInitialized()
-        ? (this.productos.isEmpty()
-            ? []
-            : this.productos.getItems().map((p) => p.toDTO?.() ?? p))
+        ? this.productos.isEmpty()
+          ? []
+          : this.productos.getItems().map((p) => p.toDTO?.() ?? p)
         : 'Información no disponible',
     };
   }

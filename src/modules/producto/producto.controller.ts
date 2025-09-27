@@ -11,19 +11,59 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
 const em = orm.em.fork();
 
 export class ProductoController {
-  // Obtener todos los productos (con búsqueda opcional por ?q=)
-  async getAllProductos(req: Request, res: Response) {
+  async searchProductos(req: Request, res: Response) {
     try {
       const { q } = req.query as { q?: string };
-      // búsqueda parcial en descripcion si viene q
-      const where = q ? { descripcion: { $like: `%${q}%` } } : {};
 
-      const productos = await em.find(Producto, where);
+      // Validación específica para búsqueda
+      if (!q || q.trim().length < 2) {
+        return ResponseUtil.validationError(res, 'Error de validación', [
+          {
+            field: 'q',
+            message:
+              'El parámetro de consulta "q" es obligatorio y debe tener al menos 2 caracteres.',
+          },
+        ]);
+      }
+
+      const where = { descripcion: { $like: `%${q.trim()}%` } };
+
+      const productos = await em.find(Producto, where, {
+        orderBy: { descripcion: 'asc' },
+      });
+
+      const message = ResponseUtil.generateListMessage(
+        productos.length,
+        'producto',
+        `que coinciden con "${q}"`
+      );
+
+      return ResponseUtil.successList(
+        res,
+        message,
+        productos.map((p) => p.toDTO())
+      );
+    } catch (err) {
+      return ResponseUtil.internalError(res, 'Error al buscar productos', err);
+    }
+  }
+
+  // Método para listar todos
+  async getAllProductos(req: Request, res: Response) {
+    try {
+      const productos = await em.find(
+        Producto,
+        {},
+        {
+          orderBy: { descripcion: 'asc' },
+        }
+      );
 
       const message = ResponseUtil.generateListMessage(
         productos.length,
         'producto'
       );
+
       return ResponseUtil.successList(
         res,
         message,
@@ -87,10 +127,6 @@ export class ProductoController {
       } else {
         return ResponseUtil.internalError(res, 'Error al crear producto', err);
       }
-      console.error('Error creando producto:', err);
-      return res
-        .status(400)
-        .json({ message: err.message || 'Error al crear producto' });
     }
   }
 
