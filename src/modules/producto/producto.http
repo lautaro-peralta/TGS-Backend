@@ -2,14 +2,13 @@
 GET http://localhost:3000/api/productos
 
 ### Obtener un producto por ID
-GET http://localhost:3000/api/productos/3
-
+GET http://localhost:3000/api/productos/1
 ### Crear nuevo producto
 POST http://localhost:3000/api/productos
 Content-Type: application/json
 
 {
-  "descripcion": "Pepsi",
+  "descripcion": "Fernet Branca",
   "precio": 1000,
   "stock": 10,
   "esIlegal": false
@@ -20,7 +19,7 @@ PATCH http://localhost:3000/api/productos/3
 Content-Type: application/json
 
 {
-  "descripcion": "Alfajor Havanna",
+  "descripcion": "Fernet Branca",
   "precio": 800,
   "stock": 150,
   "esIlegal": false
@@ -35,5 +34,5 @@ Content-Type: application/json
 }
 
 ### Borrar un producto
-DELETE http://localhost:3000/api/productos/3
+DELETE http://localhost:3000/api/productos/2
 

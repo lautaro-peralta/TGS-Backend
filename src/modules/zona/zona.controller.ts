@@ -3,6 +3,7 @@ import { orm } from '../../shared/db/orm.js';
 import { Zona } from './zona.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
+import { toLowerCase } from 'zod';
 
 export class ZonaController {
   async getAllZonas(req: Request, res: Response) {
@@ -41,7 +42,10 @@ export class ZonaController {
     const em = orm.em.fork();
     try {
       const input = res.locals.validated.body;
-      const { nombre, esSedeCentral } = input as { nombre: string; esSedeCentral?: boolean };
+      const { nombre, esSedeCentral } = input as {
+        nombre: string;
+        esSedeCentral?: boolean;
+      };
 
       // 1) Validar nombre requerido
       if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
@@ -50,14 +54,16 @@ export class ZonaController {
       const nombreTrim = nombre.trim();
 
       // 2) Verificar duplicado (case-insensitive)
-      const rows = await em.getConnection().execute(
-        `SELECT id FROM zonas WHERE LOWER(nombre) = ?`,
-        [nombreTrim.toLowerCase()]
-      );
+      const rows = await em
+        .getConnection()
+        .execute(`SELECT id FROM zonas WHERE LOWER(nombre) = ?`, [
+          nombreTrim.toLowerCase(),
+        ]);
       if (rows.length > 0) {
-        return res
-          .status(409)
-          .json({ mensaje: 'Ya existe una zona con ese nombre (sin importar mayúsculas/minúsculas).' });
+        return ResponseUtil.conflict(
+          res,
+          'Ya existe otra zona con ese nombre (sin importar mayúsculas/minúsculas)'
+        );
       }
 
       // 3) Si la nueva es sede central, desmarcar la anterior
@@ -70,7 +76,10 @@ export class ZonaController {
       }
 
       // 4) Crear y guardar
-      const nueva = em.create(Zona, { nombre: nombreTrim, esSedeCentral: Boolean(esSedeCentral) });
+      const nueva = em.create(Zona, {
+        nombre: nombreTrim,
+        esSedeCentral: Boolean(esSedeCentral),
+      });
       await em.persistAndFlush(nueva);
 
       return ResponseUtil.created(res, 'Zona creada exitosamente', nueva);
@@ -81,6 +90,7 @@ export class ZonaController {
 
   async updateZona(req: Request, res: Response) {
     const em = orm.em.fork();
+
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -89,80 +99,81 @@ export class ZonaController {
         ]);
       }
 
-
-      const input = res.locals.validated.body;
-
-    // Validación de nombre duplicado (case-insensitive)
-    if (input.nombre !== undefined) {
-      const nuevo = input.nombre.trim();
-      if (!nuevo) {
-        return res.status(400).json({ mensaje: 'El nombre no puede ser vacío.' });
-      }
-
-      if (nuevo.toLowerCase() !== zona.nombre.toLowerCase()) {
-        const rows = await em.getConnection().execute(
-          `SELECT id FROM zonas WHERE LOWER(nombre) = ? AND id <> ?`,
-          [nuevo.toLowerCase(), id]
-        );
-        if (rows.length > 0) {
-          return res
-            .status(409)
-            .json({ mensaje: 'Ya existe una zona con ese nombre (sin importar mayúsculas/minúsculas).' });
-        }
-      }
-
-      zona.nombre = nuevo;
-    }
-
-
       const zona = await em.findOne(Zona, { id });
       if (!zona) {
         return ResponseUtil.notFound(res, 'Zona', id);
       }
 
-      // Actualizar nombre si se proporciona
+      const input = res.locals.validated.body;
+
+      // Validación y actualización de nombre
       if (input.nombre !== undefined) {
-        zona.nombre = input.nombre;
-      }
-
-      if (input.esSedeCentral === true) {
-        // Si la quieren marcar como sede central
-        const sedeActual = await em.findOne(Zona, {
-          esSedeCentral: true,
-          id: { $ne: zona.id },
-        });
-
-        if (sedeActual) {
-          sedeActual.esSedeCentral = false;
-          await em.persistAndFlush(sedeActual);
-        }
-
-        zona.esSedeCentral = true;
-      } else if (input.esSedeCentral === false) {
-        const otrasCentrales = await em.count(Zona, {
-          esSedeCentral: true,
-          id: { $ne: zona.id },
-        });
-
-        if (otrasCentrales === 0) {
-          return ResponseUtil.error(
+        const nuevo = input.nombre.trim();
+        if (!nuevo) {
+          return ResponseUtil.validationError(
             res,
-            'No se puede quitar la sede central porque quedaría el sistema sin ninguna. Debe existir al menos otra zona como sede central.',
-            400
+            'Error de datos de entrada para actualizar zona',
+            [{ field: 'nombre', message: 'El nombre no puede estar vacío' }]
           );
         }
 
-        zona.esSedeCentral = false;
+        if (nuevo.toLowerCase() !== zona.nombre.toLowerCase()) {
+          const rows = await em.find(Zona, {
+            nombre: { $like: `%${nuevo.toLowerCase()}%` },
+            id: { $ne: id },
+          });
+
+          if (rows.length > 0) {
+            return ResponseUtil.conflict(
+              res,
+              'Ya existe otra zona con ese nombre (sin importar mayúsculas/minúsculas)'
+            );
+          }
+        }
+
+        zona.nombre = nuevo;
       }
 
-      await em.flush();
+      // Validación de esSedeCentral
+      if (input.esSedeCentral !== undefined) {
+        if (input.esSedeCentral === true) {
+          const sedeActual = await em.findOne(Zona, {
+            esSedeCentral: true,
+            id: { $ne: zona.id },
+          });
+
+          if (sedeActual) {
+            sedeActual.esSedeCentral = false;
+            await em.persistAndFlush(sedeActual);
+          }
+
+          zona.esSedeCentral = true;
+        } else if (input.esSedeCentral === false) {
+          const otrasCentrales = await em.count(Zona, {
+            esSedeCentral: true,
+            id: { $ne: zona.id },
+          });
+
+          if (otrasCentrales === 0) {
+            return ResponseUtil.error(
+              res,
+              'No se puede quitar la sede central porque quedaría el sistema sin ninguna. Debe existir al menos otra zona como sede central.',
+              400
+            );
+          }
+
+          zona.esSedeCentral = false;
+        }
+      }
+
+      await em.persistAndFlush(zona);
+
       return ResponseUtil.updated(res, 'Zona actualizada correctamente', zona);
     } catch (err) {
       console.error(err);
       return ResponseUtil.internalError(res, 'Error al actualizar zona', err);
     }
   }
-
 
   async deleteZona(req: Request, res: Response) {
     const em = orm.em.fork();

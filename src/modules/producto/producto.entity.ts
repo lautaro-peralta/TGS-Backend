@@ -12,7 +12,6 @@ import { Detalle } from '../venta/detalle.entity.js';
 
 @Entity({ tableName: 'productos' })
 export class Producto extends BaseEntityObjeto {
-
   @Property()
   descripcion!: string;
 
@@ -26,14 +25,19 @@ export class Producto extends BaseEntityObjeto {
   esIlegal!: boolean;
 
   // N:M inverso con Distribuidor (para que funcione d.productos)
-  @ManyToMany(() => Distribuidor, (d) => d.productos)
+  @ManyToMany({ entity: () => Distribuidor, mappedBy: (d) => d.productos })
   distribuidores = new Collection<Distribuidor>(this);
 
   // 1:N con Detalle (si Detalle tiene ManyToOne a Producto)
   @OneToMany({ entity: () => Detalle, mappedBy: 'producto' })
   detalles = new Collection<Detalle>(this);
 
-  constructor(precio: number, stock: number, descripcion: string, esIlegal: boolean) {
+  constructor(
+    precio: number,
+    stock: number,
+    descripcion: string,
+    esIlegal: boolean
+  ) {
     super();
     this.precio = precio;
     this.stock = stock;
