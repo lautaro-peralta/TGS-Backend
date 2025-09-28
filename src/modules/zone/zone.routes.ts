@@ -1,36 +1,36 @@
-import { ZonaController } from './zona.controller.js';
+import { ZoneController } from './zone.controller.js';
 import { rolesMiddleware, authMiddleware } from '../auth/auth.middleware.js';
-import { actualizarZonaSchema, crearZonaSchema } from './zona.schema.js';
-import { validarConSchema } from '../../shared/utils/zod.middleware.js';
+import { updateZoneSchema, createZoneSchema } from './zone.schema.js';
+import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
 import { Router } from 'express';
-import { Rol } from '../auth/usuario.entity.js';
+import { Role } from '../auth/user.entity.js';
 
-export const zonaRouter = Router();
-const zonaController = new ZonaController();
+export const zoneRouter = Router();
+const zoneController = new ZoneController();
 
-zonaRouter.get('/', zonaController.getAllZonas);
+zoneRouter.get('/', zoneController.getAllZones);
 
-zonaRouter.get('/:id', zonaController.getOneZonaById);
+zoneRouter.get('/:id', zoneController.getOneZoneById);
 
-zonaRouter.post(
+zoneRouter.post(
   '/',
-  validarConSchema({ body: crearZonaSchema }),
+  validateWithSchema({ body: createZoneSchema }),
   //authMiddleware,
-  //rolesMiddleware([Rol.ADMIN]),
-  zonaController.createZona
+  //rolesMiddleware([Role.ADMIN]),
+  zoneController.createZone
 );
 
-zonaRouter.patch(
+zoneRouter.patch(
   '/:id',
-  validarConSchema({ body: actualizarZonaSchema }),
+  validateWithSchema({ body: updateZoneSchema }),
   //authMiddleware,
-  //rolesMiddleware([Rol.ADMIN]),
-  zonaController.updateZona
+  //rolesMiddleware([Role.ADMIN]),
+  zoneController.updateZone
 );
 
-zonaRouter.delete(
+zoneRouter.delete(
   '/:id',
   //authMiddleware,
-  //rolesMiddleware([Rol.ADMIN]),
-  zonaController.deleteZona
+  //rolesMiddleware([Role.ADMIN]),
+  zoneController.deleteZone
 );

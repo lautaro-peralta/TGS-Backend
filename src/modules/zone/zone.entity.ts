@@ -16,22 +16,22 @@ export class Zone extends BaseObjectEntity {
   name!: string;
 
   @Property({ default: false })
-  isCentralOffice: boolean = false;
+  isHeadquarters: boolean = false;
 
   //@OneToMany({entity:()=> Distributor, nullable:true, mappedBy:distributor => distributor.zone})
   //distributor!:Distributor
 
-  constructor(name: string, isCentralOffice: boolean) {
+  constructor(name: string, isHeadquarters: boolean) {
     super();
     this.name = name;
-    this.isCentralOffice = isCentralOffice;
+    this.isHeadquarters = isHeadquarters;
   }
 
   toDTO() {
     return {
       id: this.id,
       name: this.name,
-      isCentralOffice: this.isCentralOffice,
+      isHeadquarters: this.isHeadquarters,
     };
   }
 }

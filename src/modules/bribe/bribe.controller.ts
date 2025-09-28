@@ -4,6 +4,7 @@ import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from './bribe.entity.js';
 import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+
 export class BribeController {
   async getAllBribes(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -19,12 +20,19 @@ export class BribeController {
       );
 
       const bribesDTO = bribes.map((bribe) => bribe.toDTO());
-      const message = ResponseUtil.generateListMessage(bribesDTO.length, 'bribe');
+      const message = ResponseUtil.generateListMessage(
+        bribesDTO.length,
+        'bribe'
+      );
 
       return ResponseUtil.successList(res, message, bribesDTO);
     } catch (err: any) {
       console.error('Error listing bribes:', err);
-      return ResponseUtil.internalError(res, 'Error getting the list of bribes', err);
+      return ResponseUtil.internalError(
+        res,
+        'Error getting the list of bribes',
+        err
+      );
     }
   }
 
@@ -34,7 +42,7 @@ export class BribeController {
 
     if (isNaN(id)) {
       return ResponseUtil.validationError(res, 'Invalid ID', [
-        { field: 'id', message: 'The ID must be a valid number' }
+        { field: 'id', message: 'The ID must be a valid number' },
       ]);
     }
 
@@ -51,7 +59,11 @@ export class BribeController {
         return ResponseUtil.notFound(res, 'Bribe', id);
       }
 
-      return ResponseUtil.success(res, 'Bribe found successfully', bribe.toDTO());
+      return ResponseUtil.success(
+        res,
+        'Bribe found successfully',
+        bribe.toDTO()
+      );
     } catch (err: any) {
       console.error('Error getting bribe:', err);
       return ResponseUtil.internalError(res, 'Error searching for bribe', err);
@@ -93,7 +105,11 @@ export class BribeController {
         }
       );
 
-      return ResponseUtil.created(res, 'Bribe created successfully', createdBribe!.toDTO());
+      return ResponseUtil.created(
+        res,
+        'Bribe created successfully',
+        createdBribe!.toDTO()
+      );
     } catch (err: any) {
       console.error('Error creating bribe:', err);
       return ResponseUtil.internalError(res, 'Error creating bribe', err);
@@ -125,7 +141,10 @@ export class BribeController {
           .filter((s) => ids.includes(s.id));
 
         if (!selectedBribes.length) {
-          return ResponseUtil.notFound(res, 'Bribes with those IDs for this authority');
+          return ResponseUtil.notFound(
+            res,
+            'Bribes with those IDs for this authority'
+          );
         }
       } else {
         // Case 2: pay bribes without filtering by authority
@@ -159,7 +178,7 @@ export class BribeController {
 
     if (isNaN(id)) {
       return ResponseUtil.validationError(res, 'Invalid ID', [
-        { field: 'id', message: 'The ID must be a valid number' }
+        { field: 'id', message: 'The ID must be a valid number' },
       ]);
     }
 

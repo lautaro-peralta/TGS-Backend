@@ -5,7 +5,7 @@ import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
 import {
   createProductSchema,
   updateProductSchema,
-  // searchProductSchema, // <- uncomment if you added it in product.schema.ts
+  //searchProductSchema, // <- uncomment if you added it in product.schema.ts
 } from './product.schema.js';
 import { Role } from '../auth/user.entity.js';
 
@@ -19,7 +19,7 @@ productRouter.get('/', productController.getAllProducts);
 
 productRouter.get('/:id', productController.getOneProductById);
 
-productRouter.get('/search', productController.getOneProductById);
+// productRouter.get('/', validateWithSchema({ query: searchProductSchema }), productController.getAllProducts);
 
 productRouter.post(
   '/',

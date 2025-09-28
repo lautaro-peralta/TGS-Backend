@@ -48,12 +48,14 @@ export async function createZoneDev() {
   const em = orm.em.fork();
 
   // Search if a zone marked as central already exists
-  const existingCentralOffice = await em.findOne(Zone, { isCentralOffice: true });
+  const existingHeardquarters = await em.findOne(Zone, {
+    isHeadquarters: true,
+  });
 
-  if (existingCentralOffice) {
+  if (existingHeardquarters) {
     console.log();
     console.log(
-      `Central office already exists: ${existingCentralOffice.name} (ID: ${existingCentralOffice.id}), another one is not created`
+      `Central office already exists: ${existingHeardquarters.name} (ID: ${existingHeardquarters.id}), another one is not created`
     );
     return;
   }

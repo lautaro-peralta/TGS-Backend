@@ -14,8 +14,8 @@ import { BaseObjectEntity } from '../../shared/db/base.object.entity.js';
 import { Client } from '../client/client.entity.js';
 import { Detail } from './detail.entity.js';
 import { Authority } from '../../modules/authority/authority.entity.js';
-import { Distributor } from "../distributor/distributor.entity.js";
-  
+import { Distributor } from '../distributor/distributor.entity.js';
+
 function callToDTO<T extends { toDTO?: () => any }>(
   ref: Ref<T> | Loaded<T>
 ): any {
@@ -28,7 +28,6 @@ function callToDTO<T extends { toDTO?: () => any }>(
 
 @Entity({ tableName: 'sales' })
 export class Sale extends BaseObjectEntity {
-
   @Property({ nullable: true })
   description?: string;
 
@@ -50,7 +49,6 @@ export class Sale extends BaseObjectEntity {
     cascade: [Cascade.ALL],
     orphanRemoval: true,
   })
-
   details = new Collection<Detail>(this);
 
   @ManyToOne({ entity: () => Authority, nullable: true })
@@ -65,7 +63,7 @@ export class Sale extends BaseObjectEntity {
       details: this.details.getItems().map((d) => d.toDTO()),
       client: this.client ? callToDTO(this.client) : null,
       authority: this.authority ? callToDTO(this.authority) : null,
-      distributor: this.distributor ? callToDTO(this.distributor) : null, // <-- NEW
+      distributor: this.distributor ? callToDTO(this.distributor) : null,
     };
   }
 }

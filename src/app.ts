@@ -9,17 +9,17 @@ import { orm, syncSchema } from './shared/db/orm.js';
 
 import { createAdminDev, createZoneDev } from './shared/initDev.js';
 
-import { clienteRouter } from './modules/client/client.routes.js';
+import { clientRouter } from './modules/client/client.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { userRouter } from './modules/auth/user.routes.js';
-import { ventaRouter } from './modules/sale/sale.routes.js';
-import { productoRouter } from './modules/product/product.routes.js';
-import { autoridadRouter } from './modules/authority/authority.routes.js';
-import { zonaRouter } from './modules/zone/zone.routes.js';
-import { distribuidorRouter } from './modules/distributor/distributor.routes.js';
-import { sobornoRouter } from './modules/bribe/bribe.routes.js';
-import { decisionEstrategicaRouter } from './modules/decision/decision.routes.js';
-import { tematicaRouter } from './modules/theme/theme.routes.js';
+import { saleRouter } from './modules/sale/sale.routes.js';
+import { productRouter } from './modules/product/product.routes.js';
+import { authorityRouter } from './modules/authority/authority.routes.js';
+import { zoneRouter } from './modules/zone/zone.routes.js';
+import { distributorRouter } from './modules/distributor/distributor.routes.js';
+import { bribeRouter } from './modules/bribe/bribe.routes.js';
+import { decisionRouter } from './modules/decision/decision.routes.js';
+import { topicRouter } from './modules/topic/topic.routes.js';
 import cookieParser from 'cookie-parser';
 
 const app = express();
@@ -74,15 +74,15 @@ app.use((req, res, next) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
-app.use('/api/clients', clienteRouter);
-app.use('/api/sales', ventaRouter);
-app.use('/api/products', productoRouter);
-app.use('/api/zones', zonaRouter);
-app.use('/api/authorities', autoridadRouter);
-app.use('/distributors', distribuidorRouter);
-app.use('/api/bribes', sobornoRouter);
-app.use('/api/decisions', decisionEstrategicaRouter);
-app.use('/api/themes', tematicaRouter);
+app.use('/api/clients', clientRouter);
+app.use('/api/sales', saleRouter);
+app.use('/api/products', productRouter);
+app.use('/api/zones', zoneRouter);
+app.use('/api/authorities', authorityRouter);
+app.use('/api/distributors', distributorRouter);
+app.use('/api/bribes', bribeRouter);
+app.use('/api/decisions', decisionRouter);
+app.use('/api/themes', topicRouter);
 
 //ERROR HANDLERS
 
@@ -134,7 +134,7 @@ export const initDev = async () => {
       '/api/bribes',
       '/api/decisions',
       '/api/themes',
-      '/distributors'
+      '/api/distributors',
     ]);
   }
 };

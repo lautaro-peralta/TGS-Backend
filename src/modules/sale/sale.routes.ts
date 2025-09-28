@@ -17,9 +17,9 @@ saleRouter.get(
   saleController.getAllSales
 );
 
-// saleRouter.get('/',
+// saleRouter.get('/mine',
 //   authMiddleware, distribMiddleware,
-//   getAllSalesMine
+//   getAllMySales
 // );
 
 saleRouter.get(
@@ -28,11 +28,6 @@ saleRouter.get(
   //rolesMiddleware([Role.ADMIN]),
   saleController.getOneSaleById
 );
-
-// saleRouter.get('/:id',
-//   authMiddleware, distribMiddleware,
-//   getOneSaleMine
-// );
 
 saleRouter.post(
   '/',
