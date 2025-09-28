@@ -1,28 +1,14 @@
 import { Router } from 'express';
 import { SocioController } from './socio.controller.js';
-import {
-  actualizarSocioSchema,
-  crearSocioSchema,
-} from './socio.schema.js';
-import { validarConSchema } from '../../shared/utils/zod.middleware.js';
+import { validarCrearSocio, validarPatchSocio } from './socio.schema.js';
 
-export const socioRouter = Router();
-const socioController = new SocioController();
+const r = Router();
+const c = new SocioController();
 
-socioRouter.get('/', socioController.getAllSocios);
+r.get('/', c.getAllSocios.bind(c));
+r.get('/:dni', c.getOneSocioByDni.bind(c));
+r.post('/', validarCrearSocio, c.createSocio.bind(c));        // SOLO crea Socio
+r.patch('/:dni', validarPatchSocio, c.patchUpdateSocio.bind(c));
+r.delete('/:dni', c.deleteSocio.bind(c));
 
-socioRouter.get('/:dni', socioController.getOneSocioByDni);
-
-socioRouter.post(
-  '/',
-  validarConSchema({ body: crearSocioSchema }),
-  socioController.createSocio
-);
-
-socioRouter.patch(
-  '/:dni',
-  validarConSchema({ body: actualizarSocioSchema }),
-  socioController.patchUpdateSocio
-);
-
-socioRouter.delete('/:dni', socioController.deleteSocio);
+export default r;

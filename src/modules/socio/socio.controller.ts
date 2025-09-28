@@ -1,158 +1,131 @@
-import { Request, Response, NextFunction } from 'express';
+// src/modules/socio/socio.controller.ts
+import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Socio } from './socio.entity.js';
-import { Usuario, Rol } from '../auth/usuario.entity.js';
-import argon2 from 'argon2';
-import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+
+/** Utils de respuesta definidos en este archivo */
+class ResponseUtils {
+  static ok(res: Response, message: string, data?: any) {
+    return res.status(200).json({ message, data });
+  }
+  static created(res: Response, message: string, data?: any) {
+    return res.status(201).json({ message, data });
+  }
+  static notFound(res: Response, message = 'Recurso no encontrado') {
+    return res.status(404).json({ error: message });
+  }
+  static conflict(res: Response, message = 'Conflicto en la petición') {
+    return res.status(409).json({ error: message });
+  }
+  static badRequest(res: Response, message = 'Solicitud inválida') {
+    return res.status(400).json({ error: message });
+  }
+  static serverError(res: Response, message = 'Error interno del servidor') {
+    return res.status(500).json({ error: message });
+  }
+}
 
 export class SocioController {
+  /** GET /socios */
   async getAllSocios(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const socios = await em.find(
-        Socio,
-        {},
-        {
-          // Ajustá populates según tu modelo (ej.: 'distribuidores')
-          populate: ['usuario'], // o ['usuario', 'distribuidores']
+      // ✅ Solo populamos 'usuario'
+      const socios = await em.find(Socio, {}, { populate: ['usuario'] } as any);
+
+      const data = socios.map((s) =>
+        (s as any).toDetailedDTO?.() ??
+        (s as any).toDTO?.() ?? {
+          id: s.id,
+          dni: s.dni,
+          nombre: s.nombre,
+          email: s.email,
+          telefono: s.telefono,
+          direccion: s.direccion,
+          usuarioId: (s as any).usuario?.id,
         }
       );
 
-      return res.status(200).json({
-        message: `Se ${socios.length === 1 ? 'encontró' : 'encontraron'} ${
-          socios.length
-        } socio${socios.length !== 1 ? 's' : ''}`,
-        data: socios.map((s) => (s.toDetailedDTO ? s.toDetailedDTO() : s.toDTO())),
-      });
+      const message = `Se ${socios.length === 1 ? 'encontró' : 'encontraron'} ${socios.length} socio${socios.length !== 1 ? 's' : ''}`;
+      return ResponseUtils.ok(res, message, data);
     } catch (err) {
       console.error('Error al obtener socios:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
+      return ResponseUtils.serverError(res);
     }
   }
 
+  /** GET /socios/:dni */
   async getOneSocioByDni(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
-
     try {
-      const socio = await em.findOne(
-        Socio,
-        { dni },
-        { populate: ['usuario'] } // agrega más si corresponde
-      );
-      if (!socio) {
-        return res.status(404).json({ error: 'Socio no encontrado' });
-      }
-      return res.json({ data: socio.toDetailedDTO ? socio.toDetailedDTO() : socio.toDTO() });
+      const dni = req.params.dni.trim();
+      // ✅ Solo populamos 'usuario'
+      const socio = await em.findOne(Socio, { dni }, { populate: ['usuario'] } as any);
+      if (!socio) return ResponseUtils.notFound(res, 'Socio no encontrado');
+
+      const data =
+        (socio as any).toDetailedDTO?.() ??
+        (socio as any).toDTO?.() ?? {
+          id: socio.id,
+          dni: socio.dni,
+          nombre: socio.nombre,
+          email: socio.email,
+          telefono: socio.telefono,
+          direccion: socio.direccion,
+          usuarioId: (socio as any).usuario?.id,
+        };
+
+      return ResponseUtils.ok(res, 'Socio encontrado', data);
     } catch (err) {
       console.error('Error al buscar socio:', err);
-      return res.status(400).json({ error: 'Error al buscar socio' });
+      return ResponseUtils.badRequest(res, 'Error al buscar socio');
     }
   }
 
+  /** POST /socios — SOLO crea Socio (sin Usuario/Persona) */
   async createSocio(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      // Se asume un middleware de validación que deja el body en res.locals.validated.body
-      const { dni, nombre, email, direccion, telefono, username, password } =
-        res.locals.validated.body;
+      // Asumimos middleware Zod que coloca el body validado en res.locals.validated.body
+      const validated = (res as any).locals?.validated?.body as {
+        dni: string;
+        nombre: string;
+        email: string;
+        direccion?: string;
+        telefono?: string;
+      } | undefined;
 
-      if (!dni || !nombre || !email) {
-        return res.status(400).json({ message: 'Faltan datos obligatorios' });
+      if (!validated) {
+        return ResponseUtils.badRequest(res, 'Cuerpo inválido');
       }
 
-      // Verificar socio duplicado por DNI
+      const { dni, nombre, email, direccion, telefono } = validated;
+
+      // Unicidad por DNI (además de UNIQUE a nivel DB recomendado)
       const existeSocio = await em.findOne(Socio, { dni });
-      if (existeSocio) {
-        return res.status(409).json({ error: 'Ya existe un socio con ese DNI' });
-      }
+      if (existeSocio) return ResponseUtils.conflict(res, 'Ya existe un socio con ese DNI');
 
-      const crearUsuario = !!(username && password);
-
-      if (crearUsuario) {
-        const existeUsuario = await em.findOne(Usuario, { username });
-        if (existeUsuario) {
-          return res.status(409).json({ error: 'Ya existe un usuario con ese username' });
-        }
-      }
-
-      // Asegurar Persona base
-      let persona = await em.findOne(BaseEntityPersona, { dni });
-      if (!persona) {
-        persona = em.create(BaseEntityPersona, {
-          dni,
-          nombre,
-          email,
-          direccion: direccion ?? '',
-          telefono: telefono ?? '',
-        });
-        await em.persistAndFlush(persona);
-      }
-
-      // Crear (u obtener) usuario si corresponde
-      let usuario;
-      if (crearUsuario) {
-        usuario = await em.findOne(Usuario, { persona: { dni } });
-
-        if (!usuario) {
-          const hashedPassword = await argon2.hash(password);
-          // Si no tenés Rol.SOCIO en tu enum, podés dejar Rol.CLIENTE o crear el rol específico
-          const rolSocio = (Rol as any).SOCIO ?? Rol.CLIENTE;
-
-          usuario = em.create(Usuario, {
-            email,
-            username,
-            password: hashedPassword,
-            roles: [rolSocio],
-            persona,
-          });
-          await em.persistAndFlush(usuario);
-
-          if (!usuario.id) {
-            return res.status(500).json({ message: 'No se pudo crear el usuario' });
-          }
-        }
-      }
-
-      // Crear socio
-      const socio = em.create(Socio, {
-        nombre,
-        dni,
-        email,
-        telefono,
-        direccion,
-        // status opcional si tu entidad lo tiene (p. ej., 'active')
-        // status: 'active',
-        // usuario: usuario ?? undefined, // si tu modelo Socio tiene relación ManyToOne/OneToOne a Usuario
-      });
-
+      const socio = em.create(Socio, { dni, nombre, email, direccion, telefono });
       await em.persistAndFlush(socio);
 
-      const responseData = {
-        message: crearUsuario
-          ? 'Socio y usuario creados exitosamente'
-          : 'Socio creado exitosamente',
-        data: {
-          socio: socio.toDTO(),
-          ...(usuario && {
-            usuario: {
-              id: usuario.id,
-              username: usuario.username,
-              email: usuario.email,
-            },
-          }),
-        },
-      };
+      const data =
+        (socio as any).toDTO?.() ?? {
+          id: socio.id,
+          dni: socio.dni,
+          nombre: socio.nombre,
+          email: socio.email,
+          telefono: socio.telefono,
+          direccion: socio.direccion,
+        };
 
-      return res.status(201).json(responseData);
+      return ResponseUtils.created(res, 'Socio creado exitosamente', data);
     } catch (error) {
       console.error('Error creando socio:', error);
-      return res.status(500).json({
-        message: 'Error interno del servidor',
-      });
+      return ResponseUtils.serverError(res);
     }
   }
 
+  /** PATCH /socios/:dni */
   async patchUpdateSocio(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni.trim();
@@ -160,44 +133,45 @@ export class SocioController {
     try {
       const socio = await em.findOne(Socio, { dni });
       if (!socio) {
-        return res.status(404).json({ error: 'Socio no encontrado' });
+        return ResponseUtils.notFound(res, 'Socio no encontrado');
       }
 
-      const updates = res.locals.validated.body;
-
+      const updates = ((res as any).locals?.validated?.body ?? {}) as Partial<Pick<Socio, 'nombre' | 'email' | 'direccion' | 'telefono'>>; // validado por Zod en el middleware
       em.assign(socio, updates);
       await em.flush();
 
-      return res.status(200).json({
-        message: 'Socio actualizado exitosamente',
-        data: socio.toDTO(),
-      });
+      const data =
+        (socio as any).toDTO?.() ?? {
+          id: socio.id,
+          dni: socio.dni,
+          nombre: socio.nombre,
+          email: socio.email,
+          telefono: socio.telefono,
+          direccion: socio.direccion,
+        };
+
+      return ResponseUtils.ok(res, 'Socio actualizado exitosamente', data);
     } catch (err) {
       console.error('Error en PATCH socio:', err);
-      return res.status(500).json({ error: 'Error al actualizar socio' });
+      return ResponseUtils.serverError(res, 'Error al actualizar socio');
     }
   }
 
+  /** DELETE /socios/:dni */
   async deleteSocio(req: Request, res: Response) {
-  const em = orm.em.fork();
-  const dni = req.params.dni.trim();
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+    try {
+      const socio = await em.findOne(Socio, { dni });
+      if (!socio) return ResponseUtils.notFound(res, 'Socio no encontrado');
 
-  try {
-    const socio = await em.findOne(Socio, { dni });
-    if (!socio) {
-      return res.status(404).json({ error: 'Socio no encontrado' });
+      const nombre = socio.nombre ?? 'Socio';
+      await em.removeAndFlush(socio);
+
+      return ResponseUtils.ok(res, `${nombre}, DNI ${dni} eliminado/a exitosamente`);
+    } catch (err) {
+      console.error('Error al eliminar socio:', err);
+      return ResponseUtils.serverError(res, 'Error al eliminar socio');
     }
-
-    const nombre = socio.nombre ?? 'Socio';
-    await em.removeAndFlush(socio);
-
-    return res.status(200).json({
-      message: `${nombre}, DNI ${dni} eliminado/a exitosamente de la lista de socios`,
-    });
-  } catch (err) {
-    console.error('Error al eliminar socio:', err);
-    return res.status(500).json({ error: 'Error al eliminar socio' });
   }
-}
-
 }
