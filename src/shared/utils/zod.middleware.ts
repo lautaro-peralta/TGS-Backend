@@ -1,25 +1,25 @@
 import { ZodType } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 
-//Middleware para validar distintas partes del request usando Zod.
+//Middleware to validate different parts of the request using Zod.
 
-export const validarConSchema = (schemas: {
+export const validateWithSchema = (schemas: {
   body?: ZodType<any>;
   params?: ZodType<any>;
   query?: ZodType<any>;
 }) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const errores: any[] = [];
+    const errors: any[] = [];
     res.locals.validated = {};
 
     if (schemas.body) {
       const result = schemas.body.safeParse(req.body);
       if (!result.success) {
-        errores.push(
+        errors.push(
           ...result.error.issues.map((e) => ({
-            origen: 'body',
-            campo: e.path.join('.'),
-            mensaje: e.message,
+            source: 'body',
+            field: e.path.join('.'),
+            message: e.message,
           }))
         );
       } else {
@@ -30,11 +30,11 @@ export const validarConSchema = (schemas: {
     if (schemas.params) {
       const result = schemas.params.safeParse(req.params);
       if (!result.success) {
-        errores.push(
+        errors.push(
           ...result.error.issues.map((e) => ({
-            origen: 'params',
-            campo: e.path.join('.'),
-            mensaje: e.message,
+            source: 'params',
+            field: e.path.join('.'),
+            message: e.message,
           }))
         );
       } else {
@@ -45,11 +45,11 @@ export const validarConSchema = (schemas: {
     if (schemas.query) {
       const result = schemas.query.safeParse(req.query);
       if (!result.success) {
-        errores.push(
+        errors.push(
           ...result.error.issues.map((e) => ({
-            origen: 'query',
-            campo: e.path.join('.'),
-            mensaje: e.message,
+            source: 'query',
+            field: e.path.join('.'),
+            message: e.message,
           }))
         );
       } else {
@@ -57,10 +57,10 @@ export const validarConSchema = (schemas: {
       }
     }
 
-    if (errores.length > 0) {
+    if (errors.length > 0) {
       return res.status(400).json({
-        mensaje: 'Error de validación',
-        errores,
+        message: 'Validation error',
+        errors,
       });
     }
 

@@ -7,19 +7,19 @@ import { v7 as uuidv7 } from 'uuid';
 import { RequestContext } from '@mikro-orm/core';
 import { orm, syncSchema } from './shared/db/orm.js';
 
-import { crearAdminDev, crearZonaDev } from './shared/initDev.js';
+import { createAdminDev, createZoneDev } from './shared/initDev.js';
 
-import { clienteRouter } from './modules/cliente/cliente.routes.js';
+import { clienteRouter } from './modules/client/client.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
-import { usuarioRouter } from './modules/auth/usuario.routes.js';
-import { ventaRouter } from './modules/venta/venta.routes.js';
-import { productoRouter } from './modules/producto/producto.routes.js';
-import { autoridadRouter } from './modules/autoridad/autoridad.routes.js';
-import { zonaRouter } from './modules/zona/zona.routes.js';
-import { distribuidorRouter } from './modules/distribuidor/distribuidor.routes.js';
-import { sobornoRouter } from './modules/soborno/soborno.routes.js';
-import { decisionRouter } from './modules/decision/decision.routes.js';
-import { tematicaRouter } from './modules/tematica/tematica.routes.js';
+import { userRouter } from './modules/auth/user.routes.js';
+import { ventaRouter } from './modules/sale/sale.routes.js';
+import { productoRouter } from './modules/product/product.routes.js';
+import { autoridadRouter } from './modules/authority/authority.routes.js';
+import { zonaRouter } from './modules/zone/zone.routes.js';
+import { distribuidorRouter } from './modules/distributor/distributor.routes.js';
+import { sobornoRouter } from './modules/bribe/bribe.routes.js';
+import { decisionEstrategicaRouter } from './modules/decision/decision.routes.js';
+import { tematicaRouter } from './modules/theme/theme.routes.js';
 import cookieParser from 'cookie-parser';
 
 const app = express();
@@ -73,16 +73,16 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api/usuarios', usuarioRouter);
-app.use('/api/clientes', clienteRouter);
-app.use('/api/ventas', ventaRouter);
-app.use('/api/productos', productoRouter);
-app.use('/api/zonas', zonaRouter);
-app.use('/api/autoridades', autoridadRouter);
-app.use('/distribuidores', distribuidorRouter);
-app.use('/api/sobornos', sobornoRouter);
-app.use('/api/decisiones', decisionRouter);
-app.use('/api/tematicas', tematicaRouter);
+app.use('/api/users', userRouter);
+app.use('/api/clients', clienteRouter);
+app.use('/api/sales', ventaRouter);
+app.use('/api/products', productoRouter);
+app.use('/api/zones', zonaRouter);
+app.use('/api/authorities', autoridadRouter);
+app.use('/distributors', distribuidorRouter);
+app.use('/api/bribes', sobornoRouter);
+app.use('/api/decisions', decisionEstrategicaRouter);
+app.use('/api/themes', tematicaRouter);
 
 //ERROR HANDLERS
 
@@ -93,7 +93,7 @@ app.use((req, res) => {
     },
     'Route not found'
   );
-  res.status(404).json({ message: 'Ruta no encontrada' });
+  res.status(404).json({ message: 'Route not found' });
 });
 
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
@@ -111,7 +111,7 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
     message:
       process.env.NODE_ENV === 'development'
         ? error.message
-        : 'Error interno del servidor',
+        : 'Internal server error',
     requestId: req.requestId,
   });
 });
@@ -119,20 +119,22 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
 export const initDev = async () => {
   if (process.env.NODE_ENV === 'development') {
     await syncSchema();
-    await crearAdminDev();
-    await crearZonaDev();
+    await createAdminDev();
+    await createZoneDev();
 
     console.log();
     logRoutes([
-      '/api/clientes',
+      '/api/clients',
       '/api/auth',
-      '/api/usuarios',
-      '/api/ventas',
-      '/api/autoridades',
-      '/api/zonas',
-      '/api/productos',
-      '/api/sobornos',
-      '/api/decisiones',
+      '/api/users',
+      '/api/sales',
+      '/api/authorities',
+      '/api/zones',
+      '/api/products',
+      '/api/bribes',
+      '/api/decisions',
+      '/api/themes',
+      '/distributors'
     ]);
   }
 };

@@ -1,32 +1,32 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
-import { Cliente } from '../cliente/cliente.entity.js';
-import { Producto } from '../producto/producto.entity.js';
-import { Autoridad } from '../autoridad/autoridad.entity.js';
-import { Soborno } from '../soborno/soborno.entity.js';
-import { Usuario, Rol } from '../auth/usuario.entity.js';
-import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
-import { DecisionEstrategica } from './decision.entity.js';
-import { Tematica } from '../../modules/tematica/tematica.entity.js';
+import { Client } from '../client/client.entity.js';
+import { Product } from '../product/product.entity.js';
+import { Authority } from '../authority/authority.entity.js';
+import { Bribe } from '../bribe/bribe.entity.js';
+import { User, Role } from '../auth/user.entity.js';
+import { BasePersonEntity } from '../../shared/db/base.person.entity.js';
+import { StrategicDecision } from './decision.entity.js';
+import { Theme } from '../../modules/theme/theme.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
 export class DecisionController {
-  async getAllDecisiones(req: Request, res: Response) {
+  async getAllDecisions(req: Request, res: Response) {
     try {
-      const decisiones = await em.find(
-        DecisionEstrategica,
+      const decisions = await em.find(
+        StrategicDecision,
         {},
-        { populate: ['tematica'] }
+        { populate: ['theme'] }
       );
-      const decisionesDTO = decisiones.map((d) => d.toDTO());
-      const message = ResponseUtil.generateListMessage(decisionesDTO.length, 'decisión estratégica');
+      const decisionsDTO = decisions.map((d) => d.toDTO());
+      const message = ResponseUtil.generateListMessage(decisionsDTO.length, 'strategic decision');
 
-      return ResponseUtil.successList(res, message, decisionesDTO);
+      return ResponseUtil.successList(res, message, decisionsDTO);
     } catch (err) {
-      console.error('Error obteniendo decisiones estratégicas:', err);
-      return ResponseUtil.internalError(res, 'Error al obtener decisiones estratégicas', err);
+      console.error('Error getting strategic decisions:', err);
+      return ResponseUtil.internalError(res, 'Error getting strategic decisions', err);
     }
   }
 
@@ -34,60 +34,60 @@ export class DecisionController {
     try {
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'ID inválido', [
-          { field: 'id', message: 'El ID debe ser un número válido' }
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' }
         ]);
       }
 
       const decision = await em.findOne(
-        DecisionEstrategica,
+        StrategicDecision,
         { id },
-        { populate: ['tematica'] }
+        { populate: ['theme'] }
       );
       if (!decision) {
-        return ResponseUtil.notFound(res, 'Decisión estratégica', id);
+        return ResponseUtil.notFound(res, 'Strategic decision', id);
       }
 
-      return ResponseUtil.success(res, 'Decisión estratégica encontrada exitosamente', decision.toDTO());
+      return ResponseUtil.success(res, 'Strategic decision found successfully', decision.toDTO());
     } catch (err) {
-      console.error('Error buscando decisión estratégica:', err);
-      return ResponseUtil.internalError(res, 'Error al buscar decisión estratégica', err);
+      console.error('Error searching for strategic decision:', err);
+      return ResponseUtil.internalError(res, 'Error searching for strategic decision', err);
     }
   }
 
   async createDecision(req: Request, res: Response) {
-    const { tematicaId, descripcion, fechaInicio, fechaFin } =
+    const { themeId, description, startDate, endDate } =
       res.locals.validated.body;
 
-    let decision = await em.findOne(DecisionEstrategica, {
-      descripcion: descripcion,
+    let decision = await em.findOne(StrategicDecision, {
+      description: description,
     });
 
     if (decision) {
-      return ResponseUtil.conflict(res, 'Ya existe una decisión estratégica con esa descripción', 'descripcion');
+      return ResponseUtil.conflict(res, 'A strategic decision with that description already exists', 'description');
     }
 
-    let tematica = await em.findOne(Tematica, {
-      id: tematicaId,
+    let theme = await em.findOne(Theme, {
+      id: themeId,
     });
 
     try {
-      if (!tematica) {
-        return ResponseUtil.notFound(res, 'Temática', tematicaId);
+      if (!theme) {
+        return ResponseUtil.notFound(res, 'Theme', themeId);
       }
-      const nuevaDecision = em.create(DecisionEstrategica, {
-        descripcion,
-        fechaInicio,
-        fechaFin,
-        tematica,
+      const newDecision = em.create(StrategicDecision, {
+        description,
+        startDate,
+        endDate,
+        theme,
       });
 
-      await em.persistAndFlush(nuevaDecision);
+      await em.persistAndFlush(newDecision);
 
-      return ResponseUtil.created(res, 'Decisión estratégica creada correctamente', nuevaDecision.toDTO());
+      return ResponseUtil.created(res, 'Strategic decision created successfully', newDecision.toDTO());
     } catch (err: any) {
-      console.error('Error creando decisión estratégica:', err);
-      return ResponseUtil.internalError(res, 'Error al crear decisión estratégica', err);
+      console.error('Error creating strategic decision:', err);
+      return ResponseUtil.internalError(res, 'Error creating strategic decision', err);
     }
   }
 
@@ -95,40 +95,40 @@ export class DecisionController {
     try {
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'ID inválido', [
-          { field: 'id', message: 'El ID debe ser un número válido' }
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' }
         ]);
       }
 
       const decision = await em.findOne(
-        DecisionEstrategica,
+        StrategicDecision,
         { id },
-        { populate: ['tematica'] }
+        { populate: ['theme'] }
       );
 
       if (!decision) {
-        return ResponseUtil.notFound(res, 'Decisión estratégica', id);
+        return ResponseUtil.notFound(res, 'Strategic decision', id);
       }
 
       const updates = res.locals.validated.body;
 
-      // Si mandaron tematicaId, buscamos la temática y la asignamos
-      if (updates.tematicaId) {
-        const tematica = await em.findOne(Tematica, { id: updates.tematicaId });
-        if (!tematica) {
-          return ResponseUtil.notFound(res, 'Temática', updates.tematicaId);
+      // If themeId was sent, we search for the theme and assign it
+      if (updates.themeId) {
+        const theme = await em.findOne(Theme, { id: updates.themeId });
+        if (!theme) {
+          return ResponseUtil.notFound(res, 'Theme', updates.themeId);
         }
-        decision.tematica = tematica;
-        delete updates.tematicaId; // removemos para evitar conflicto en assign
+        decision.theme = theme;
+        delete updates.themeId; // we remove it to avoid conflict in assign
       }
 
       em.assign(decision, updates);
       await em.flush();
 
-      return ResponseUtil.updated(res, 'Decisión estratégica actualizada correctamente', decision.toDTO());
+      return ResponseUtil.updated(res, 'Strategic decision updated successfully', decision.toDTO());
     } catch (err) {
-      console.error('Error al actualizar decisión estratégica:', err);
-      return ResponseUtil.internalError(res, 'Error al actualizar decisión estratégica', err);
+      console.error('Error updating strategic decision:', err);
+      return ResponseUtil.internalError(res, 'Error updating strategic decision', err);
     }
   }
 
@@ -136,25 +136,25 @@ export class DecisionController {
     try {
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'ID inválido', [
-          { field: 'id', message: 'El ID debe ser un número válido' }
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' }
         ]);
       }
 
       const decision = await em.findOne(
-        DecisionEstrategica,
+        StrategicDecision,
         { id },
-        { populate: ['tematica'] }
+        { populate: ['theme'] }
       );
       if (!decision) {
-        return ResponseUtil.notFound(res, 'Decisión estratégica', id);
+        return ResponseUtil.notFound(res, 'Strategic decision', id);
       }
 
       await em.removeAndFlush(decision);
-      return ResponseUtil.deleted(res, 'Decisión estratégica eliminada correctamente');
+      return ResponseUtil.deleted(res, 'Strategic decision deleted successfully');
     } catch (err) {
-      console.error('Error al eliminar decisión estratégica:', err);
-      return ResponseUtil.internalError(res, 'Error al eliminar decisión estratégica', err);
+      console.error('Error deleting strategic decision:', err);
+      return ResponseUtil.internalError(res, 'Error deleting strategic decision', err);
     }
   }
 }
