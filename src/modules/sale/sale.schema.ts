@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const createSaleSchema = z.object({
-  clientDni: z.string().min(1, 'The client\'s DNI is required'),
+  clientDni: z.string().min(1, "The client's DNI is required"),
   details: z
     .array(
       z.object({
@@ -13,7 +13,7 @@ export const createSaleSchema = z.object({
   person: z
     .object({
       name: z.string().min(1),
-      email: z.string().email(),
+      email: z.email(),
       phone: z.string().optional(),
       address: z.string().optional(),
     })

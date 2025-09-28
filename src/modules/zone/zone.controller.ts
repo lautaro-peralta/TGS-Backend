@@ -1,23 +1,22 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
-import { Zona } from './zona.entity.js';
+import { Zone } from './zone.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { Autoridad } from '../autoridad/autoridad.entity.js';
-import { toLowerCase } from 'zod';
+import { Authority } from '../authority/authority.entity.js';
 
-export class ZonaController {
-  async getAllZonas(req: Request, res: Response) {
+export class ZoneController {
+  async getAllZones(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const zonas = await em.find(Zona, {});
-      const message = ResponseUtil.generateListMessage(zonas.length, 'zona');
-      return ResponseUtil.successList(res, message, zonas);
+      const zones = await em.find(Zone, {});
+      const message = ResponseUtil.generateListMessage(zones.length, 'zone');
+      return ResponseUtil.successList(res, message, zones);
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al obtener zonas', err);
     }
   }
 
-  async getOneZonaById(req: Request, res: Response) {
+  async getOneZoneById(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       const id = parseInt(req.params.id);
@@ -27,37 +26,37 @@ export class ZonaController {
         ]);
       }
 
-      const zona = await em.findOne(Zona, { id });
-      if (!zona) {
-        return ResponseUtil.notFound(res, 'Zona', id);
+      const zone = await em.findOne(Zone, { id });
+      if (!zone) {
+        return ResponseUtil.notFound(res, 'Zone', id);
       }
 
-      return ResponseUtil.success(res, 'Zona encontrada exitosamente', zona);
+      return ResponseUtil.success(res, 'Zona encontrada exitosamente', zone);
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al buscar zona', err);
     }
   }
 
-  async createZona(req: Request, res: Response) {
+  async createZone(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       const input = res.locals.validated.body;
-      const { nombre, esSedeCentral } = input as {
-        nombre: string;
-        esSedeCentral?: boolean;
+      const { name, isHeadquarters } = input as {
+        name: string;
+        isHeadquarters?: boolean;
       };
 
       // 1) Validar nombre requerido
-      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+      if (!name || typeof name !== 'string' || !name.trim()) {
         return res.status(400).json({ mensaje: 'El nombre es requerido.' });
       }
-      const nombreTrim = nombre.trim();
+      const trimmedName = name.trim();
 
       // 2) Verificar duplicado (case-insensitive)
       const rows = await em
         .getConnection()
-        .execute(`SELECT id FROM zonas WHERE LOWER(nombre) = ?`, [
-          nombreTrim.toLowerCase(),
+        .execute(`SELECT id FROM zones WHERE LOWER(name) = ?`, [
+          trimmedName.toLowerCase(),
         ]);
       if (rows.length > 0) {
         return ResponseUtil.conflict(
@@ -67,28 +66,28 @@ export class ZonaController {
       }
 
       // 3) Si la nueva es sede central, desmarcar la anterior
-      if (esSedeCentral === true) {
-        const actual = await em.findOne(Zona, { esSedeCentral: true });
-        if (actual) {
-          actual.esSedeCentral = false;
-          await em.persistAndFlush(actual);
+      if (isHeadquarters === true) {
+        const current = await em.findOne(Zone, { isHeadquarters: true });
+        if (current) {
+          current.isHeadquarters = false;
+          await em.persistAndFlush(current);
         }
       }
 
       // 4) Crear y guardar
-      const nueva = em.create(Zona, {
-        nombre: nombreTrim,
-        esSedeCentral: Boolean(esSedeCentral),
+      const newZone = em.create(Zone, {
+        name: trimmedName,
+        isHeadquarters: Boolean(isHeadquarters),
       });
-      await em.persistAndFlush(nueva);
+      await em.persistAndFlush(newZone);
 
-      return ResponseUtil.created(res, 'Zona creada exitosamente', nueva);
+      return ResponseUtil.created(res, 'Zona creada exitosamente', newZone);
     } catch (err: any) {
       return ResponseUtil.internalError(res, 'Error al crear zona', err);
     }
   }
 
-  async updateZona(req: Request, res: Response) {
+  async updateZone(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
@@ -99,27 +98,27 @@ export class ZonaController {
         ]);
       }
 
-      const zona = await em.findOne(Zona, { id });
-      if (!zona) {
-        return ResponseUtil.notFound(res, 'Zona', id);
+      const zone = await em.findOne(Zone, { id });
+      if (!zone) {
+        return ResponseUtil.notFound(res, 'Zone', id);
       }
 
       const input = res.locals.validated.body;
 
       // Validación y actualización de nombre
-      if (input.nombre !== undefined) {
-        const nuevo = input.nombre.trim();
-        if (!nuevo) {
+      if (input.name !== undefined) {
+        const newName = input.name.trim();
+        if (!newName) {
           return ResponseUtil.validationError(
             res,
             'Error de datos de entrada para actualizar zona',
-            [{ field: 'nombre', message: 'El nombre no puede estar vacío' }]
+            [{ field: 'name', message: 'El nombre no puede estar vacío' }]
           );
         }
 
-        if (nuevo.toLowerCase() !== zona.nombre.toLowerCase()) {
-          const rows = await em.find(Zona, {
-            nombre: { $like: `%${nuevo.toLowerCase()}%` },
+        if (newName.toLowerCase() !== zone.name.toLowerCase()) {
+          const rows = await em.find(Zone, {
+            name: { $like: `%${newName.toLowerCase()}%` },
             id: { $ne: id },
           });
 
@@ -131,30 +130,30 @@ export class ZonaController {
           }
         }
 
-        zona.nombre = nuevo;
+        zone.name = newName;
       }
 
-      // Validación de esSedeCentral
-      if (input.esSedeCentral !== undefined) {
-        if (input.esSedeCentral === true) {
-          const sedeActual = await em.findOne(Zona, {
-            esSedeCentral: true,
-            id: { $ne: zona.id },
+      // Validación de isHeadquarters
+      if (input.isHeadquarters !== undefined) {
+        if (input.isHeadquarters === true) {
+          const currentHQ = await em.findOne(Zone, {
+            isHeadquarters: true,
+            id: { $ne: zone.id },
           });
 
-          if (sedeActual) {
-            sedeActual.esSedeCentral = false;
-            await em.persistAndFlush(sedeActual);
+          if (currentHQ) {
+            currentHQ.isHeadquarters = false;
+            await em.persistAndFlush(currentHQ);
           }
 
-          zona.esSedeCentral = true;
-        } else if (input.esSedeCentral === false) {
-          const otrasCentrales = await em.count(Zona, {
-            esSedeCentral: true,
-            id: { $ne: zona.id },
+          zone.isHeadquarters = true;
+        } else if (input.isHeadquarters === false) {
+          const otherHQs = await em.count(Zone, {
+            isHeadquarters: true,
+            id: { $ne: zone.id },
           });
 
-          if (otrasCentrales === 0) {
+          if (otherHQs === 0) {
             return ResponseUtil.error(
               res,
               'No se puede quitar la sede central porque quedaría el sistema sin ninguna. Debe existir al menos otra zona como sede central.',
@@ -162,20 +161,20 @@ export class ZonaController {
             );
           }
 
-          zona.esSedeCentral = false;
+          zone.isHeadquarters = false;
         }
       }
 
-      await em.persistAndFlush(zona);
+      await em.persistAndFlush(zone);
 
-      return ResponseUtil.updated(res, 'Zona actualizada correctamente', zona);
+      return ResponseUtil.updated(res, 'Zona actualizada correctamente', zone);
     } catch (err) {
       console.error(err);
       return ResponseUtil.internalError(res, 'Error al actualizar zona', err);
     }
   }
 
-  async deleteZona(req: Request, res: Response) {
+  async deleteZone(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       const id = parseInt(req.params.id);
@@ -185,20 +184,20 @@ export class ZonaController {
         ]);
       }
 
-      const zona = await em.findOne(Zona, { id });
+      const zone = await em.findOne(Zone, { id });
 
-      if (!zona) {
-        return ResponseUtil.notFound(res, 'Zona', id);
+      if (!zone) {
+        return ResponseUtil.notFound(res, 'Zone', id);
       }
 
-      if (zona.esSedeCentral) {
+      if (zone.isHeadquarters) {
         // Verificar si hay otra zona marcada como sede central distinta a esta
-        const otraSede = await em.findOne(Zona, {
-          esSedeCentral: true,
-          id: { $ne: zona.id },
+        const anotherHQ = await em.findOne(Zone, {
+          isHeadquarters: true,
+          id: { $ne: zone.id },
         });
 
-        if (!otraSede) {
+        if (!anotherHQ) {
           return ResponseUtil.error(
             res,
             'No se puede eliminar esta zona porque es la sede central actual. Primero debe marcar otra zona como sede central antes de eliminarla.',
@@ -206,16 +205,16 @@ export class ZonaController {
           );
         }
       }
-      const autoridades = await em.find(Autoridad, { zona: zona });
+      const authorities = await em.find(Authority, { zone: zone });
 
-      if (autoridades.length > 0) {
+      if (authorities.length > 0) {
         return ResponseUtil.error(
           res,
-          `No se puede eliminar la zona porque tiene ${autoridades.length} autoridad(es) asociada(s).`,
+          `No se puede eliminar la zona porque tiene ${authorities.length} autoridad(es) asociada(s).`,
           400
         );
       }
-      await em.removeAndFlush(zona);
+      await em.removeAndFlush(zone);
       return ResponseUtil.deleted(res, 'Zona eliminada correctamente');
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al eliminar zona', err);

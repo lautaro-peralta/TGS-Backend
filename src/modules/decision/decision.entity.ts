@@ -12,7 +12,7 @@ import {
   Rel,
 } from '@mikro-orm/core';
 import { BaseObjectEntity } from '../../shared/db/base.object.entity.js';
-import { Theme } from '../../modules/theme/theme.entity.js';
+import { Topic } from '../topic/topic.entity.js';
 
 @Entity({ tableName: 'strategic_decisions' })
 export class StrategicDecision extends BaseObjectEntity {
@@ -28,8 +28,8 @@ export class StrategicDecision extends BaseObjectEntity {
   //@ManyToMany({entity:()=>Socio, nullable:false})
   //socio!:Socio;
 
-  @ManyToOne({ entity: () => Theme, nullable: false })
-  theme!: Rel<Theme>;
+  @ManyToOne({ entity: () => Topic, nullable: false })
+  topic!: Rel<Topic>;
 
   toDTO() {
     return {
@@ -37,7 +37,7 @@ export class StrategicDecision extends BaseObjectEntity {
       description: this.description,
       startDate: this.startDate,
       endDate: this.endDate,
-      theme: this.theme,
+      topic: this.topic,
     };
   }
   toSimpleDTO() {

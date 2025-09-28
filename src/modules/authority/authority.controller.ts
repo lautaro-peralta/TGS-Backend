@@ -184,11 +184,7 @@ export class AuthorityController {
       );
     } catch (error) {
       console.error('Error updating authority:', error);
-      return ResponseUtil.internalError(
-        res,
-        'Error updating authority',
-        error
-      );
+      return ResponseUtil.internalError(res, 'Error updating authority', error);
     }
   }
 
@@ -230,17 +226,13 @@ export class AuthorityController {
       );
     } catch (error) {
       console.error('Error in patchUpdate authority:', error);
-      return ResponseUtil.internalError(
-        res,
-        'Error updating authority',
-        error
-      );
+      return ResponseUtil.internalError(res, 'Error updating authority', error);
     }
   }
 
   async getAuthorityBribes(req: Request, res: Response) {
     const em = orm.em.fork();
-    const user = (req as any).user;
+    let user = (req as any).user;
 
     try {
       // If ADMIN
@@ -302,7 +294,7 @@ export class AuthorityController {
 
       // If AUTHORITY
       if (user.roles.includes(Role.AUTHORITY)) {
-        const user = await em.findOne(
+        user = await em.findOne(
           User,
           { id: user.id },
           {
@@ -388,11 +380,7 @@ export class AuthorityController {
       );
     } catch (error) {
       console.error('Error deleting authority:', error);
-      return ResponseUtil.internalError(
-        res,
-        'Error deleting authority',
-        error
-      );
+      return ResponseUtil.internalError(res, 'Error deleting authority', error);
     }
   }
 }
