@@ -1,67 +1,67 @@
 import argon2 from 'argon2';
 import { orm } from './db/orm.js';
-import { Usuario, Rol } from '../modules/auth/usuario.entity.js';
-import { BaseEntityPersona } from './db/base.persona.entity.js';
-import { Zona } from '../modules/zona/zona.entity.js';
+import { User, Role } from '../modules/auth/user.entity.js';
+import { BasePersonEntity } from './db/base.person.entity.js';
+import { Zone } from '../modules/zone/zone.entity.js';
 
-export async function crearAdminDev() {
+export async function createAdminDev() {
   if (process.env.NODE_ENV !== 'development') {
-    console.log('No se ejecuta crearAdminDev fuera de desarrollo');
+    console.log('createAdminDev is not executed outside of development');
     return;
   }
 
   const em = orm.em.fork();
 
-  const emailAdmin = 'admin@local.dev';
-  const passwordAdmin = 'admin123'; // Cambialo por la contraseña que prefieras
+  const adminEmail = 'admin@local.dev';
+  const adminPassword = 'admin123'; // Change it to your preferred password
 
-  const adminExistente = await em.findOne(Usuario, { email: emailAdmin });
-  if (adminExistente) {
+  const existingAdmin = await em.findOne(User, { email: adminEmail });
+  if (existingAdmin) {
     console.log();
-    console.log('Admin ya existe, no se crea uno nuevo');
+    console.log('Admin already exists, a new one is not created');
     return;
   }
 
-  const hashedPassword = await argon2.hash(passwordAdmin);
+  const hashedPassword = await argon2.hash(adminPassword);
 
-  const nuevoAdmin = em.create(BaseEntityPersona, {
+  const newAdmin = em.create(BasePersonEntity, {
     dni: '87654321',
-    nombre: 'Administrador',
-    email: emailAdmin,
-    telefono: '-',
-    direccion: '-',
+    name: 'Administrator',
+    email: adminEmail,
+    phone: '-',
+    address: '-',
   });
-  const userAdmin = em.create(Usuario, {
-    username: 'elAdmin123',
-    email: emailAdmin,
-    roles: [Rol.ADMIN],
+  const adminUser = em.create(User, {
+    username: 'theAdmin123',
+    email: adminEmail,
+    roles: [Role.ADMIN],
     password: hashedPassword,
-    persona: nuevoAdmin,
+    person: newAdmin,
   });
 
-  await em.persistAndFlush([nuevoAdmin, userAdmin]);
+  await em.persistAndFlush([newAdmin, adminUser]);
   console.log();
-  console.log('Admin de desarrollo creado con éxito');
+  console.log('Development admin created successfully');
 }
 
-export async function crearZonaDev() {
+export async function createZoneDev() {
   const em = orm.em.fork();
 
-  // Buscar si ya existe una zona marcada como central
-  const sedeCentralExistente = await em.findOne(Zona, { esSedeCentral: true });
+  // Search if a zone marked as central already exists
+  const existingCentralOffice = await em.findOne(Zone, { isCentralOffice: true });
 
-  if (sedeCentralExistente) {
+  if (existingCentralOffice) {
     console.log();
     console.log(
-      `Sede central ya existe: ${sedeCentralExistente.nombre} (ID: ${sedeCentralExistente.id}), no se crea otra`
+      `Central office already exists: ${existingCentralOffice.name} (ID: ${existingCentralOffice.id}), another one is not created`
     );
     return;
   }
 
-  // Crear nueva zona y marcarla como zona central
-  const nuevaZona = new Zona('Zona Central', true);
+  // Create a new zone and mark it as a central zone
+  const newZone = new Zone('Central Zone', true);
 
-  await em.persistAndFlush(nuevaZona);
+  await em.persistAndFlush(newZone);
   console.log();
-  console.log(`Zona central creada con éxito con ID ${nuevaZona.id}`);
+  console.log(`Central zone created successfully with ID ${newZone.id}`);
 }

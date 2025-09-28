@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import argon2 from 'argon2';
 import jwt from 'jsonwebtoken';
-import { Usuario, Rol } from '../auth/usuario.entity.js';
+import { User, Role } from '../auth/user.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { registerSchema } from './auth.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secreto-ultra-seguro';
+const JWT_SECRET = process.env.JWT_SECRET || 'ultra-secure-secret';
 
 export class AuthController {
   async register(req: Request, res: Response, next: NextFunction) {
@@ -15,40 +15,40 @@ export class AuthController {
       const validatedData = registerSchema.parse(req.body);
       const { username, email, password } = validatedData;
 
-      //VALIDACION DE USUARIO
-      const existingUsername = await em.findOne(Usuario, { username });
+      //USER VALIDATION
+      const existingUsername = await em.findOne(User, { username });
       if (existingUsername) {
         return ResponseUtil.conflict(
           res,
-          'El nombre de usuario ya está registrado',
+          'Username is already registered',
           'username'
         );
       }
-      const existingEmail = await em.findOne(Usuario, { email });
+      const existingEmail = await em.findOne(User, { email });
       if (existingEmail) {
         return ResponseUtil.conflict(
           res,
-          'El email ya está registrado',
+          'Email is already registered',
           'email'
         );
       }
 
       const hashedPassword = await argon2.hash(password);
-      // Crear el usuario incluyendo el rol, que es obligatorio
-      const userNew = em.create(Usuario, {
+      // Create the user including the role, which is mandatory
+      const newUser = em.create(User, {
         username,
-        roles: [Rol.CLIENTE], // Asignamos un rol por defecto
+        roles: [Role.CLIENT], // We assign a default role
         password: hashedPassword,
         email,
       });
 
-      await em.persistAndFlush(userNew);
+      await em.persistAndFlush(newUser);
 
-      return ResponseUtil.created(res, 'Usuario creado con éxito', {
-        id: userNew.id,
-        username: userNew.username,
-        email: userNew.email,
-        roles: userNew.roles,
+      return ResponseUtil.created(res, 'User created successfully', {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        roles: newUser.roles,
       });
     } catch (error) {
       next(error);
@@ -59,19 +59,19 @@ export class AuthController {
     const em = orm.em.fork();
     try {
       const { email, password } = req.body;
-      const usuario = await em.findOne(Usuario, { email });
+      const user = await em.findOne(User, { email });
 
-      if (!usuario || !(await argon2.verify(usuario.password, password))) {
-        return ResponseUtil.unauthorized(res, 'Credenciales inválidas');
+      if (!user || !(await argon2.verify(user.password, password))) {
+        return ResponseUtil.unauthorized(res, 'Invalid credentials');
       }
 
       const token = jwt.sign(
-        { id: usuario.id, roles: usuario.roles },
+        { id: user.id, roles: user.roles },
         JWT_SECRET,
         { expiresIn: '1h' }
       );
       /*const refreshToken = jwt.sign(
-        { id: usuario.id, roles: usuario.roles },
+        { id: user.id, roles: user.roles },
         JWT_SECRET,
         { expiresIn: '15d' }
       );*/
@@ -84,8 +84,8 @@ export class AuthController {
         })
         .json({
           success: true,
-          message: 'Inicio de sesión exitoso',
-          data: usuario.toDTO(),
+          message: 'Login successful',
+          data: user.toDTO(),
           meta: {
             timestamp: new Date().toISOString(),
             statusCode: 200,
@@ -98,7 +98,7 @@ export class AuthController {
           sameSite: 'strict',
           maxAge: 1000 * 60 * 60,
         })
-        .send(usuario.toDTO());*/
+        .send(user.toDTO());*/
     } catch (err) {
       next(err);
     }
@@ -107,7 +107,7 @@ export class AuthController {
   async logout(req: Request, res: Response) {
     res.clearCookie('access_token').json({
       success: true,
-      message: 'Cierre de sesión exitoso',
+      message: 'Logout successful',
       meta: {
         timestamp: new Date().toISOString(),
         statusCode: 200,

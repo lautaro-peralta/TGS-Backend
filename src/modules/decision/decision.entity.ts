@@ -11,41 +11,41 @@ import {
   Cascade,
   Rel,
 } from '@mikro-orm/core';
-import { BaseEntityObjeto } from '../../shared/db/base.objeto.entity.js';
-import { Tematica } from '../../modules/tematica/tematica.entity.js';
+import { BaseObjectEntity } from '../../shared/db/base.object.entity.js';
+import { Theme } from '../../modules/theme/theme.entity.js';
 
-@Entity({ tableName: 'decisiones_estrategicas' })
-export class DecisionEstrategica extends BaseEntityObjeto {
+@Entity({ tableName: 'strategic_decisions' })
+export class StrategicDecision extends BaseObjectEntity {
   @Property({ nullable: false })
-  descripcion!: string;
-
-  @Property({ nullable: false })
-  fechaInicio!: Date;
+  description!: string;
 
   @Property({ nullable: false })
-  fechaFin!: Date;
+  startDate!: Date;
+
+  @Property({ nullable: false })
+  endDate!: Date;
 
   //@ManyToMany({entity:()=>Socio, nullable:false})
   //socio!:Socio;
 
-  @ManyToOne({ entity: () => Tematica, nullable: false })
-  tematica!: Rel<Tematica>;
+  @ManyToOne({ entity: () => Theme, nullable: false })
+  theme!: Rel<Theme>;
 
   toDTO() {
     return {
       id: this.id,
-      descripcion: this.descripcion,
-      fechaInicio: this.fechaInicio,
-      fechaFin: this.fechaFin,
-      tematica: this.tematica,
+      description: this.description,
+      startDate: this.startDate,
+      endDate: this.endDate,
+      theme: this.theme,
     };
   }
   toSimpleDTO() {
     return {
       id: this.id,
-      descripcion: this.descripcion,
-      fechaInicio: this.fechaInicio,
-      fechaFin: this.fechaFin,
+      description: this.description,
+      startDate: this.startDate,
+      endDate: this.endDate,
     };
   }
 }

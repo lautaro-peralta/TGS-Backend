@@ -1,25 +1,25 @@
 import { Router } from 'express';
 import { DecisionController } from './decision.controller.js';
-import { validarConSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
 import {
-  crearDecisionSchema,
-  actualizarDecisionSchema,
+  createDecisionSchema,
+  updateDecisionSchema,
 } from './decision.schema.js';
 
 export const decisionRouter = Router();
 
 const decisionController = new DecisionController();
 
-decisionRouter.get('/', decisionController.getAllDecisiones);
+decisionRouter.get('/', decisionController.getAllDecisions);
 decisionRouter.get('/:id', decisionController.getOneDecisionById);
 decisionRouter.post(
   '/',
-  validarConSchema({ body: crearDecisionSchema }),
+  validateWithSchema({ body: createDecisionSchema }),
   decisionController.createDecision
 );
 decisionRouter.patch(
   '/:id',
-  validarConSchema({ body: actualizarDecisionSchema }),
+  validateWithSchema({ body: updateDecisionSchema }),
   decisionController.updateDecision
 );
 decisionRouter.delete('/:id', decisionController.deleteDecision);
