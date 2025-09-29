@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Socio } from './socio.entity.js';
 
-/** Utils de respuesta definidos en este archivo */
 class ResponseUtils {
   static ok(res: Response, message: string, data?: any) {
     return res.status(200).json({ message, data });
@@ -23,14 +22,16 @@ class ResponseUtils {
   static serverError(res: Response, message = 'Error interno del servidor') {
     return res.status(500).json({ error: message });
   }
+  static notImplemented(res: Response, message = 'No implementado') {
+    return res.status(501).json({ error: message });
+  }
 }
 
 export class SocioController {
-  /** GET /socios */
+
   async getAllSocios(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      // ✅ Solo populamos 'usuario'
       const socios = await em.find(Socio, {}, { populate: ['usuario'] } as any);
 
       const data = socios.map((s) =>
@@ -54,12 +55,10 @@ export class SocioController {
     }
   }
 
-  /** GET /socios/:dni */
   async getOneSocioByDni(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       const dni = req.params.dni.trim();
-      // ✅ Solo populamos 'usuario'
       const socio = await em.findOne(Socio, { dni }, { populate: ['usuario'] } as any);
       if (!socio) return ResponseUtils.notFound(res, 'Socio no encontrado');
 
@@ -82,17 +81,15 @@ export class SocioController {
     }
   }
 
-  /** POST /socios — SOLO crea Socio (sin Usuario/Persona) */
   async createSocio(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      // Asumimos middleware Zod que coloca el body validado en res.locals.validated.body
       const validated = (res as any).locals?.validated?.body as {
         dni: string;
         nombre: string;
         email: string;
-        direccion?: string;
-        telefono?: string;
+        direccion: string;
+        telefono: string;
       } | undefined;
 
       if (!validated) {
@@ -101,7 +98,13 @@ export class SocioController {
 
       const { dni, nombre, email, direccion, telefono } = validated;
 
-      // Unicidad por DNI (además de UNIQUE a nivel DB recomendado)
+      if (!direccion || !telefono) {
+        return ResponseUtils.badRequest(
+          res,
+          'Los campos "direccion" y "telefono" son obligatorios'
+        );
+      }
+
       const existeSocio = await em.findOne(Socio, { dni });
       if (existeSocio) return ResponseUtils.conflict(res, 'Ya existe un socio con ese DNI');
 
@@ -125,7 +128,6 @@ export class SocioController {
     }
   }
 
-  /** PATCH /socios/:dni */
   async patchUpdateSocio(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni.trim();
@@ -136,7 +138,9 @@ export class SocioController {
         return ResponseUtils.notFound(res, 'Socio no encontrado');
       }
 
-      const updates = ((res as any).locals?.validated?.body ?? {}) as Partial<Pick<Socio, 'nombre' | 'email' | 'direccion' | 'telefono'>>; // validado por Zod en el middleware
+      const updates = ((res as any).locals?.validated?.body ?? {}) as Partial<
+        Pick<Socio, 'nombre' | 'email' | 'direccion' | 'telefono'>
+      >; // validado por Zod en el middleware
       em.assign(socio, updates);
       await em.flush();
 
@@ -157,7 +161,6 @@ export class SocioController {
     }
   }
 
-  /** DELETE /socios/:dni */
   async deleteSocio(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni.trim();
@@ -173,5 +176,26 @@ export class SocioController {
       console.error('Error al eliminar socio:', err);
       return ResponseUtils.serverError(res, 'Error al eliminar socio');
     }
+  }
+
+  async linkDecision(req: Request, res: Response) {
+    return ResponseUtils.notImplemented(res, 'Vinculación de decisiones no implementada');
+  }
+
+  async unlinkDecision(req: Request, res: Response) {
+    return ResponseUtils.notImplemented(res, 'Eliminación de vínculo no implementada');
+  }
+
+  async listDecisiones(req: Request, res: Response) {
+    return ResponseUtils.notImplemented(res, 'Listado de decisiones no implementado');
+  }
+
+
+  async createVentaForSocio(req: Request, res: Response) {
+    return ResponseUtils.notImplemented(res, 'Creación de venta para socio no implementada');
+  }
+
+  async listVentasBySocio(req: Request, res: Response) {
+    return ResponseUtils.notImplemented(res, 'Listado de ventas por socio no implementado');
   }
 }

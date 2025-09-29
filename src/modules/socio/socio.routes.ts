@@ -1,14 +1,18 @@
 import { Router } from 'express';
 import { SocioController } from './socio.controller.js';
-import { validarCrearSocio, validarPatchSocio } from './socio.schema.js';
 
-const r = Router();
-const c = new SocioController();
+const ctrl = new SocioController();
+export const socioRouter = Router();
 
-r.get('/', c.getAllSocios.bind(c));
-r.get('/:dni', c.getOneSocioByDni.bind(c));
-r.post('/', validarCrearSocio, c.createSocio.bind(c));        // SOLO crea Socio
-r.patch('/:dni', validarPatchSocio, c.patchUpdateSocio.bind(c));
-r.delete('/:dni', c.deleteSocio.bind(c));
 
-export default r;
+socioRouter.get('/', ctrl.getAllSocios.bind(ctrl));
+socioRouter.get('/:dni', ctrl.getOneSocioByDni.bind(ctrl));
+
+socioRouter.post('/', ctrl.createSocio.bind(ctrl));
+socioRouter.patch('/:dni', ctrl.patchUpdateSocio.bind(ctrl));
+socioRouter.delete('/:dni', ctrl.deleteSocio.bind(ctrl));
+socioRouter.post('/:dni/decisiones', ctrl.linkDecision.bind(ctrl));
+socioRouter.delete('/:dni/decisiones/:linkId', ctrl.unlinkDecision.bind(ctrl));
+socioRouter.get('/:dni/decisiones', ctrl.listDecisiones.bind(ctrl));
+socioRouter.post('/:dni/ventas', ctrl.createVentaForSocio.bind(ctrl));
+socioRouter.get('/:dni/ventas', ctrl.listVentasBySocio.bind(ctrl));

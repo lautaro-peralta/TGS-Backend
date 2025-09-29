@@ -1,0 +1,73 @@
+### obtener todos los socios
+GET http://localhost:3000/api/socios
+
+### obtener un socio
+GET http://localhost:3000/api/socios/12345678
+
+### Crear nuevo socio
+POST http://localhost:3000/api/socios
+Content-Type: application/json
+
+{
+  "dni": "12345678",
+  "nombre": "Luca Herrera",
+  "email": "luca.herrera@example.com",
+  "direccion": "Av. Pellegrini 1234, Rosario, Santa Fe",
+  "telefono": "3416007788"
+}
+
+### DESHABILITADO. Modificar socio (PUT - idempotente, modificaciones completas)
+PUT http://localhost:3000/api/socios/12345678
+Content-Type: application/json
+
+{
+  "nombre": "Luca FERNANDEZ",
+  "email": "luca.herrera@example.com",
+  "direccion": "Av. Pellegrini 1234, Rosario, Santa Fe",
+  "telefono": "3416007788"
+}
+
+### modificar socio (PATCH - no necesariamente idempotente, modificaciones parciales)
+PATCH http://localhost:3000/api/socios/12345678
+Content-Type: application/json
+
+{
+  "nombre": "Luca FERNANDEZ",
+  "email": "luca.fernandez@example.com",
+  "direccion": "Cochabamba 230, Rosario, Santa Fe",
+  "telefono": "3416007799"
+}
+
+### borrar un socio
+DELETE http://localhost:3000/api/socios/12345678
+
+
+# --- Endpoints placeholders (actualmente 501 Not Implemented en backend) ---
+
+### (501) Vincular decisión a un socio (N:M Socio–Decisión)
+POST http://localhost:3000/api/socios/12345678/decisiones
+Content-Type: application/json
+
+{
+  "decisionId": 42,
+  "rol": "aprobador"
+}
+
+### (501) Desvincular decisión
+DELETE http://localhost:3000/api/socios/12345678/decisiones/1001
+
+### (501) Listar decisiones de un socio
+GET http://localhost:3000/api/socios/12345678/decisiones
+
+### (501) Crear venta para un socio (1:M Socio–Venta)
+POST http://localhost:3000/api/socios/12345678/ventas
+Content-Type: application/json
+
+{
+  "productoId": 7,
+  "cantidad": 3,
+  "precioUnitario": 1999.99
+}
+
+### (501) Listar ventas de un socio
+GET http://localhost:3000/api/socios/12345678/ventas
