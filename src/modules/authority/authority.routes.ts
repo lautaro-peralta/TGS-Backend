@@ -1,75 +1,126 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
+import { Router } from 'express';
+import { z } from 'zod';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import {
   authMiddleware,
   rolesMiddleware,
 } from '../../modules/auth/auth.middleware.js';
-import { Router } from 'express';
 import { AuthorityController } from './authority.controller.js';
 import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
 import {
   createAuthoritySchema,
   updateAuthoritySchema,
   partialUpdateAuthoritySchema,
-  payBribesSchema,
 } from './authority.schema.js';
-import { z } from 'zod';
 import { Role } from '../auth/user.entity.js';
 
+// ============================================================================
+// ROUTER - Authority
+// ============================================================================
 export const authorityRouter = Router();
 const authorityController = new AuthorityController();
 
+/**
+ * Zod schema for DNI parameter validation.
+ */
 const dniParamSchema = z.object({
   dni: z.string().min(7).max(10),
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// ROUTES
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   POST /api/authorities
+ * @desc    Create a new authority.
+ * @access  Private (Admin only)
+ */
 authorityRouter.post(
   '/',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
   validateWithSchema({ body: createAuthoritySchema }),
   authorityController.createAuthority
 );
 
+/**
+ * @route   GET /api/authorities
+ * @desc    Get all authorities.
+ * @access  Private (Admin only)
+ */
 authorityRouter.get(
   '/',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
   authorityController.getAllAuthorities
 );
 
+/**
+ * @route   GET /api/authorities/:dni
+ * @desc    Get an authority by DNI.
+ * @access  Private (Admin only)
+ */
 authorityRouter.get(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
   validateWithSchema({ params: dniParamSchema }),
   authorityController.getOneAuthorityByDni
 );
 
+/**
+ * @route   GET /api/authorities/:dni/bribes
+ * @desc    Get bribes for a specific authority.
+ * @access  Private (Admin and Authority only)
+ */
 authorityRouter.get(
   '/:dni/bribes',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   authorityController.getAuthorityBribes
 );
 
+/**
+ * @route   PUT /api/authorities/:dni
+ * @desc    Update an authority by DNI.
+ * @access  Private (Admin and Authority only)
+ */
 authorityRouter.put(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   validateWithSchema({ body: updateAuthoritySchema }),
   authorityController.putUpdateAuthority
 );
 
+/**
+ * @route   PATCH /api/authorities/:dni
+ * @desc    Partially update an authority by DNI.
+ * @access  Private (Admin and Authority only)
+ */
 authorityRouter.patch(
   '/:dni',
-  //uthMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   validateWithSchema({ body: partialUpdateAuthoritySchema }),
   authorityController.patchUpdateAuthority
 );
 
+/**
+ * @route   DELETE /api/authorities/:dni
+ * @desc    Delete an authority by DNI.
+ * @access  Private (Admin and Authority only)
+ */
 authorityRouter.delete(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   authorityController.deleteAuthority
 );

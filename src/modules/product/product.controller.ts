@@ -1,4 +1,11 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Product } from './product.entity.js';
 import { Detail } from '../sale/detail.entity.js';
@@ -10,12 +17,29 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
+// ============================================================================
+// CONTROLLER - Product
+// ============================================================================
+
+/**
+ * Controller for handling product-related operations.
+ * @class ProductController
+ */
 export class ProductController {
+  /**
+   * Searches for products based on a query string.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async searchProducts(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate search query
+      // ──────────────────────────────────────────────────────────────────────
       const { q } = req.query as { q?: string };
 
-      // Specific validation for search
       if (!q || q.trim().length < 2) {
         return ResponseUtil.validationError(res, 'Validation error', [
           {
@@ -26,12 +50,18 @@ export class ProductController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch products matching the query
+      // ──────────────────────────────────────────────────────────────────────
       const where = { description: { $like: `%${q.trim()}%` } };
 
       const products = await em.find(Product, where, {
         orderBy: { description: 'asc' },
       });
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const message = ResponseUtil.generateListMessage(
         products.length,
         'product',
@@ -48,9 +78,18 @@ export class ProductController {
     }
   }
 
-  // Method to list all
+  /**
+   * Retrieves all products.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllProducts(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all products
+      // ──────────────────────────────────────────────────────────────────────
       const products = await em.find(
         Product,
         {},
@@ -59,10 +98,10 @@ export class ProductController {
         }
       );
 
-      const message = ResponseUtil.generateListMessage(
-        products.length,
-        'product'
-      );
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      const message = ResponseUtil.generateListMessage(products.length, 'product');
 
       return ResponseUtil.successList(
         res,
@@ -74,15 +113,27 @@ export class ProductController {
     }
   }
 
-  // Get a product by ID
+  /**
+   * Retrieves a single product by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneProductById(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch product by ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id);
       const product = await em.findOne(Product, { id });
       if (!product) {
         return ResponseUtil.notFound(res, 'Product', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
         'Product found successfully',
@@ -93,9 +144,18 @@ export class ProductController {
     }
   }
 
-  // Create product with Zod validation
+  /**
+   * Creates a new product.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createProduct(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate request body and create product
+      // ──────────────────────────────────────────────────────────────────────
       const validatedData = createProductSchema.parse(req.body);
 
       const product = new Product(
@@ -107,6 +167,9 @@ export class ProductController {
 
       await em.persistAndFlush(product);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.created(
         res,
         'Product created successfully',
@@ -130,9 +193,18 @@ export class ProductController {
     }
   }
 
-  // Update product with Zod validation
+  /**
+   * Updates an existing product.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async updateProduct(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate request and fetch product
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id);
       const validatedData = updateProductSchema.parse(req.body);
 
@@ -141,7 +213,9 @@ export class ProductController {
         return ResponseUtil.notFound(res, 'Product', id);
       }
 
-      // Update only the sent fields
+      // ──────────────────────────────────────────────────────────────────────
+      // Apply updates
+      // ──────────────────────────────────────────────────────────────────────
       if (validatedData.description !== undefined)
         product.description = validatedData.description;
       if (validatedData.price !== undefined)
@@ -153,6 +227,9 @@ export class ProductController {
 
       await em.flush();
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
         'Product updated successfully',
@@ -171,18 +248,23 @@ export class ProductController {
           validationErrors
         );
       } else {
-        return ResponseUtil.internalError(
-          res,
-          'Error updating product',
-          err
-        );
+        return ResponseUtil.internalError(res, 'Error updating product', err);
       }
     }
   }
 
-  // Delete product
+  /**
+   * Deletes a product by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteProduct(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch product and handle related entities
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id);
       const product = await em.findOne(
         Product,
@@ -193,13 +275,10 @@ export class ProductController {
         return ResponseUtil.notFound(res, 'Product', id);
       }
 
-      // If there are details that reference this product, delete them first
-      // Alternative: return 409 if there are references and cascade delete is not desired
       if (product.details.isInitialized() && product.details.length > 0) {
         await em.nativeDelete(Detail, { product: id });
       }
 
-      // Clean N:M relationships with distributors
       if (
         product.distributors.isInitialized() &&
         product.distributors.length > 0
@@ -208,8 +287,14 @@ export class ProductController {
         await em.flush();
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the product
+      // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(product);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(res, 'Product deleted successfully');
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error deleting product', err);

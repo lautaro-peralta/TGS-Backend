@@ -1,11 +1,11 @@
 ###obtener todos los sobornos
-GET http://localhost:3000/api/sobornos
+GET http://localhost:3000/api/bribes
 
 ###obtener un soborno
-GET http://localhost:3000/api/sobornos/1
+GET http://localhost:3000/api/bribes/1
 
 ###pagar soborno
-PATCH http://localhost:3000/api/sobornos/10101013/pagar
+PATCH http://localhost:3000/api/bribes/10101013/pay
 Content-Type: application/json
 
 {
@@ -13,7 +13,7 @@ Content-Type: application/json
 }
 
 ###pagar sobornos
-PATCH http://localhost:3000/api/sobornos/pagar
+PATCH http://localhost:3000/api/bribes/pay
 Content-Type: application/json
 
 {

@@ -1,32 +1,95 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import {
   Entity,
-  PrimaryKey,
   Property,
   OneToMany,
   Unique,
+  Collection,
 } from '@mikro-orm/core';
-import { BaseObjectEntity } from '../../shared/db/base.object.entity.js';
-import { Authority } from '../../modules/authority/authority.entity.js';
-//import { Distributor } from '../../modules/distributor/distributor.entity.js';
 
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
+import { BaseObjectEntity } from '../../shared/base.object.entity.js';
+import { Distributor } from '../../modules/distributor/distributor.entity.js';
+
+// ============================================================================
+// ENTITY - Zone
+// ============================================================================
+/**
+ * Represents a Zone entity in the system.
+ * This entity is mapped to the 'zones' table in the database.
+ *
+ * @class Zone
+ * @extends {BaseObjectEntity}
+ */
 @Entity({ tableName: 'zones' })
 export class Zone extends BaseObjectEntity {
+  // ──────────────────────────────────────────────────────────────────────────
+  // Properties
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * The unique name of the zone.
+   *
+   * @type {string}
+   */
   @Property()
   @Unique()
   name!: string;
 
+  /**
+   * Indicates if the zone is a headquarters.
+   *
+   * @type {boolean}
+   */
   @Property({ default: false })
   isHeadquarters: boolean = false;
 
-  //@OneToMany({entity:()=> Distributor, nullable:true, mappedBy:distributor => distributor.zone})
-  //distributor!:Distributor
+  // ──────────────────────────────────────────────────────────────────────────
+  // Relationships
+  // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * The distributor associated with this zone.
+   * This defines a one-to-many relationship with the Distributor entity.
+   *
+   * @type {Distributor}
+   */
+  @OneToMany({
+    entity: () => Distributor,
+    nullable: true,
+    mappedBy: (distributor) => distributor.zone,
+  })
+  distributors = new Collection<Distributor[]>(this);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Constructor
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Creates an instance of Zone.
+   *
+   * @param {string} name - The name of the zone.
+   * @param {boolean} isHeadquarters - Whether the zone is a headquarters.
+   */
   constructor(name: string, isHeadquarters: boolean) {
     super();
     this.name = name;
     this.isHeadquarters = isHeadquarters;
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // DTO (Data Transfer Object) Methods
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Converts the Zone entity to a Data Transfer Object (DTO).
+   *
+   * @returns {object} The zone DTO.
+   */
   toDTO() {
     return {
       id: this.id,

@@ -1,15 +1,40 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from './bribe.entity.js';
 import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
+// ============================================================================
+// CONTROLLER - Bribe
+// ============================================================================
+
+/**
+ * Controller for handling bribe-related operations.
+ * @class BribeController
+ */
 export class BribeController {
+  /**
+   * Retrieves all bribes.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllBribes(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all bribes with related data
+      // ──────────────────────────────────────────────────────────────────────
       const bribes = await em.find(
         Bribe,
         {},
@@ -19,11 +44,11 @@ export class BribeController {
         }
       );
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const bribesDTO = bribes.map((bribe) => bribe.toDTO());
-      const message = ResponseUtil.generateListMessage(
-        bribesDTO.length,
-        'bribe'
-      );
+      const message = ResponseUtil.generateListMessage(bribesDTO.length, 'bribe');
 
       return ResponseUtil.successList(res, message, bribesDTO);
     } catch (err: any) {
@@ -36,6 +61,13 @@ export class BribeController {
     }
   }
 
+  /**
+   * Retrieves a single bribe by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneBribeById(req: Request, res: Response) {
     const em = orm.em.fork();
     const id = Number(req.params.id);
@@ -47,6 +79,9 @@ export class BribeController {
     }
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch bribe by ID with related data
+      // ──────────────────────────────────────────────────────────────────────
       const bribe = await em.findOne(
         Bribe,
         { id },
@@ -59,6 +94,9 @@ export class BribeController {
         return ResponseUtil.notFound(res, 'Bribe', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
         'Bribe found successfully',
@@ -70,23 +108,34 @@ export class BribeController {
     }
   }
 
+  /**
+   * Creates a new bribe.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createBribe(req: Request, res: Response) {
     const em = orm.em.fork();
     const { amount, authorityId, saleId } = res.locals.validated.body;
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Find related entities
+      // ──────────────────────────────────────────────────────────────────────
       const authority = await em.findOne(Authority, { id: authorityId });
-
       if (!authority) {
         return ResponseUtil.notFound(res, 'Authority', authorityId);
       }
 
       const sale = await em.findOne(Sale, { id: saleId });
-
       if (!sale) {
         return ResponseUtil.notFound(res, 'Sale', saleId);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Create and persist the new bribe
+      // ──────────────────────────────────────────────────────────────────────
       const bribe = em.create(Bribe, {
         amount,
         authority,
@@ -97,6 +146,9 @@ export class BribeController {
 
       await em.persistAndFlush(bribe);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const createdBribe = await em.findOne(
         Bribe,
         { id: bribe.id },
@@ -116,6 +168,13 @@ export class BribeController {
     }
   }
 
+  /**
+   * Marks bribes as paid.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async payBribes(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni;
@@ -124,8 +183,10 @@ export class BribeController {
     try {
       let selectedBribes: Bribe[] = [];
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch bribes to be paid
+      // ──────────────────────────────────────────────────────────────────────
       if (dni) {
-        // Case 1: pay bribes of a specific authority
         const authority = await em.findOne(
           Authority,
           { dni },
@@ -147,7 +208,6 @@ export class BribeController {
           );
         }
       } else {
-        // Case 2: pay bribes without filtering by authority
         selectedBribes = await em.find(Bribe, {
           id: { $in: ids },
         });
@@ -157,9 +217,15 @@ export class BribeController {
         }
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Mark bribes as paid and persist changes
+      // ──────────────────────────────────────────────────────────────────────
       selectedBribes.forEach((s) => (s.paid = true));
       await em.persistAndFlush(selectedBribes);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const data = selectedBribes.map((s) => ({
         id: s.id,
         paid: s.paid,
@@ -172,6 +238,13 @@ export class BribeController {
     }
   }
 
+  /**
+   * Deletes a bribe by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteBribe(req: Request, res: Response) {
     const em = orm.em.fork();
     const id = Number(req.params.id);
@@ -183,6 +256,9 @@ export class BribeController {
     }
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Find and delete the bribe
+      // ──────────────────────────────────────────────────────────────────────
       const bribe = await em.findOne(Bribe, { id });
 
       if (!bribe) {
@@ -191,6 +267,9 @@ export class BribeController {
 
       await em.removeAndFlush(bribe);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(res, 'Bribe deleted successfully');
     } catch (err: any) {
       console.error('Error deleting bribe:', err);

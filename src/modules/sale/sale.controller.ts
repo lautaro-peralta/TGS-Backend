@@ -1,4 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
+import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Sale } from './sale.entity.js';
 import { Detail } from './detail.entity.js';
@@ -6,15 +13,32 @@ import { Client } from '../client/client.entity.js';
 import { Product } from '../product/product.entity.js';
 import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from '../bribe/bribe.entity.js';
-import { User, Role } from '../auth/user.entity.js';
-import { BasePersonEntity } from '../../shared/db/base.person.entity.js';
+import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
+// ============================================================================
+// CONTROLLER - Sale
+// ============================================================================
+
+/**
+ * Controller for handling sale-related operations.
+ * @class SaleController
+ */
 export class SaleController {
+  /**
+   * Retrieves all sales.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllSales(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all sales with related data
+      // ──────────────────────────────────────────────────────────────────────
       const sales = await em.find(
         Sale,
         {},
@@ -22,7 +46,10 @@ export class SaleController {
       );
       const salesDTO = sales.map((s) => s.toDTO());
       const message = ResponseUtil.generateListMessage(salesDTO.length, 'sale');
-      
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.successList(res, message, salesDTO);
     } catch (err) {
       console.error('Error getting sales:', err);
@@ -30,15 +57,28 @@ export class SaleController {
     }
   }
 
+  /**
+   * Retrieves a single sale by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneSaleById(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract sale ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' }
+          { field: 'id', message: 'The ID must be a valid number' },
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch sale by ID with related data
+      // ──────────────────────────────────────────────────────────────────────
       const sale = await em.findOne(
         Sale,
         { id },
@@ -48,26 +88,42 @@ export class SaleController {
         return ResponseUtil.notFound(res, 'Sale', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(res, 'Sale found successfully', sale.toDTO());
     } catch (err) {
       console.error('Error searching for sale:', err);
-      return ResponseUtil.internalError(res, 'Error searching for the sale', err);
+      return ResponseUtil.internalError(
+        res,
+        'Error searching for the sale',
+        err
+      );
     }
   }
 
+  /**
+   * Creates a new sale.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createSale(req: Request, res: Response) {
     const { clientDni, details, person } = res.locals.validated.body;
 
     let client = await em.findOne(Client, { dni: clientDni });
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Find or create client
+      // ──────────────────────────────────────────────────────────────────────
       if (!client) {
         let basePerson = await em.findOne(BasePersonEntity, {
           dni: clientDni,
         });
 
         if (!basePerson) {
-          // Here we ask for the person object to come
           if (!person) {
             return res.status(400).json({
               message:
@@ -95,6 +151,9 @@ export class SaleController {
         await em.persistAndFlush(client);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Create new sale and details
+      // ──────────────────────────────────────────────────────────────────────
       const newSale = em.create(Sale, {
         client,
         saleDate: new Date(),
@@ -132,6 +191,9 @@ export class SaleController {
         .getItems()
         .reduce((acc, d) => acc + d.subtotal, 0);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Handle illegal products and bribes
+      // ──────────────────────────────────────────────────────────────────────
       if (isIllegalProduct) {
         const authority = await em.findOne(
           Authority,
@@ -161,6 +223,9 @@ export class SaleController {
 
       await em.persistAndFlush(newSale);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const sale = await em.findOne(
         Sale,
         { id: newSale.id },
@@ -179,20 +244,34 @@ export class SaleController {
     }
   }
 
+  /**
+   * Deletes a sale by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteSale(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract sale ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) return res.status(400).send({ message: 'Invalid ID' });
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch sale by ID
+      // ──────────────────────────────────────────────────────────────────────
       const sale = await em.findOne(
         Sale,
         { id },
         { populate: ['authority', 'details'] }
       );
-      if (!sale)
-        return res.status(404).send({ message: 'Sale not found' });
+      if (!sale) return res.status(404).send({ message: 'Sale not found' });
 
-      // We search if there are bribes associated with that sale
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for associated bribes before deletion
+      // ──────────────────────────────────────────────────────────────────────
       const associatedBribe = await em.count(Bribe, {
         sale: sale.id,
       });
@@ -202,8 +281,14 @@ export class SaleController {
         });
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the sale
+      // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(sale);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return res.status(200).send({
         message: `Sale deleted successfully`,
       });

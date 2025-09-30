@@ -1,6 +1,5 @@
 ### Listar
-GET http://localhost:3000/distribuidores
-
+GET http://localhost:3000/distributors
 
 ### Buscar por texto (nombre o dni)
 GET http://localhost:3000/distribuidores?q=juan
@@ -13,7 +12,6 @@ GET http://localhost:3000/distribuidores/1
 ### Crear
 POST http://localhost:3000/distribuidores
 Content-Type: application/json
-
 
 {
 "dni": "16254545",
