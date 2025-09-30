@@ -1,67 +1,136 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import argon2 from 'argon2';
-import { orm } from './db/orm.js';
-import { Usuario, Rol } from '../modules/auth/usuario.entity.js';
-import { BaseEntityPersona } from './db/base.persona.entity.js';
-import { Zona } from '../modules/zona/zona.entity.js';
 
-export async function crearAdminDev() {
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
+import { orm } from './db/orm.js';
+import { User, Role } from '../modules/auth/user.entity.js';
+import { BasePersonEntity } from './base.person.entity.js';
+import { Zone } from '../modules/zone/zone.entity.js';
+
+// ============================================================================
+// DEVELOPMENT SEED FUNCTIONS
+// ============================================================================
+
+/**
+ * Creates a default admin user for development environment
+ *
+ * This function:
+ * - Only executes in development mode
+ * - Checks if admin already exists to prevent duplicates
+ * - Creates a BasePersonEntity and User with admin role
+ * - Uses secure password hashing with argon2
+ *
+ * @returns {Promise<void>}
+ */
+export async function createAdminDev() {
+  // ──────────────────────────────────────────────────────────────────────
+  // Environment validation
+  // ──────────────────────────────────────────────────────────────────────
   if (process.env.NODE_ENV !== 'development') {
-    console.log('No se ejecuta crearAdminDev fuera de desarrollo');
+    console.log('createAdminDev is not executed outside of development');
     return;
   }
 
+  // ──────────────────────────────────────────────────────────────────────
+  // Database context
+  // ──────────────────────────────────────────────────────────────────────
   const em = orm.em.fork();
 
-  const emailAdmin = 'admin@local.dev';
-  const passwordAdmin = 'admin123'; // Cambialo por la contraseña que prefieras
+  // ──────────────────────────────────────────────────────────────────────
+  // Admin credentials configuration
+  // ──────────────────────────────────────────────────────────────────────
+  const adminEmail = 'admin@local.dev';
+  const adminPassword = 'admin123'; // Change it to your preferred password
 
-  const adminExistente = await em.findOne(Usuario, { email: emailAdmin });
-  if (adminExistente) {
+  // ──────────────────────────────────────────────────────────────────────
+  // Check for existing admin
+  // ──────────────────────────────────────────────────────────────────────
+  const existingAdmin = await em.findOne(User, { email: adminEmail });
+  if (existingAdmin) {
     console.log();
-    console.log('Admin ya existe, no se crea uno nuevo');
+    console.log('Admin already exists, a new one is not created');
     return;
   }
 
-  const hashedPassword = await argon2.hash(passwordAdmin);
+  // ──────────────────────────────────────────────────────────────────────
+  // Password hashing
+  // ──────────────────────────────────────────────────────────────────────
+  const hashedPassword = await argon2.hash(adminPassword);
 
-  const nuevoAdmin = em.create(BaseEntityPersona, {
+  // ──────────────────────────────────────────────────────────────────────
+  // Entity creation
+  // ──────────────────────────────────────────────────────────────────────
+
+  // Create base person entity with admin details
+  const newAdmin = em.create(BasePersonEntity, {
     dni: '87654321',
-    nombre: 'Administrador',
-    email: emailAdmin,
-    telefono: '-',
-    direccion: '-',
-  });
-  const userAdmin = em.create(Usuario, {
-    username: 'elAdmin123',
-    email: emailAdmin,
-    roles: [Rol.ADMIN],
-    password: hashedPassword,
-    persona: nuevoAdmin,
+    name: 'Administrator',
+    email: adminEmail,
+    phone: '-',
+    address: '-',
   });
 
-  await em.persistAndFlush([nuevoAdmin, userAdmin]);
+  // Create user entity linked to person with admin role
+  const adminUser = em.create(User, {
+    username: 'theAdmin123',
+    email: adminEmail,
+    roles: [Role.ADMIN],
+    password: hashedPassword,
+    person: newAdmin,
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Persist to database
+  // ──────────────────────────────────────────────────────────────────────
+  await em.persistAndFlush([newAdmin, adminUser]);
   console.log();
-  console.log('Admin de desarrollo creado con éxito');
+  console.log('Development admin created successfully');
 }
 
-export async function crearZonaDev() {
+/**
+ * Creates a default central zone for development environment
+ *
+ * This function:
+ * - Creates a headquarters zone if none exists
+ * - Prevents duplicate central zones
+ * - Marks the zone as headquarters for hierarchical purposes
+ *
+ * @returns {Promise<void>}
+ */
+export async function createZoneDev() {
+  // ──────────────────────────────────────────────────────────────────────
+  // Database context
+  // ──────────────────────────────────────────────────────────────────────
   const em = orm.em.fork();
 
-  // Buscar si ya existe una zona marcada como central
-  const sedeCentralExistente = await em.findOne(Zona, { esSedeCentral: true });
+  // ──────────────────────────────────────────────────────────────────────
+  // Check for existing headquarters
+  // ──────────────────────────────────────────────────────────────────────
+  const existingHeardquarters = await em.findOne(Zone, {
+    isHeadquarters: true,
+  });
 
-  if (sedeCentralExistente) {
+  if (existingHeardquarters) {
     console.log();
     console.log(
-      `Sede central ya existe: ${sedeCentralExistente.nombre} (ID: ${sedeCentralExistente.id}), no se crea otra`
+      `Central office already exists: ${existingHeardquarters.name} (ID: ${existingHeardquarters.id}), another one is not created`
     );
     return;
   }
 
-  // Crear nueva zona y marcarla como zona central
-  const nuevaZona = new Zona('Zona Central', true);
+  // ──────────────────────────────────────────────────────────────────────
+  // Create headquarters zone
+  // ──────────────────────────────────────────────────────────────────────
+  const newZone = new Zone('Central Zone', true);
 
-  await em.persistAndFlush(nuevaZona);
+  // ──────────────────────────────────────────────────────────────────────
+  // Persist to database
+  // ──────────────────────────────────────────────────────────────────────
+  await em.persistAndFlush(newZone);
   console.log();
-  console.log(`Zona central creada con éxito con ID ${nuevaZona.id}`);
+  console.log(`Central zone created successfully with ID ${newZone.id}`);
 }

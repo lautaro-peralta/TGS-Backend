@@ -1,114 +1,115 @@
 // ============================================================================
 // IMPORTS - Dependencies
 // ============================================================================
-import {
-  Entity,
-  Property,
-  ManyToOne,
-  Rel,
-  ManyToMany,
-  Collection,
-} from '@mikro-orm/core';
+import { Entity, Rel, Property, ManyToOne } from '@mikro-orm/core';
 
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
+import { Sale } from '../sale/sale.entity.js';
+import { Authority } from '../authority/authority.entity.js';
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
-import { Topic } from '../topic/topic.entity.js';
-import { User } from '../auth/user.entity.js';
 
 // ============================================================================
-// ENTITY - StrategicDecision
+// ENTITY - Bribe
 // ============================================================================
 /**
- * Represents a Strategic Decision entity in the system.
- * This entity is mapped to the 'strategic_decisions' table in the database.
+ * Represents a Bribe entity in the system.
+ * This entity is mapped to the 'bribes' table in the database.
  *
- * @class StrategicDecision
+ * @class Bribe
  * @extends {BaseObjectEntity}
  */
-@Entity({ tableName: 'strategic_decisions' })
-export class StrategicDecision extends BaseObjectEntity {
+@Entity({ tableName: 'bribes' })
+export class Bribe extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
   // Properties
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The description of the strategic decision.
+   * The amount of the bribe.
    *
-   * @type {string}
+   * @type {number}
    */
-  @Property({ nullable: false })
-  description!: string;
+  @Property()
+  amount!: number;
 
   /**
-   * The start date of the strategic decision.
+   * Indicates if the bribe has been paid.
+   *
+   * @type {boolean}
+   */
+  @Property()
+  paid: boolean = false;
+
+  /**
+   * The creation date of the bribe.
    *
    * @type {Date}
    */
-  @Property({ nullable: false })
-  startDate!: Date;
-
-  /**
-   * The end date of the strategic decision.
-   *
-   * @type {Date}
-   */
-  @Property({ nullable: false })
-  endDate!: Date;
+  @Property()
+  creationDate: Date = new Date();
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The partners (socios) associated with this strategic decision.
-   * This defines a many-to-many relationship with the User entity.
+   * The authority associated with the bribe.
+   * This defines a many-to-one relationship with the Authority entity.
    *
-   * @type {Collection<User>}
+   * @type {Rel<Authority>}
    */
-  @ManyToMany({entity:()=>User, nullable:false})
-  socios = new Collection<User>(this);
+  @ManyToOne({ entity: () => Authority, nullable: false })
+  authority!: Rel<Authority>;
 
   /**
-   * The topic of the strategic decision.
-   * This defines a many-to-one relationship with the Topic entity.
+   * The sale associated with the bribe.
+   * This defines a many-to-one relationship with the Sale entity.
    *
-   * @type {Rel<Topic>}
+   * @type {Rel<Sale>}
    */
-  @ManyToOne({ entity: () => Topic, nullable: false })
-  topic!: Rel<Topic>;
+  @ManyToOne({ entity: () => Sale, nullable: false })
+  sale!: Rel<Sale>;
 
   // ──────────────────────────────────────────────────────────────────────────
   // DTO (Data Transfer Object) Methods
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Converts the StrategicDecision entity to a Data Transfer Object (DTO).
+   * Converts the Bribe entity to a Data Transfer Object (DTO).
    *
-   * @returns {object} The strategic decision DTO.
+   * @returns {object} The bribe DTO.
    */
   toDTO() {
     return {
       id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
-      topic: this.topic,
+      amount: this.amount,
+      paid: this.paid,
+      creationDate: this.creationDate,
+      authority: {
+        dni: this.authority.dni,
+        name: this.authority.name,
+      },
+      sale: {
+        id: this.sale.id,
+      },
     };
   }
 
   /**
-   * Converts the StrategicDecision entity to a simple Data Transfer Object (DTO).
+   * Converts the Bribe entity to a DTO without authority information.
    *
-   * @returns {object} The simple strategic decision DTO.
+   * @returns {object} The bribe DTO without authority details.
    */
-  toSimpleDTO() {
+  toWithoutAuthDTO() {
     return {
-      id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
+      amount: this.amount,
+      paid: this.paid,
+      creationDate: this.creationDate,
+      sale: {
+        id: this.sale.id,
+      },
     };
   }
 }

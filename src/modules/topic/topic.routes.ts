@@ -6,62 +6,59 @@ import { Router } from 'express';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { DecisionController } from './decision.controller.js';
+import { TopicController } from './topic.controller.js';
+import { updateTopicSchema, createTopicSchema } from './topic.schema.js';
 import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
-import {
-  createDecisionSchema,
-  updateDecisionSchema,
-} from './decision.schema.js';
 
 // ============================================================================
-// ROUTER - Decision
+// ROUTER - Topic
 // ============================================================================
-export const decisionRouter = Router();
-const decisionController = new DecisionController();
+export const topicRouter = Router();
+const topicController = new TopicController();
 
 // ──────────────────────────────────────────────────────────────────────────
 // ROUTES
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @route   GET /api/decisions
- * @desc    Get all strategic decisions.
+ * @route   GET /api/topics
+ * @desc    Get all topics.
  * @access  Public
  */
-decisionRouter.get('/', decisionController.getAllDecisions);
+topicRouter.get('/', topicController.getAllTopics);
 
 /**
- * @route   GET /api/decisions/:id
- * @desc    Get a single strategic decision by ID.
+ * @route   GET /api/topics/:id
+ * @desc    Get a single topic by ID.
  * @access  Public
  */
-decisionRouter.get('/:id', decisionController.getOneDecisionById);
+topicRouter.get('/:id', topicController.getOneTopicById);
 
 /**
- * @route   POST /api/decisions
- * @desc    Create a new strategic decision.
+ * @route   POST /api/topics
+ * @desc    Create a new topic.
  * @access  Public
  */
-decisionRouter.post(
+topicRouter.post(
   '/',
-  validateWithSchema({ body: createDecisionSchema }),
-  decisionController.createDecision
+  validateWithSchema({ body: createTopicSchema }),
+  topicController.createTopic
 );
 
 /**
- * @route   PATCH /api/decisions/:id
- * @desc    Partially update a strategic decision by ID.
+ * @route   PATCH /api/topics/:id
+ * @desc    Partially update a topic by ID.
  * @access  Public
  */
-decisionRouter.patch(
+topicRouter.patch(
   '/:id',
-  validateWithSchema({ body: updateDecisionSchema }),
-  decisionController.updateDecision
+  validateWithSchema({ body: updateTopicSchema }),
+  topicController.updateTopic
 );
 
 /**
- * @route   DELETE /api/decisions/:id
- * @desc    Delete a strategic decision by ID.
+ * @route   DELETE /api/topics/:id
+ * @desc    Delete a topic by ID.
  * @access  Public
  */
-decisionRouter.delete('/:id', decisionController.deleteDecision);
+topicRouter.delete('/:id', topicController.deleteTopic);

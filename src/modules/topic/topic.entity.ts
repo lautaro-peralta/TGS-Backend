@@ -4,9 +4,7 @@
 import {
   Entity,
   Property,
-  ManyToOne,
-  Rel,
-  ManyToMany,
+  OneToMany,
   Collection,
 } from '@mikro-orm/core';
 
@@ -14,101 +12,80 @@ import {
 // IMPORTS - Internal modules
 // ============================================================================
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
-import { Topic } from '../topic/topic.entity.js';
-import { User } from '../auth/user.entity.js';
+import { StrategicDecision } from '../decision/decision.entity.js';
 
 // ============================================================================
-// ENTITY - StrategicDecision
+// ENTITY - Topic
 // ============================================================================
 /**
- * Represents a Strategic Decision entity in the system.
- * This entity is mapped to the 'strategic_decisions' table in the database.
+ * Represents a Topic entity in the system.
+ * This entity is mapped to the 'tematicas' table in the database.
  *
- * @class StrategicDecision
+ * @class Topic
  * @extends {BaseObjectEntity}
  */
-@Entity({ tableName: 'strategic_decisions' })
-export class StrategicDecision extends BaseObjectEntity {
+@Entity({ tableName: 'tematicas' })
+export class Topic extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
   // Properties
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The description of the strategic decision.
+   * The description of the topic.
    *
    * @type {string}
    */
-  @Property({ nullable: false })
+  @Property()
   description!: string;
-
-  /**
-   * The start date of the strategic decision.
-   *
-   * @type {Date}
-   */
-  @Property({ nullable: false })
-  startDate!: Date;
-
-  /**
-   * The end date of the strategic decision.
-   *
-   * @type {Date}
-   */
-  @Property({ nullable: false })
-  endDate!: Date;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The partners (socios) associated with this strategic decision.
-   * This defines a many-to-many relationship with the User entity.
+   * Collection of strategic decisions associated with this topic.
+   * This defines a one-to-many relationship with the StrategicDecision entity.
    *
-   * @type {Collection<User>}
+   * @type {Collection<StrategicDecision>}
    */
-  @ManyToMany({entity:()=>User, nullable:false})
-  socios = new Collection<User>(this);
-
-  /**
-   * The topic of the strategic decision.
-   * This defines a many-to-one relationship with the Topic entity.
-   *
-   * @type {Rel<Topic>}
-   */
-  @ManyToOne({ entity: () => Topic, nullable: false })
-  topic!: Rel<Topic>;
+  @OneToMany({
+    entity: () => StrategicDecision,
+    mappedBy: (decision) => decision.topic,
+  })
+  decisions = new Collection<StrategicDecision>(this);
 
   // ──────────────────────────────────────────────────────────────────────────
   // DTO (Data Transfer Object) Methods
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Converts the StrategicDecision entity to a Data Transfer Object (DTO).
+   * Converts the Topic entity to a basic Data Transfer Object (DTO).
    *
-   * @returns {object} The strategic decision DTO.
+   * @returns {object} The topic DTO.
    */
   toDTO() {
     return {
       id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
-      topic: this.topic,
+      descripcion: this.description,
     };
   }
 
   /**
-   * Converts the StrategicDecision entity to a simple Data Transfer Object (DTO).
+   * Converts the Topic entity to a detailed Data Transfer Object (DTO),
+   * including information about its strategic decisions.
    *
-   * @returns {object} The simple strategic decision DTO.
+   * @returns {object} The detailed topic DTO.
    */
-  toSimpleDTO() {
+  toDetailedDTO() {
     return {
       id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
+      descripcion: this.description,
+      decisiones:
+        this.decisions.isInitialized() && this.decisions.length > 0
+          ? this.decisions
+              .getItems()
+              .map((decisiones) => decisiones.toSimpleDTO())
+          : 'Sin decisiones para esta temática aún...',
     };
   }
 }

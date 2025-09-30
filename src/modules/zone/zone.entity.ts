@@ -4,9 +4,8 @@
 import {
   Entity,
   Property,
-  ManyToOne,
-  Rel,
-  ManyToMany,
+  OneToMany,
+  Unique,
   Collection,
 } from '@mikro-orm/core';
 
@@ -14,101 +13,88 @@ import {
 // IMPORTS - Internal modules
 // ============================================================================
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
-import { Topic } from '../topic/topic.entity.js';
-import { User } from '../auth/user.entity.js';
+import { Distributor } from '../../modules/distributor/distributor.entity.js';
 
 // ============================================================================
-// ENTITY - StrategicDecision
+// ENTITY - Zone
 // ============================================================================
 /**
- * Represents a Strategic Decision entity in the system.
- * This entity is mapped to the 'strategic_decisions' table in the database.
+ * Represents a Zone entity in the system.
+ * This entity is mapped to the 'zones' table in the database.
  *
- * @class StrategicDecision
+ * @class Zone
  * @extends {BaseObjectEntity}
  */
-@Entity({ tableName: 'strategic_decisions' })
-export class StrategicDecision extends BaseObjectEntity {
+@Entity({ tableName: 'zones' })
+export class Zone extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
   // Properties
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The description of the strategic decision.
+   * The unique name of the zone.
    *
    * @type {string}
    */
-  @Property({ nullable: false })
-  description!: string;
+  @Property()
+  @Unique()
+  name!: string;
 
   /**
-   * The start date of the strategic decision.
+   * Indicates if the zone is a headquarters.
    *
-   * @type {Date}
+   * @type {boolean}
    */
-  @Property({ nullable: false })
-  startDate!: Date;
-
-  /**
-   * The end date of the strategic decision.
-   *
-   * @type {Date}
-   */
-  @Property({ nullable: false })
-  endDate!: Date;
+  @Property({ default: false })
+  isHeadquarters: boolean = false;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The partners (socios) associated with this strategic decision.
-   * This defines a many-to-many relationship with the User entity.
+   * The distributor associated with this zone.
+   * This defines a one-to-many relationship with the Distributor entity.
    *
-   * @type {Collection<User>}
+   * @type {Distributor}
    */
-  @ManyToMany({entity:()=>User, nullable:false})
-  socios = new Collection<User>(this);
+  @OneToMany({
+    entity: () => Distributor,
+    nullable: true,
+    mappedBy: (distributor) => distributor.zone,
+  })
+  distributors = new Collection<Distributor[]>(this);
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Constructor
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The topic of the strategic decision.
-   * This defines a many-to-one relationship with the Topic entity.
+   * Creates an instance of Zone.
    *
-   * @type {Rel<Topic>}
+   * @param {string} name - The name of the zone.
+   * @param {boolean} isHeadquarters - Whether the zone is a headquarters.
    */
-  @ManyToOne({ entity: () => Topic, nullable: false })
-  topic!: Rel<Topic>;
+  constructor(name: string, isHeadquarters: boolean) {
+    super();
+    this.name = name;
+    this.isHeadquarters = isHeadquarters;
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // DTO (Data Transfer Object) Methods
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Converts the StrategicDecision entity to a Data Transfer Object (DTO).
+   * Converts the Zone entity to a Data Transfer Object (DTO).
    *
-   * @returns {object} The strategic decision DTO.
+   * @returns {object} The zone DTO.
    */
   toDTO() {
     return {
       id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
-      topic: this.topic,
-    };
-  }
-
-  /**
-   * Converts the StrategicDecision entity to a simple Data Transfer Object (DTO).
-   *
-   * @returns {object} The simple strategic decision DTO.
-   */
-  toSimpleDTO() {
-    return {
-      id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
+      name: this.name,
+      isHeadquarters: this.isHeadquarters,
     };
   }
 }

@@ -2,92 +2,86 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
+import argon2 from 'argon2';
 
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
 import { orm } from '../../shared/db/orm.js';
-import { StrategicDecision } from './decision.entity.js';
-import { Topic } from '../topic/topic.entity.js';
+import { Client } from './client.entity.js';
+import { User, Role } from '../auth/user.entity.js';
+import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
-const em = orm.em.fork();
-
 // ============================================================================
-// CONTROLLER - Decision
+// CONTROLLER - Client
 // ============================================================================
 
 /**
- * Controller for handling strategic decision-related operations.
- * @class DecisionController
+ * Controller for handling client-related operations.
+ * @class ClientController
  */
-export class DecisionController {
+export class ClientController {
   /**
-   * Retrieves all strategic decisions.
+   * Retrieves all clients.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getAllDecisions(req: Request, res: Response) {
+  async getAllClients(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch all strategic decisions with related topic
+      // Fetch all clients with related data
       // ──────────────────────────────────────────────────────────────────────
-      const decisions = await em.find(
-        StrategicDecision,
+      const clients = await em.find(
+        Client,
         {},
-        { populate: ['topic'] }
-      );
-      const decisionsDTO = decisions.map((d) => d.toDTO());
-      const message = ResponseUtil.generateListMessage(
-        decisionsDTO.length,
-        'strategic decision'
+        { populate: ['user', 'purchases', 'purchases.details'] }
       );
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, decisionsDTO);
+      const message = ResponseUtil.generateListMessage(clients.length, 'client');
+      return ResponseUtil.successList(
+        res,
+        message,
+        clients.map((c) => c.toDetailedDTO())
+      );
     } catch (err) {
-      console.error('Error getting strategic decisions:', err);
+      console.error('Error getting clients:', err);
       return ResponseUtil.internalError(
         res,
-        'Error getting strategic decisions',
+        'Error getting the list of clients',
         err
       );
     }
   }
 
   /**
-   * Retrieves a single strategic decision by ID.
+   * Retrieves a single client by DNI.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getOneDecisionById(req: Request, res: Response) {
+  async getOneClientByDni(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Fetch client by DNI with related data
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch strategic decision by ID with related topic
-      // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
+      const client = await em.findOne(
+        Client,
+        { dni },
+        { populate: ['user', 'purchases'] }
       );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      if (!client) {
+        return ResponseUtil.notFound(res, 'Client', dni);
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -95,134 +89,169 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
-        'Strategic decision found successfully',
-        decision.toDTO()
+        'Client found successfully',
+        client.toDetailedDTO()
       );
     } catch (err) {
-      console.error('Error searching for strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error searching for strategic decision',
-        err
-      );
+      console.error('Error searching for client:', err);
+      return ResponseUtil.internalError(res, 'Error searching for client', err);
     }
   }
 
   /**
-   * Creates a new strategic decision.
+   * Creates a new client.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async createDecision(req: Request, res: Response) {
-    const { topicId, description, startDate, endDate } =
-      res.locals.validated.body;
-
+  async createClient(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Check for existing decision with the same description
+      // Extract and validate data
       // ──────────────────────────────────────────────────────────────────────
-      let decision = await em.findOne(StrategicDecision, {
-        description: description,
-      });
+      const { dni, name, email, address, phone, username, password } =
+        res.locals.validated.body;
 
-      if (decision) {
-        return ResponseUtil.conflict(
-          res,
-          'A strategic decision with that description already exists',
-          'description'
-        );
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Find the related topic
-      // ──────────────────────────────────────────────────────────────────────
-      let topic = await em.findOne(Topic, {
-        id: topicId,
-      });
-
-      if (!topic) {
-        return ResponseUtil.notFound(res, 'Topic', topicId);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create and persist the new strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const newDecision = em.create(StrategicDecision, {
-        description,
-        startDate,
-        endDate,
-        topic,
-      });
-
-      await em.persistAndFlush(newDecision);
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(
-        res,
-        'Strategic decision created successfully',
-        newDecision.toDTO()
-      );
-    } catch (err: any) {
-      console.error('Error creating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error creating strategic decision',
-        err
-      );
-    }
-  }
-
-  /**
-   * Updates an existing strategic decision.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async updateDecision(req: Request, res: Response) {
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
-      // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
+      if (!dni || !name || !email) {
+        return ResponseUtil.validationError(res, 'Missing mandatory data', [
+          { field: 'dni', message: 'DNI is required' },
+          { field: 'name', message: 'Name is required' },
+          { field: 'email', message: 'Email is required' },
         ]);
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
+      // Verify if a client with that DNI already exists
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
+      const existingClient = await em.findOne(Client, { dni });
+      if (existingClient) {
+        return ResponseUtil.conflict(
+          res,
+          'A client with that DNI already exists',
+          'dni'
+        );
+      }
 
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      const createUser = !!(username && password);
+
+      if (createUser) {
+        // ──────────────────────────────────────────────────────────────────────
+        // Additional validation when creating credentials
+        // ──────────────────────────────────────────────────────────────────────
+        const existingUser = await em.findOne(User, { username });
+        if (existingUser) {
+          return ResponseUtil.conflict(
+            res,
+            'A user with that username already exists',
+            'username'
+          );
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Apply updates
+      // Find or create base person
+      // ──────────────────────────────────────────────────────────────────────
+      let person = await em.findOne(BasePersonEntity, { dni });
+      if (!person) {
+        person = em.create(BasePersonEntity, {
+          dni,
+          name,
+          email,
+          address: address ?? '',
+          phone: phone ?? '',
+        });
+        await em.persistAndFlush(person);
+      }
+
+      let user;
+      if (createUser) {
+        // ──────────────────────────────────────────────────────────────────────
+        // Create user if credentials are provided
+        // ──────────────────────────────────────────────────────────────────────
+        user = await em.findOne(User, { person: { dni } });
+
+        if (!user) {
+          const hashedPassword = await argon2.hash(password);
+          user = em.create(User, {
+            email,
+            username,
+            password: hashedPassword,
+            roles: [Role.CLIENT],
+            person,
+          });
+          await em.persistAndFlush(user);
+
+          if (!user.id) {
+            return ResponseUtil.internalError(res, 'Could not create user');
+          }
+        }
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Create client
+      // ──────────────────────────────────────────────────────────────────────
+      const client = em.create(Client, {
+        name,
+        dni,
+        email,
+        phone,
+        address,
+      });
+
+      await em.persistAndFlush(client);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      const message = createUser
+        ? 'Client and user created successfully'
+        : 'Client created successfully';
+
+      const responseData = {
+        client: client.toDTO(),
+        ...(user && {
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+          },
+        }),
+      };
+
+      return ResponseUtil.created(res, message, responseData);
+    } catch (error) {
+      console.error('Error creating client:', error);
+      return ResponseUtil.internalError(res, 'Error creating client', error);
+    }
+  }
+
+  /**
+   * Partially updates an existing client using PATCH method.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async patchUpdateClient(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch client by DNI
+      // ──────────────────────────────────────────────────────────────────────
+      const client = await em.findOne(Client, { dni });
+      if (!client) {
+        return ResponseUtil.notFound(res, 'Client', dni);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Apply partial updates
       // ──────────────────────────────────────────────────────────────────────
       const updates = res.locals.validated.body;
-
-      if (updates.topicId) {
-        const topic = await em.findOne(Topic, { id: updates.topicId });
-        if (!topic) {
-          return ResponseUtil.notFound(res, 'Topic', updates.topicId);
-        }
-        decision.topic = topic;
-        delete updates.topicId;
-      }
-
-      em.assign(decision, updates);
+      em.assign(client, updates);
       await em.flush();
 
       // ──────────────────────────────────────────────────────────────────────
@@ -230,65 +259,51 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
-        'Strategic decision updated successfully',
-        decision.toDTO()
+        'Client updated successfully',
+        client.toDTO()
       );
     } catch (err) {
-      console.error('Error updating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error updating strategic decision',
-        err
-      );
+      console.error('Error in PATCH client:', err);
+      return ResponseUtil.internalError(res, 'Error updating client', err);
     }
   }
 
   /**
-   * Deletes a strategic decision by ID.
+   * Deletes a client by DNI.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async deleteDecision(req: Request, res: Response) {
+  async deleteClient(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Fetch client by DNI
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
+      const client = await em.findOne(Client, { dni });
+      if (!client) {
+        return ResponseUtil.notFound(res, 'Client', dni);
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
+      // Delete the client
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
-      }
+      const name = client.name;
+      await em.removeAndFlush(client);
 
       // ──────────────────────────────────────────────────────────────────────
-      // Delete the strategic decision
+      // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      await em.removeAndFlush(decision);
       return ResponseUtil.deleted(
         res,
-        'Strategic decision deleted successfully'
+        `${name}, DNI ${dni} successfully removed from the list of clients`
       );
     } catch (err) {
-      console.error('Error deleting strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error deleting strategic decision',
-        err
-      );
+      console.error('Error deleting client:', err);
+      return ResponseUtil.internalError(res, 'Error deleting client', err);
     }
   }
 }
