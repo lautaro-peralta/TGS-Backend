@@ -1,20 +1,39 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
-import { Client } from '../client/client.entity.js';
-import { Product } from '../product/product.entity.js';
-import { Authority } from '../authority/authority.entity.js';
-import { Bribe } from '../bribe/bribe.entity.js';
-import { User, Role } from '../auth/user.entity.js';
-import { BasePersonEntity } from '../../shared/db/base.person.entity.js';
 import { StrategicDecision } from './decision.entity.js';
 import { Topic } from '../topic/topic.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
+// ============================================================================
+// CONTROLLER - Decision
+// ============================================================================
+
+/**
+ * Controller for handling strategic decision-related operations.
+ * @class DecisionController
+ */
 export class DecisionController {
+  /**
+   * Retrieves all strategic decisions.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllDecisions(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all strategic decisions with related topic
+      // ──────────────────────────────────────────────────────────────────────
       const decisions = await em.find(
         StrategicDecision,
         {},
@@ -26,6 +45,9 @@ export class DecisionController {
         'strategic decision'
       );
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.successList(res, message, decisionsDTO);
     } catch (err) {
       console.error('Error getting strategic decisions:', err);
@@ -37,8 +59,18 @@ export class DecisionController {
     }
   }
 
+  /**
+   * Retrieves a single strategic decision by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneDecisionById(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract decision ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
@@ -46,6 +78,9 @@ export class DecisionController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch strategic decision by ID with related topic
+      // ──────────────────────────────────────────────────────────────────────
       const decision = await em.findOne(
         StrategicDecision,
         { id },
@@ -55,6 +90,9 @@ export class DecisionController {
         return ResponseUtil.notFound(res, 'Strategic decision', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
         'Strategic decision found successfully',
@@ -70,30 +108,47 @@ export class DecisionController {
     }
   }
 
+  /**
+   * Creates a new strategic decision.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createDecision(req: Request, res: Response) {
     const { topicId, description, startDate, endDate } =
       res.locals.validated.body;
 
-    let decision = await em.findOne(StrategicDecision, {
-      description: description,
-    });
-
-    if (decision) {
-      return ResponseUtil.conflict(
-        res,
-        'A strategic decision with that description already exists',
-        'description'
-      );
-    }
-
-    let topic = await em.findOne(Topic, {
-      id: topicId,
-    });
-
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for existing decision with the same description
+      // ──────────────────────────────────────────────────────────────────────
+      let decision = await em.findOne(StrategicDecision, {
+        description: description,
+      });
+
+      if (decision) {
+        return ResponseUtil.conflict(
+          res,
+          'A strategic decision with that description already exists',
+          'description'
+        );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Find the related topic
+      // ──────────────────────────────────────────────────────────────────────
+      let topic = await em.findOne(Topic, {
+        id: topicId,
+      });
+
       if (!topic) {
         return ResponseUtil.notFound(res, 'Topic', topicId);
       }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Create and persist the new strategic decision
+      // ──────────────────────────────────────────────────────────────────────
       const newDecision = em.create(StrategicDecision, {
         description,
         startDate,
@@ -103,6 +158,9 @@ export class DecisionController {
 
       await em.persistAndFlush(newDecision);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.created(
         res,
         'Strategic decision created successfully',
@@ -118,8 +176,18 @@ export class DecisionController {
     }
   }
 
+  /**
+   * Updates an existing strategic decision.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async updateDecision(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract decision ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
@@ -127,6 +195,9 @@ export class DecisionController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch the strategic decision
+      // ──────────────────────────────────────────────────────────────────────
       const decision = await em.findOne(
         StrategicDecision,
         { id },
@@ -137,21 +208,26 @@ export class DecisionController {
         return ResponseUtil.notFound(res, 'Strategic decision', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Apply updates
+      // ──────────────────────────────────────────────────────────────────────
       const updates = res.locals.validated.body;
 
-      // If topicId was sent, we search for the topic and assign it
       if (updates.topicId) {
         const topic = await em.findOne(Topic, { id: updates.topicId });
         if (!topic) {
           return ResponseUtil.notFound(res, 'Topic', updates.topicId);
         }
         decision.topic = topic;
-        delete updates.topicId; // we remove it to avoid conflict in assign
+        delete updates.topicId;
       }
 
       em.assign(decision, updates);
       await em.flush();
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
         'Strategic decision updated successfully',
@@ -167,8 +243,18 @@ export class DecisionController {
     }
   }
 
+  /**
+   * Deletes a strategic decision by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteDecision(req: Request, res: Response) {
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract decision ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
@@ -176,6 +262,9 @@ export class DecisionController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch the strategic decision
+      // ──────────────────────────────────────────────────────────────────────
       const decision = await em.findOne(
         StrategicDecision,
         { id },
@@ -185,6 +274,9 @@ export class DecisionController {
         return ResponseUtil.notFound(res, 'Strategic decision', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the strategic decision
+      // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(decision);
       return ResponseUtil.deleted(
         res,

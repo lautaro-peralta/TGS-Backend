@@ -1,14 +1,23 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
-import logger from './shared/utils/logger.js';
-import { logRoutes } from './shared/utils/pretty.log.js';
-
+import cookieParser from 'cookie-parser';
 import { v7 as uuidv7 } from 'uuid';
 import { RequestContext } from '@mikro-orm/core';
-import { orm, syncSchema } from './shared/db/orm.js';
 
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
+import logger from './shared/utils/logger.js';
+import { logRoutes } from './shared/utils/pretty.log.js';
+import { orm, syncSchema } from './shared/db/orm.js';
 import { createAdminDev, createZoneDev } from './shared/initDev.js';
 
+// ============================================================================
+// IMPORTS - Route handlers
+// ============================================================================
 import { clientRouter } from './modules/client/client.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { userRouter } from './modules/auth/user.routes.js';
@@ -20,23 +29,38 @@ import { distributorRouter } from './modules/distributor/distributor.routes.js';
 import { bribeRouter } from './modules/bribe/bribe.routes.js';
 import { decisionRouter } from './modules/decision/decision.routes.js';
 import { topicRouter } from './modules/topic/topic.routes.js';
-import cookieParser from 'cookie-parser';
 
+// ============================================================================
+// APPLICATION SETUP
+// ============================================================================
 const app = express();
 
+// ============================================================================
+// GLOBAL MIDDLEWARE
+// ============================================================================
+
+// CORS configuration
 app.use(cors());
+
+// Body parsing
 app.use(express.json());
+
+// Cookie parsing
 app.use(cookieParser());
+
+// Request logging and monitoring middleware
 app.use((req, res, next) => {
   const start = Date.now();
 
+  // Generate unique request ID
   req.requestId = uuidv7();
 
+  // Log when response finishes
   res.on('finish', () => {
     const duration = Date.now() - start;
     const statusClass = Math.floor(res.statusCode / 100);
 
-    // Determinar nivel de log basado en status code
+    // Determine log level based on status code
     const logLevel =
       statusClass >= 5 ? 'error' : statusClass >= 4 ? 'warn' : 'info';
 
@@ -55,6 +79,7 @@ app.use((req, res, next) => {
     );
   });
 
+  // Log response errors
   res.on('error', (error) => {
     logger.error(
       {
@@ -68,24 +93,39 @@ app.use((req, res, next) => {
   next();
 });
 
+// Database context middleware (MikroORM)
 app.use((req, res, next) => {
   RequestContext.create(orm.em, next);
 });
 
+// ============================================================================
+// API ROUTES
+// ============================================================================
+
+// Authentication & User management
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
+
+// Business entities
 app.use('/api/clients', clientRouter);
 app.use('/api/sales', saleRouter);
 app.use('/api/products', productRouter);
+app.use('/api/distributors', distributorRouter);
+
+// Geographic & Administrative
 app.use('/api/zones', zoneRouter);
 app.use('/api/authorities', authorityRouter);
-app.use('/api/distributors', distributorRouter);
+
+// Business operations
 app.use('/api/bribes', bribeRouter);
 app.use('/api/decisions', decisionRouter);
-app.use('/api/themes', topicRouter);
+app.use('/api/topics', topicRouter);
 
-//ERROR HANDLERS
+// ============================================================================
+// ERROR HANDLERS
+// ============================================================================
 
+// 404 - Route not found handler
 app.use((req, res) => {
   logger.warn(
     {
@@ -96,7 +136,8 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-app.use((error: any, req: Request, res: Response, next: NextFunction) => {
+// Global error handler
+app.use((error: any, req: Request, res: Response) => {
   logger.error(
     {
       err: error,
@@ -116,6 +157,17 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+// ============================================================================
+// DEVELOPMENT INITIALIZATION
+// ============================================================================
+
+/**
+ * Initializes development environment
+ * - Syncs database schema
+ * - Creates default admin user
+ * - Creates default zones
+ * - Logs available routes
+ */
 export const initDev = async () => {
   if (process.env.NODE_ENV === 'development') {
     await syncSchema();
@@ -133,25 +185,36 @@ export const initDev = async () => {
       '/api/products',
       '/api/bribes',
       '/api/decisions',
-      '/api/themes',
+      '/api/topics',
       '/api/distributors',
     ]);
   }
 };
 
+// ============================================================================
+// PROCESS EVENT HANDLERS
+// ============================================================================
+
+// Graceful shutdown on SIGINT
 process.on('SIGINT', () => {
   logger.info('Received SIGINT, shutting down gracefully');
   process.exit(0);
 });
 
+// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   logger.fatal({ err: error }, 'Uncaught exception');
   process.exit(1);
 });
 
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (reason) => {
   logger.fatal({ reason }, 'Unhandled promise rejection');
   process.exit(1);
 });
+
+// ============================================================================
+// EXPORTS
+// ============================================================================
 
 export { app };

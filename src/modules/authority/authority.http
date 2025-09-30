@@ -1,41 +1,41 @@
 ###obtener todas las autoridades
-GET http://localhost:3000/api/autoridades
+GET http://localhost:3000/api/authorities
 
 ###obtener una autoridad
-GET http://localhost:3000/api/autoridades/10101013
+GET http://localhost:3000/api/authorities/10101013
 
 ### Crear nueva autoridad
-POST http://localhost:3000/api/autoridades
+POST http://localhost:3000/api/authorities
 Content-Type: application/json
 
 {
   "dni": "10101015",
-  "nombre": "Juan Fernandez",
+  "name": "Juan Fernandez",
   "email":"jferndez@gmail.com",
-  "direccion":"",
-  "telefono":"",
-  "rango": "1",
-  "zonaId": "1"
+  "adress":"",
+  "phone":"",
+  "rank": "1",
+  "zoneId": "1"
 }
 
 ###modificar autoridad (PUT - idempotente, modificaciones completas)
-PUT http://localhost:3000/api/autoridades/10101013
+PUT http://localhost:3000/api/authorities/10101013
 Content-Type: application/json
 
 {
-  "nombre": "Lautaro FERNANDEZ",
-  "rango": "3",
-  "zonaId": "1"
+  "name": "Lautaro FERNANDEZ",
+  "rank": "3",
+  "zoneId": "1"
 }
 
 
 ###modificar autoridad (PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/autoridades/10101013
+PATCH http://localhost:3000/api/authorities/10101013
 Content-Type: application/json
 
 {
-  "rango":"2"
+  "rank":"2"
 }
 
 ###borrar una autoridad
-DELETE http://localhost:3000/api/autoridades/10101015
+DELETE http://localhost:3000/api/authorities/10101015

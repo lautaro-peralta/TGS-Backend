@@ -1,24 +1,63 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Zone } from './zone.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { Authority } from '../authority/authority.entity.js';
 
+// ============================================================================
+// CONTROLLER - Zone
+// ============================================================================
+
+/**
+ * Controller for handling zone-related operations.
+ * @class ZoneController
+ */
 export class ZoneController {
+  /**
+   * Retrieves all zones.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllZones(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all zones
+      // ──────────────────────────────────────────────────────────────────────
       const zones = await em.find(Zone, {});
       const message = ResponseUtil.generateListMessage(zones.length, 'zone');
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.successList(res, message, zones);
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al obtener zonas', err);
     }
   }
 
+  /**
+   * Retrieves a single zone by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneZoneById(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract zone ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'ID inválido', [
@@ -26,33 +65,50 @@ export class ZoneController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch zone by ID
+      // ──────────────────────────────────────────────────────────────────────
       const zone = await em.findOne(Zone, { id });
       if (!zone) {
         return ResponseUtil.notFound(res, 'Zone', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(res, 'Zona encontrada exitosamente', zone);
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error al buscar zona', err);
     }
   }
 
+  /**
+   * Creates a new zone.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createZone(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Extract and validate data
+      // ──────────────────────────────────────────────────────────────────────
       const input = res.locals.validated.body;
       const { name, isHeadquarters } = input as {
         name: string;
         isHeadquarters?: boolean;
       };
 
-      // 1) Validar nombre requerido
       if (!name || typeof name !== 'string' || !name.trim()) {
         return res.status(400).json({ mensaje: 'El nombre es requerido.' });
       }
       const trimmedName = name.trim();
 
-      // 2) Verificar duplicado (case-insensitive)
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for duplicate zone name (case-insensitive)
+      // ──────────────────────────────────────────────────────────────────────
       const rows = await em
         .getConnection()
         .execute(`SELECT id FROM zones WHERE LOWER(name) = ?`, [
@@ -65,7 +121,9 @@ export class ZoneController {
         );
       }
 
-      // 3) Si la nueva es sede central, desmarcar la anterior
+      // ──────────────────────────────────────────────────────────────────────
+      // Handle headquarters logic
+      // ──────────────────────────────────────────────────────────────────────
       if (isHeadquarters === true) {
         const current = await em.findOne(Zone, { isHeadquarters: true });
         if (current) {
@@ -74,23 +132,38 @@ export class ZoneController {
         }
       }
 
-      // 4) Crear y guardar
+      // ──────────────────────────────────────────────────────────────────────
+      // Create and persist the new zone
+      // ──────────────────────────────────────────────────────────────────────
       const newZone = em.create(Zone, {
         name: trimmedName,
         isHeadquarters: Boolean(isHeadquarters),
       });
       await em.persistAndFlush(newZone);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.created(res, 'Zona creada exitosamente', newZone);
     } catch (err: any) {
       return ResponseUtil.internalError(res, 'Error al crear zona', err);
     }
   }
 
+  /**
+   * Updates an existing zone.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async updateZone(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract zone ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'ID inválido', [
@@ -98,6 +171,9 @@ export class ZoneController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch the zone
+      // ──────────────────────────────────────────────────────────────────────
       const zone = await em.findOne(Zone, { id });
       if (!zone) {
         return ResponseUtil.notFound(res, 'Zone', id);
@@ -105,7 +181,9 @@ export class ZoneController {
 
       const input = res.locals.validated.body;
 
-      // Validación y actualización de nombre
+      // ──────────────────────────────────────────────────────────────────────
+      // Apply updates
+      // ──────────────────────────────────────────────────────────────────────
       if (input.name !== undefined) {
         const newName = input.name.trim();
         if (!newName) {
@@ -133,7 +211,6 @@ export class ZoneController {
         zone.name = newName;
       }
 
-      // Validación de isHeadquarters
       if (input.isHeadquarters !== undefined) {
         if (input.isHeadquarters === true) {
           const currentHQ = await em.findOne(Zone, {
@@ -167,6 +244,9 @@ export class ZoneController {
 
       await em.persistAndFlush(zone);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(res, 'Zona actualizada correctamente', zone);
     } catch (err) {
       console.error(err);
@@ -174,9 +254,19 @@ export class ZoneController {
     }
   }
 
+  /**
+   * Deletes a zone by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteZone(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract zone ID
+      // ──────────────────────────────────────────────────────────────────────
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'ID inválido', [
@@ -184,6 +274,9 @@ export class ZoneController {
         ]);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch the zone and check for dependencies
+      // ──────────────────────────────────────────────────────────────────────
       const zone = await em.findOne(Zone, { id });
 
       if (!zone) {
@@ -191,7 +284,6 @@ export class ZoneController {
       }
 
       if (zone.isHeadquarters) {
-        // Verificar si hay otra zona marcada como sede central distinta a esta
         const anotherHQ = await em.findOne(Zone, {
           isHeadquarters: true,
           id: { $ne: zone.id },
@@ -214,6 +306,10 @@ export class ZoneController {
           400
         );
       }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the zone
+      // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(zone);
       return ResponseUtil.deleted(res, 'Zona eliminada correctamente');
     } catch (err) {

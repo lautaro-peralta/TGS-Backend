@@ -1,19 +1,50 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Distributor } from './distributor.entity.js';
 import { Product } from '../product/product.entity.js';
+import { Zone } from '../zone/zone.entity.js';
+// ============================================================================
+// CONTROLLER - Distributor
+// ============================================================================
 
+/**
+ * Controller for handling distributor-related operations.
+ * @class DistributorController
+ */
 export class DistributorController {
+  /**
+   * Retrieves all distributors.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllDistributors(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all distributors with related data
+      // ──────────────────────────────────────────────────────────────────────
       const distributors = await em.find(
         Distributor,
         {},
         { populate: ['products', 'sales'] }
       );
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return res.status(200).json({
-        message: `Found ${distributors.length} distributor${distributors.length !== 1 ? 's' : ''}`,
+        message: `Found ${distributors.length} distributor${
+          distributors.length !== 1 ? 's' : ''
+        }`,
         data: distributors.map((d) => d.toDetailedDTO?.() ?? d),
       });
     } catch (err) {
@@ -22,11 +53,21 @@ export class DistributorController {
     }
   }
 
+  /**
+   * Retrieves a single distributor by DNI.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneDistributorByDni(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni.trim();
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch distributor by DNI with related data
+      // ──────────────────────────────────────────────────────────────────────
       const distributor = await em.findOne(
         Distributor,
         { dni },
@@ -35,6 +76,10 @@ export class DistributorController {
       if (!distributor) {
         return res.status(404).json({ error: 'Distributor not found' });
       }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return res.json({
         data: distributor.toDetailedDTO?.() ?? distributor,
       });
@@ -44,42 +89,78 @@ export class DistributorController {
     }
   }
 
+  /**
+   * Creates a new distributor.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createDistributor(req: Request, res: Response) {
     const em = orm.em.fork();
-    try {
-      const {
-        dni,
-        name,
-        address,
-        phone,    // required string
-        email,       // required string
-        productsIds // optional number[]
-      } = res.locals.validated?.body ?? req.body;
 
-      if (!dni || !name || !phone || !email) {
-        return res.status(400).json({ message: 'Missing mandatory data' });
+    try {
+      // ────────────────────────────────
+      // Extraer y validar datos
+      // ────────────────────────────────
+      const { dni, name, address, phone, email, productsIds, zoneId } =
+        res.locals.validated?.body ?? req.body;
+
+      if (!dni || !name || !phone || !email || !zoneId) {
+        return res.status(400).json({
+          message: 'Missing mandatory data (dni, name, phone, email, zoneId)',
+        });
       }
 
+      // ────────────────────────────────
+      // Verificar distribuidor existente
+      // ────────────────────────────────
       const existingDistributor = await em.findOne(Distributor, { dni });
       if (existingDistributor) {
-        return res.status(409).json({ error: 'A distributor with that DNI already exists' });
+        return res
+          .status(409)
+          .json({ error: 'A distributor with that DNI already exists' });
       }
 
+      // ────────────────────────────────
+      // Verificar zona
+      // ────────────────────────────────
+      const zone = await em.findOne(Zone, { id: Number(zoneId) });
+      if (!zone) {
+        return res.status(404).json({ error: 'Zone not found' });
+      }
+
+      // ────────────────────────────────
+      // Crear distribuidor
+      // ────────────────────────────────
       const distributor = em.create(Distributor, {
         dni,
         name,
         address: address ?? '',
         phone,
         email,
+        zone: em.getReference(Zone, zoneId),
+        products: [],
       });
 
+      // ────────────────────────────────
+      // Asociar productos
+      // ────────────────────────────────
       if (Array.isArray(productsIds) && productsIds.length > 0) {
-        const products = await em.find(Product, { id: { $in: productsIds } });
+        const products = await em.find(Product, {
+          id: { $in: productsIds.map(Number) },
+        });
         products.forEach((p) => distributor.products.add(p));
       }
 
+      // ────────────────────────────────
+      // Guardar en DB
+      // ────────────────────────────────
       await em.persistAndFlush(distributor);
 
+      // ────────────────────────────────
+      // Respuesta
+      // ────────────────────────────────
       return res.status(201).json({
         message: 'Distributor created successfully',
         data: distributor.toDTO?.() ?? distributor,
@@ -90,11 +171,21 @@ export class DistributorController {
     }
   }
 
+  /**
+   * Partially updates an existing distributor using PATCH method.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async patchUpdateDistributor(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni.trim();
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch distributor by DNI
+      // ──────────────────────────────────────────────────────────────────────
       const distributor = await em.findOne(
         Distributor,
         { dni },
@@ -104,17 +195,18 @@ export class DistributorController {
         return res.status(404).json({ error: 'Distributor not found' });
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Apply partial updates
+      // ──────────────────────────────────────────────────────────────────────
       const { productsIds, phone, email, ...updates } =
         res.locals.validated?.body ?? req.body;
 
-      // ⚠️ In your MikroORM version, mergeObjects does not exist in AssignOptions
       em.assign(distributor, {
         ...updates,
         ...(phone !== undefined ? { phone } : {}),
         ...(email !== undefined ? { email } : {}),
-      }); // <- without mergeObjects
+      });
 
-      // Replace N:M products if productsIds comes
       if (Array.isArray(productsIds)) {
         distributor.products.removeAll();
         if (productsIds.length) {
@@ -125,6 +217,9 @@ export class DistributorController {
 
       await em.flush();
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return res.status(200).json({
         message: 'Distributor updated successfully',
         data: distributor.toDTO?.() ?? distributor,
@@ -135,11 +230,21 @@ export class DistributorController {
     }
   }
 
+  /**
+   * Deletes a distributor by DNI.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteDistributor(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni.trim();
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch and delete the distributor
+      // ──────────────────────────────────────────────────────────────────────
       const distributor = await em.findOne(Distributor, { dni });
       if (!distributor) {
         return res.status(404).json({ error: 'Distributor not found' });
@@ -148,6 +253,9 @@ export class DistributorController {
       const name = distributor.name;
       await em.removeAndFlush(distributor);
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return res.status(200).json({
         message: `${name}, DNI ${dni} successfully removed from the list of distributors`,
       });

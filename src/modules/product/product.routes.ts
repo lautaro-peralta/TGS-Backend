@@ -1,46 +1,78 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Router } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { ProductController } from './product.controller.js';
 import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
 import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
 import {
   createProductSchema,
   updateProductSchema,
-  //searchProductSchema, // <- uncomment if you added it in product.schema.ts
 } from './product.schema.js';
 import { Role } from '../auth/user.entity.js';
 
+// ============================================================================
+// ROUTER - Product
+// ============================================================================
 export const productRouter = Router();
 const productController = new ProductController();
 
-// GET /products  (Option A: supports ?q= for partial search by description)
-// If you have already defined searchProductSchema in product.schema.ts, validate the query like this:
-// productRouter.get('/', validateWithSchema({ query: searchProductSchema }), productController.getAllProducts);
+// ──────────────────────────────────────────────────────────────────────────
+// ROUTES
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /api/products
+ * @desc    Get all products. Supports search via query parameter `q`.
+ * @access  Public
+ */
 productRouter.get('/', productController.getAllProducts);
 
+/**
+ * @route   GET /api/products/:id
+ * @desc    Get a single product by ID.
+ * @access  Public
+ */
 productRouter.get('/:id', productController.getOneProductById);
 
-// productRouter.get('/', validateWithSchema({ query: searchProductSchema }), productController.getAllProducts);
-
+/**
+ * @route   POST /api/products
+ * @desc    Create a new product.
+ * @access  Private (Admin or Distributor only)
+ */
 productRouter.post(
   '/',
   validateWithSchema({ body: createProductSchema }),
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN], Role.DISTRIBUTOR),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   productController.createProduct
 );
 
+/**
+ * @route   PATCH /api/products/:id
+ * @desc    Partially update a product by ID.
+ * @access  Private (Admin or Distributor only)
+ */
 productRouter.patch(
   '/:id',
   validateWithSchema({ body: updateProductSchema }),
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   productController.updateProduct
 );
 
-// DELETE /products/:id  (ADMIN or DISTRIBUTOR)
+/**
+ * @route   DELETE /api/products/:id
+ * @desc    Delete a product by ID.
+ * @access  Private (Admin or Distributor only)
+ */
 productRouter.delete(
   '/:id',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN], Role.DISTRIBUTOR),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   productController.deleteProduct
 );

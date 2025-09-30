@@ -1,23 +1,49 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { Request, Response } from 'express';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Authority } from './authority.entity.js';
 import { Zone } from '../zone/zone.entity.js';
 import { Role, User } from '../auth/user.entity.js';
 import { Bribe } from '../../modules/bribe/bribe.entity.js';
-import { BasePersonEntity } from '../../shared/db/base.person.entity.js';
+import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
+// ============================================================================
+// CONTROLLER - Authority
+// ============================================================================
+
+/**
+ * Controller for handling authority-related operations.
+ * @class AuthorityController
+ */
 export class AuthorityController {
+  /**
+   * Creates a new authority.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async createAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Extract and validate data
+      // ──────────────────────────────────────────────────────────────────────
       console.log('🔍 Data received:', res.locals.validated?.body);
-
       const { dni, name, email, address, phone, rank, zoneId } =
         res.locals.validated.body;
 
+      // ──────────────────────────────────────────────────────────────────────
       // Verify existing DNI in Authority
+      // ──────────────────────────────────────────────────────────────────────
       const existingDNI = await em.findOne(Authority, { dni });
       if (existingDNI) {
         return ResponseUtil.conflict(
@@ -27,13 +53,17 @@ export class AuthorityController {
         );
       }
 
-      // Verify zone
+      // ──────────────────────────────────────────────────────────────────────
+      // Verify zone existence
+      // ──────────────────────────────────────────────────────────────────────
       const existingZone = await em.count(Zone, { id: zoneId });
       if (!existingZone) {
         return ResponseUtil.notFound(res, 'Zone', zoneId);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
       // Find or create base person by DNI
+      // ──────────────────────────────────────────────────────────────────────
       let basePerson = await em.findOne(BasePersonEntity, { dni });
       if (!basePerson) {
         console.log('🏛️ Creating base person...');
@@ -48,7 +78,9 @@ export class AuthorityController {
         console.log('✅ Base person created');
       }
 
+      // ──────────────────────────────────────────────────────────────────────
       // Create Authority
+      // ──────────────────────────────────────────────────────────────────────
       const authority = em.create(Authority, {
         dni,
         name,
@@ -61,7 +93,9 @@ export class AuthorityController {
       await em.persistAndFlush(authority);
       console.log('✅ Authority created');
 
-      // Response
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const authorityData = authority.toDTO?.() ?? {
         id: authority.id,
         dni: authority.dni,
@@ -80,22 +114,51 @@ export class AuthorityController {
     }
   }
 
+  /**
+   * Retrieves all authorities.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAllAuthorities(req: Request, res: Response) {
     const em = orm.em.fork();
+
     try {
-      const authorities = await em.find(
-        Authority,
-        {},
-        { populate: ['zone', 'bribes'], orderBy: { name: 'ASC' } }
-      );
+      // ─────────────── Extraer filtros y paginación ───────────────
+      const { zoneId, name, rank, page = '1', limit = '10' } = req.query;
+
+      const filters: any = {};
+      if (zoneId) filters.zone = Number(zoneId);
+      if (name) filters.name = { $ilike: `%${name}%` }; // búsqueda parcial
+      if (rank) filters.rank = Number(rank);
+
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+
+      // ─────────────── Buscar con filtros ───────────────
+      const [authorities, total] = await em.findAndCount(Authority, filters, {
+        populate: ['zone', 'bribes'],
+        orderBy: { name: 'ASC' },
+        limit: limitNum,
+        offset: (pageNum - 1) * limitNum,
+      });
+
       const message = ResponseUtil.generateListMessage(
         authorities.length,
         'authority'
       );
+
+      // ─────────────── Response ───────────────
       return ResponseUtil.successList(
         res,
         message,
-        authorities.map((a) => a.toDTO())
+        authorities.map((a) => a.toDTO()),
+        {
+          page: pageNum,
+          limit: limitNum,
+          total,
+        }
       );
     } catch (error) {
       console.error('Error listing authorities:', error);
@@ -107,11 +170,21 @@ export class AuthorityController {
     }
   }
 
+  /**
+   * Retrieves a single authority by DNI.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getOneAuthorityByDni(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni;
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch authority by DNI
+      // ──────────────────────────────────────────────────────────────────────
       const authority = await em.findOne(
         Authority,
         { dni },
@@ -122,6 +195,9 @@ export class AuthorityController {
         return ResponseUtil.notFound(res, 'Authority', dni);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
         'Authority found successfully',
@@ -137,11 +213,21 @@ export class AuthorityController {
     }
   }
 
+  /**
+   * Updates an existing authority using PUT method.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async putUpdateAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni;
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch authority by DNI
+      // ──────────────────────────────────────────────────────────────────────
       const authority = await em.findOne(
         Authority,
         { dni },
@@ -152,6 +238,9 @@ export class AuthorityController {
         return ResponseUtil.notFound(res, 'Authority', dni);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Extract and validate data
+      // ──────────────────────────────────────────────────────────────────────
       const { name, rank, zoneId } = res.locals.validated.body;
 
       if (!name || rank === undefined || zoneId === undefined) {
@@ -166,17 +255,26 @@ export class AuthorityController {
         );
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Verify zone existence
+      // ──────────────────────────────────────────────────────────────────────
       const existingZone = await em.count(Zone, { id: zoneId });
       if (!existingZone) {
         return ResponseUtil.notFound(res, 'Zone', zoneId);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Update authority properties
+      // ──────────────────────────────────────────────────────────────────────
       authority.name = name;
       authority.rank = rank;
       authority.zone = em.getReference(Zone, zoneId);
 
       await em.flush();
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
         'Authority updated successfully',
@@ -188,11 +286,21 @@ export class AuthorityController {
     }
   }
 
+  /**
+   * Partially updates an existing authority using PATCH method.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async patchUpdateAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni;
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch authority by DNI
+      // ──────────────────────────────────────────────────────────────────────
       const authority = await em.findOne(
         Authority,
         { dni },
@@ -203,6 +311,9 @@ export class AuthorityController {
         return ResponseUtil.notFound(res, 'Authority', dni);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Apply partial updates
+      // ──────────────────────────────────────────────────────────────────────
       const updates = res.locals.validated.body;
 
       if (updates.zoneId !== undefined) {
@@ -219,6 +330,9 @@ export class AuthorityController {
 
       await em.flush();
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
         'Authority partially modified successfully',
@@ -230,129 +344,120 @@ export class AuthorityController {
     }
   }
 
+  /**
+   * Retrieves bribes for a specific authority.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async getAuthorityBribes(req: Request, res: Response) {
     const em = orm.em.fork();
     let user = (req as any).user;
 
     try {
-      // If ADMIN
+      const {
+        authorityDni,
+        paid,
+        minAmount,
+        maxAmount,
+        page = '1',
+        limit = '10',
+      } = req.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+
+      let filters: any = {};
+
+      // ─────────────── ADMIN: puede filtrar por authorityDni ───────────────
       if (user.roles.includes(Role.ADMIN)) {
-        const authorityDni = req.query.authorityDni as string | undefined; // optional
-        let bribes: Bribe[];
-
         if (authorityDni) {
-          if (typeof authorityDni !== 'string' || !authorityDni.trim()) {
-            return ResponseUtil.validationError(
-              res,
-              'authorityDni must be a valid string',
-              [
-                {
-                  field: 'authorityDni',
-                  message: 'The authority DNI must be a valid string',
-                },
-              ]
-            );
-          }
-
-          const user = await em.findOne(
-            User,
-            { person: { dni: authorityDni.trim() } },
-            { populate: ['person'] }
-          );
-          if (!user) {
-            return ResponseUtil.notFound(res, 'User', authorityDni.trim());
-          }
-
           const authority = await em.findOne(
             Authority,
-            { dni: authorityDni.trim() },
+            { dni: authorityDni as string },
             { populate: ['bribes'] }
           );
           if (!authority) {
             return ResponseUtil.notFound(
               res,
-              'Registered authority',
-              authorityDni.trim()
+              `Authority with DNI ${authorityDni} not found`
             );
           }
-          //User exists and is an authority
-          bribes = authority.bribes.getItems();
-        } else {
-          bribes = await em.find(Bribe, {});
+          filters.authority = authority;
         }
-
-        const bribesData = bribes.map((s) => ({
-          id: s.id,
-          amount: s.amount,
-          paid: s.paid,
-        }));
-
-        return ResponseUtil.success(res, 'Bribes obtained successfully', {
-          bribes: bribesData,
-        });
       }
 
-      // If AUTHORITY
+      // ─────────────── AUTHORITY: solo sus propios sobornos ───────────────
       if (user.roles.includes(Role.AUTHORITY)) {
-        user = await em.findOne(
-          User,
-          { id: user.id },
-          {
-            populate: ['person'],
-          }
-        );
-        if (!user || !user.person) {
-          return ResponseUtil.notFound(res, 'User');
-        }
-        const person = user.person.isInitialized()
-          ? user.person.unwrap()
-          : await user.person.load();
-
-        if (!person?.dni) {
-          return ResponseUtil.notFound(res, 'DNI registered for the user');
-        }
-
-        // Search authority using dni
         const authority = await em.findOne(
           Authority,
-          { dni: person.dni },
+          { dni: user.dni },
           { populate: ['bribes'] }
         );
         if (!authority) {
-          return ResponseUtil.forbidden(
-            res,
-            'The user is not a registered authority'
-          );
+          return ResponseUtil.notFound(res, 'Authority not found');
         }
-        const bribes = authority!.bribes.getItems();
-
-        const bribesData = bribes.map((s) => ({
-          id: s.id,
-          amount: s.amount,
-          paid: s.paid,
-        }));
-
-        return ResponseUtil.success(res, 'Bribes obtained successfully', {
-          bribes: bribesData,
-        });
+        filters.authority = authority;
       }
 
-      // Other roles → forbidden
-      return ResponseUtil.forbidden(
-        res,
-        'You do not have permission to view bribes'
-      );
+      // ─────────────── Filtros adicionales ───────────────
+      if (paid !== undefined) filters.paid = paid === 'true';
+      if (minAmount) filters.amount = { $gte: parseFloat(minAmount as string) };
+      if (maxAmount) {
+        filters.amount = filters.amount || {};
+        filters.amount.$lte = parseFloat(maxAmount as string);
+      }
+
+      // ─────────────── Consulta con paginación ───────────────
+      const [bribes, total] = await em.findAndCount(Bribe, filters, {
+        populate: ['authority'],
+        //orderBy: { createdAt: 'DESC' },
+        limit: limitNum,
+        offset: (pageNum - 1) * limitNum,
+      });
+
+      const bribesData = bribes.map((b) => ({
+        id: b.id,
+        amount: b.amount,
+        paid: b.paid,
+        authority: {
+          id: b.authority.id,
+          name: b.authority.name,
+          dni: b.authority.dni,
+        },
+        //createdAt: b.createdAt,
+      }));
+
+      return ResponseUtil.success(res, 'Bribes obtained successfully', {
+        bribes: bribesData,
+        meta: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+        },
+      });
     } catch (err: any) {
       console.error('Error getting bribes:', err);
       return ResponseUtil.internalError(res, 'Error getting bribes', err);
     }
   }
 
+  /**
+   * Deletes an authority by DNI.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
   async deleteAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
     const dni = req.params.dni;
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch authority by DNI
+      // ──────────────────────────────────────────────────────────────────────
       const authority = await em.findOne(
         Authority,
         { dni },
@@ -363,6 +468,9 @@ export class AuthorityController {
         return ResponseUtil.notFound(res, 'Authority', dni);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for associated bribes before deletion
+      // ──────────────────────────────────────────────────────────────────────
       if (authority.bribes.count() > 0) {
         return ResponseUtil.error(
           res,
@@ -373,6 +481,9 @@ export class AuthorityController {
 
       const name = authority.name;
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the authority
+      // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(authority);
       return ResponseUtil.deleted(
         res,
