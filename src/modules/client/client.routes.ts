@@ -6,62 +6,62 @@ import { Router } from 'express';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { DecisionController } from './decision.controller.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { ClientController } from './client.controller.js';
 import {
-  createDecisionSchema,
-  updateDecisionSchema,
-} from './decision.schema.js';
+  updateClientSchema,
+  createClientSchema,
+} from './client.schema.js';
+import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
 
 // ============================================================================
-// ROUTER - Decision
+// ROUTER - Client
 // ============================================================================
-export const decisionRouter = Router();
-const decisionController = new DecisionController();
+export const clientRouter = Router();
+const clientController = new ClientController();
 
 // ──────────────────────────────────────────────────────────────────────────
 // ROUTES
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @route   GET /api/decisions
- * @desc    Get all strategic decisions.
+ * @route   GET /api/clients
+ * @desc    Get all clients.
  * @access  Public
  */
-decisionRouter.get('/', decisionController.getAllDecisions);
+clientRouter.get('/', clientController.getAllClients);
 
 /**
- * @route   GET /api/decisions/:id
- * @desc    Get a single strategic decision by ID.
+ * @route   GET /api/clients/:dni
+ * @desc    Get a single client by DNI.
  * @access  Public
  */
-decisionRouter.get('/:id', decisionController.getOneDecisionById);
+clientRouter.get('/:dni', clientController.getOneClientByDni);
 
 /**
- * @route   POST /api/decisions
- * @desc    Create a new strategic decision.
+ * @route   POST /api/clients
+ * @desc    Create a new client.
  * @access  Public
  */
-decisionRouter.post(
+clientRouter.post(
   '/',
-  validateWithSchema({ body: createDecisionSchema }),
-  decisionController.createDecision
+  validateWithSchema({ body: createClientSchema }),
+  clientController.createClient
 );
 
 /**
- * @route   PATCH /api/decisions/:id
- * @desc    Partially update a strategic decision by ID.
+ * @route   PATCH /api/clients/:dni
+ * @desc    Partially update a client by DNI.
  * @access  Public
  */
-decisionRouter.patch(
-  '/:id',
-  validateWithSchema({ body: updateDecisionSchema }),
-  decisionController.updateDecision
+clientRouter.patch(
+  '/:dni',
+  validateWithSchema({ body: updateClientSchema }),
+  clientController.patchUpdateClient
 );
 
 /**
- * @route   DELETE /api/decisions/:id
- * @desc    Delete a strategic decision by ID.
+ * @route   DELETE /api/clients/:dni
+ * @desc    Delete a client by DNI.
  * @access  Public
  */
-decisionRouter.delete('/:id', decisionController.deleteDecision);
+clientRouter.delete('/:dni', clientController.deleteClient);

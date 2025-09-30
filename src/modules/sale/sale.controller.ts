@@ -7,69 +7,67 @@ import { Request, Response } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { orm } from '../../shared/db/orm.js';
-import { StrategicDecision } from './decision.entity.js';
-import { Topic } from '../topic/topic.entity.js';
+import { Sale } from './sale.entity.js';
+import { Detail } from './detail.entity.js';
+import { Client } from '../client/client.entity.js';
+import { Product } from '../product/product.entity.js';
+import { Authority } from '../authority/authority.entity.js';
+import { Bribe } from '../bribe/bribe.entity.js';
+import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
 // ============================================================================
-// CONTROLLER - Decision
+// CONTROLLER - Sale
 // ============================================================================
 
 /**
- * Controller for handling strategic decision-related operations.
- * @class DecisionController
+ * Controller for handling sale-related operations.
+ * @class SaleController
  */
-export class DecisionController {
+export class SaleController {
   /**
-   * Retrieves all strategic decisions.
+   * Retrieves all sales.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getAllDecisions(req: Request, res: Response) {
+  async getAllSales(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch all strategic decisions with related topic
+      // Fetch all sales with related data
       // ──────────────────────────────────────────────────────────────────────
-      const decisions = await em.find(
-        StrategicDecision,
+      const sales = await em.find(
+        Sale,
         {},
-        { populate: ['topic'] }
+        { populate: ['client', 'details', 'authority'] }
       );
-      const decisionsDTO = decisions.map((d) => d.toDTO());
-      const message = ResponseUtil.generateListMessage(
-        decisionsDTO.length,
-        'strategic decision'
-      );
+      const salesDTO = sales.map((s) => s.toDTO());
+      const message = ResponseUtil.generateListMessage(salesDTO.length, 'sale');
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, decisionsDTO);
+      return ResponseUtil.successList(res, message, salesDTO);
     } catch (err) {
-      console.error('Error getting strategic decisions:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error getting strategic decisions',
-        err
-      );
+      console.error('Error getting sales:', err);
+      return ResponseUtil.internalError(res, 'Error getting sales', err);
     }
   }
 
   /**
-   * Retrieves a single strategic decision by ID.
+   * Retrieves a single sale by ID.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getOneDecisionById(req: Request, res: Response) {
+  async getOneSaleById(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Validate and extract sale ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
@@ -79,216 +77,224 @@ export class DecisionController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch strategic decision by ID with related topic
+      // Fetch sale by ID with related data
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
+      const sale = await em.findOne(
+        Sale,
         { id },
-        { populate: ['topic'] }
+        { populate: ['client', 'details.product'] }
       );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      if (!sale) {
+        return ResponseUtil.notFound(res, 'Sale', id);
       }
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.success(
-        res,
-        'Strategic decision found successfully',
-        decision.toDTO()
-      );
+      return ResponseUtil.success(res, 'Sale found successfully', sale.toDTO());
     } catch (err) {
-      console.error('Error searching for strategic decision:', err);
+      console.error('Error searching for sale:', err);
       return ResponseUtil.internalError(
         res,
-        'Error searching for strategic decision',
+        'Error searching for the sale',
         err
       );
     }
   }
 
   /**
-   * Creates a new strategic decision.
+   * Creates a new sale.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async createDecision(req: Request, res: Response) {
-    const { topicId, description, startDate, endDate } =
-      res.locals.validated.body;
+  async createSale(req: Request, res: Response) {
+    const { clientDni, details, person } = res.locals.validated.body;
+
+    let client = await em.findOne(Client, { dni: clientDni });
 
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Check for existing decision with the same description
+      // Find or create client
       // ──────────────────────────────────────────────────────────────────────
-      let decision = await em.findOne(StrategicDecision, {
-        description: description,
-      });
+      if (!client) {
+        let basePerson = await em.findOne(BasePersonEntity, {
+          dni: clientDni,
+        });
 
-      if (decision) {
-        return ResponseUtil.conflict(
-          res,
-          'A strategic decision with that description already exists',
-          'description'
-        );
-      }
+        if (!basePerson) {
+          if (!person) {
+            return res.status(400).json({
+              message:
+                'The person does not exist, the data is required to create it',
+            });
+          }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Find the related topic
-      // ──────────────────────────────────────────────────────────────────────
-      let topic = await em.findOne(Topic, {
-        id: topicId,
-      });
-
-      if (!topic) {
-        return ResponseUtil.notFound(res, 'Topic', topicId);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create and persist the new strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const newDecision = em.create(StrategicDecision, {
-        description,
-        startDate,
-        endDate,
-        topic,
-      });
-
-      await em.persistAndFlush(newDecision);
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(
-        res,
-        'Strategic decision created successfully',
-        newDecision.toDTO()
-      );
-    } catch (err: any) {
-      console.error('Error creating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error creating strategic decision',
-        err
-      );
-    }
-  }
-
-  /**
-   * Updates an existing strategic decision.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async updateDecision(req: Request, res: Response) {
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
-      // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Apply updates
-      // ──────────────────────────────────────────────────────────────────────
-      const updates = res.locals.validated.body;
-
-      if (updates.topicId) {
-        const topic = await em.findOne(Topic, { id: updates.topicId });
-        if (!topic) {
-          return ResponseUtil.notFound(res, 'Topic', updates.topicId);
+          basePerson = em.create(BasePersonEntity, {
+            dni: clientDni,
+            name: person.name,
+            email: person.email,
+            phone: person.phone ?? '-',
+            address: person.address ?? '-',
+          });
+          await em.persistAndFlush(basePerson);
         }
-        decision.topic = topic;
-        delete updates.topicId;
+
+        client = em.create(Client, {
+          dni: basePerson.dni,
+          name: basePerson.name,
+          email: basePerson.email,
+          phone: basePerson.phone,
+          address: basePerson.address,
+        });
+        await em.persistAndFlush(client);
       }
 
-      em.assign(decision, updates);
-      await em.flush();
+      // ──────────────────────────────────────────────────────────────────────
+      // Create new sale and details
+      // ──────────────────────────────────────────────────────────────────────
+      const newSale = em.create(Sale, {
+        client,
+        saleDate: new Date(),
+        saleAmount: 0,
+        details: [],
+      });
+
+      let isIllegalProduct = false;
+      let totalIllegalAmount = 0;
+
+      for (const detail of details) {
+        const product = await em.findOne(Product, { id: detail.productId });
+        if (!product) {
+          return res.status(400).send({
+            message: `Product with ID ${detail.productId} not found`,
+          });
+        }
+
+        const newDetail = em.create(Detail, {
+          product,
+          quantity: detail.quantity,
+          subtotal: product.price * detail.quantity,
+          sale: newSale,
+        });
+
+        if (product.isIllegal) {
+          isIllegalProduct = true;
+          totalIllegalAmount += newDetail.subtotal;
+        }
+
+        newSale.details.add(newDetail);
+      }
+
+      newSale.saleAmount = newSale.details
+        .getItems()
+        .reduce((acc, d) => acc + d.subtotal, 0);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Handle illegal products and bribes
+      // ──────────────────────────────────────────────────────────────────────
+      if (isIllegalProduct) {
+        const authority = await em.findOne(
+          Authority,
+          { id: { $ne: null } },
+          { orderBy: { rank: 'asc' } }
+        );
+
+        if (authority) {
+          newSale.authority = em.getReference(Authority, authority.id);
+
+          const percentage = Authority.rankToCommission(authority.rank) ?? 0;
+          const bribe = em.create(Bribe, {
+            authority,
+            amount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
+            sale: newSale,
+            creationDate: new Date(),
+            paid: false,
+          });
+
+          em.persist(bribe);
+        } else {
+          console.warn(
+            'Illegal product detected, but no authority is available.'
+          );
+        }
+      }
+
+      await em.persistAndFlush(newSale);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.updated(
-        res,
-        'Strategic decision updated successfully',
-        decision.toDTO()
+      const sale = await em.findOne(
+        Sale,
+        { id: newSale.id },
+        { populate: ['details', 'client', 'authority'] }
       );
-    } catch (err) {
-      console.error('Error updating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error updating strategic decision',
-        err
-      );
+
+      return res.status(201).send({
+        message: 'Sale registered successfully',
+        data: sale ? sale.toDTO() : null,
+      });
+    } catch (err: any) {
+      console.error('Error registering sale:', err);
+      return res
+        .status(500)
+        .send({ message: err.message || 'Error registering the sale' });
     }
   }
 
   /**
-   * Deletes a strategic decision by ID.
+   * Deletes a sale by ID.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async deleteDecision(req: Request, res: Response) {
+  async deleteSale(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Validate and extract sale ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
+      if (isNaN(id)) return res.status(400).send({ message: 'Invalid ID' });
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
+      // Fetch sale by ID
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
+      const sale = await em.findOne(
+        Sale,
         { id },
-        { populate: ['topic'] }
+        { populate: ['authority', 'details'] }
       );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      if (!sale) return res.status(404).send({ message: 'Sale not found' });
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for associated bribes before deletion
+      // ──────────────────────────────────────────────────────────────────────
+      const associatedBribe = await em.count(Bribe, {
+        sale: sale.id,
+      });
+      if (associatedBribe > 0) {
+        return res.status(400).send({
+          message: 'The sale cannot be deleted: it has associated bribes',
+        });
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Delete the strategic decision
+      // Delete the sale
       // ──────────────────────────────────────────────────────────────────────
-      await em.removeAndFlush(decision);
-      return ResponseUtil.deleted(
-        res,
-        'Strategic decision deleted successfully'
-      );
+      await em.removeAndFlush(sale);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return res.status(200).send({
+        message: `Sale deleted successfully`,
+      });
     } catch (err) {
-      console.error('Error deleting strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error deleting strategic decision',
-        err
-      );
+      console.error('Error deleting sale:', err);
+      return res.status(500).send({ message: 'Error deleting sale' });
     }
   }
 }

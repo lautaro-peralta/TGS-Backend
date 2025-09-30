@@ -6,109 +6,87 @@ import {
   Property,
   ManyToOne,
   Rel,
-  ManyToMany,
-  Collection,
 } from '@mikro-orm/core';
 
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
-import { Topic } from '../topic/topic.entity.js';
-import { User } from '../auth/user.entity.js';
+import { Sale } from './sale.entity.js';
+import { Product } from '../product/product.entity.js';
 
 // ============================================================================
-// ENTITY - StrategicDecision
+// ENTITY - Detail
 // ============================================================================
 /**
- * Represents a Strategic Decision entity in the system.
- * This entity is mapped to the 'strategic_decisions' table in the database.
+ * Represents a Sale Detail entity in the system.
+ * This entity is mapped to the 'sale_details' table in the database.
  *
- * @class StrategicDecision
+ * @class Detail
  * @extends {BaseObjectEntity}
  */
-@Entity({ tableName: 'strategic_decisions' })
-export class StrategicDecision extends BaseObjectEntity {
+@Entity({ tableName: 'sale_details' })
+export class Detail extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
   // Properties
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The description of the strategic decision.
+   * The quantity of the product in the sale detail.
    *
-   * @type {string}
+   * @type {number}
    */
-  @Property({ nullable: false })
-  description!: string;
+  @Property()
+  quantity!: number;
 
   /**
-   * The start date of the strategic decision.
+   * The subtotal for this sale detail line.
    *
-   * @type {Date}
+   * @type {number}
    */
-  @Property({ nullable: false })
-  startDate!: Date;
-
-  /**
-   * The end date of the strategic decision.
-   *
-   * @type {Date}
-   */
-  @Property({ nullable: false })
-  endDate!: Date;
+  @Property({ type: 'decimal', precision: 10, scale: 2 })
+  subtotal!: number;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The partners (socios) associated with this strategic decision.
-   * This defines a many-to-many relationship with the User entity.
+   * The sale to which this detail belongs.
+   * This defines a many-to-one relationship with the Sale entity.
    *
-   * @type {Collection<User>}
+   * @type {Rel<Sale>}
    */
-  @ManyToMany({entity:()=>User, nullable:false})
-  socios = new Collection<User>(this);
+  @ManyToOne({ entity: () => Sale, nullable: false })
+  sale!: Rel<Sale>;
 
   /**
-   * The topic of the strategic decision.
-   * This defines a many-to-one relationship with the Topic entity.
+   * The product associated with this sale detail.
+   * This defines a many-to-one relationship with the Product entity.
    *
-   * @type {Rel<Topic>}
+   * @type {Rel<Product>}
    */
-  @ManyToOne({ entity: () => Topic, nullable: false })
-  topic!: Rel<Topic>;
+  @ManyToOne({ entity: () => Product, nullable: false })
+  product!: Rel<Product>;
 
   // ──────────────────────────────────────────────────────────────────────────
   // DTO (Data Transfer Object) Methods
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Converts the StrategicDecision entity to a Data Transfer Object (DTO).
+   * Converts the Detail entity to a Data Transfer Object (DTO).
    *
-   * @returns {object} The strategic decision DTO.
+   * @returns {object} The detail DTO.
    */
   toDTO() {
     return {
-      id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
-      topic: this.topic,
-    };
-  }
-
-  /**
-   * Converts the StrategicDecision entity to a simple Data Transfer Object (DTO).
-   *
-   * @returns {object} The simple strategic decision DTO.
-   */
-  toSimpleDTO() {
-    return {
-      id: this.id,
-      description: this.description,
-      startDate: this.startDate,
-      endDate: this.endDate,
+      product: {
+        id: this.product.id,
+        name: this.product.description,
+        unitPrice: this.product.price,
+      },
+      quantity: this.quantity,
+      subtotal: this.subtotal,
     };
   }
 }

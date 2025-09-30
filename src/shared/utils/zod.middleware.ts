@@ -1,25 +1,58 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { ZodType } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 
-//Middleware para validar distintas partes del request usando Zod.
+// ============================================================================
+// VALIDATION MIDDLEWARE
+// ============================================================================
 
-export const validarConSchema = (schemas: {
+/**
+ * Creates a middleware that validates different parts of the request using Zod schemas
+ *
+ * Validates:
+ * - Request body (req.body)
+ * - Route parameters (req.params)
+ * - Query string (req.query)
+ *
+ * Validated data is stored in res.locals.validated for type-safe access
+ *
+ * @param schemas - Object containing Zod schemas for different request parts
+ * @returns Express middleware function
+ *
+ * @example
+ * router.post('/users',
+ *   validateWithSchema({
+ *     body: z.object({ name: z.string(), email: z.string().email() }),
+ *     query: z.object({ notify: z.boolean().optional() })
+ *   }),
+ *   createUserHandler
+ * );
+ */
+export const validateWithSchema = (schemas: {
   body?: ZodType<any>;
   params?: ZodType<any>;
   query?: ZodType<any>;
 }) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const errores: any[] = [];
+    // ──────────────────────────────────────────────────────────────────────
+    // Initialize validation state
+    // ──────────────────────────────────────────────────────────────────────
+    const errors: any[] = [];
     res.locals.validated = {};
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Validate request body
+    // ──────────────────────────────────────────────────────────────────────
     if (schemas.body) {
       const result = schemas.body.safeParse(req.body);
       if (!result.success) {
-        errores.push(
+        errors.push(
           ...result.error.issues.map((e) => ({
-            origen: 'body',
-            campo: e.path.join('.'),
-            mensaje: e.message,
+            source: 'body',
+            field: e.path.join('.'),
+            message: e.message,
           }))
         );
       } else {
@@ -27,14 +60,17 @@ export const validarConSchema = (schemas: {
       }
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Validate route parameters
+    // ──────────────────────────────────────────────────────────────────────
     if (schemas.params) {
       const result = schemas.params.safeParse(req.params);
       if (!result.success) {
-        errores.push(
+        errors.push(
           ...result.error.issues.map((e) => ({
-            origen: 'params',
-            campo: e.path.join('.'),
-            mensaje: e.message,
+            source: 'params',
+            field: e.path.join('.'),
+            message: e.message,
           }))
         );
       } else {
@@ -42,14 +78,17 @@ export const validarConSchema = (schemas: {
       }
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Validate query string
+    // ──────────────────────────────────────────────────────────────────────
     if (schemas.query) {
       const result = schemas.query.safeParse(req.query);
       if (!result.success) {
-        errores.push(
+        errors.push(
           ...result.error.issues.map((e) => ({
-            origen: 'query',
-            campo: e.path.join('.'),
-            mensaje: e.message,
+            source: 'query',
+            field: e.path.join('.'),
+            message: e.message,
           }))
         );
       } else {
@@ -57,10 +96,13 @@ export const validarConSchema = (schemas: {
       }
     }
 
-    if (errores.length > 0) {
+    // ──────────────────────────────────────────────────────────────────────
+    // Return errors or proceed
+    // ──────────────────────────────────────────────────────────────────────
+    if (errors.length > 0) {
       return res.status(400).json({
-        mensaje: 'Error de validación',
-        errores,
+        message: 'Validation error',
+        errors,
       });
     }
 

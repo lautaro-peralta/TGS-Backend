@@ -7,87 +7,128 @@ import { Request, Response } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { orm } from '../../shared/db/orm.js';
-import { StrategicDecision } from './decision.entity.js';
-import { Topic } from '../topic/topic.entity.js';
+import { Product } from './product.entity.js';
+import { Detail } from '../sale/detail.entity.js';
+import {
+  createProductSchema,
+  updateProductSchema,
+} from './product.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
 const em = orm.em.fork();
 
 // ============================================================================
-// CONTROLLER - Decision
+// CONTROLLER - Product
 // ============================================================================
 
 /**
- * Controller for handling strategic decision-related operations.
- * @class DecisionController
+ * Controller for handling product-related operations.
+ * @class ProductController
  */
-export class DecisionController {
+export class ProductController {
   /**
-   * Retrieves all strategic decisions.
+   * Searches for products based on a query string.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getAllDecisions(req: Request, res: Response) {
+  async searchProducts(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch all strategic decisions with related topic
+      // Validate search query
       // ──────────────────────────────────────────────────────────────────────
-      const decisions = await em.find(
-        StrategicDecision,
-        {},
-        { populate: ['topic'] }
-      );
-      const decisionsDTO = decisions.map((d) => d.toDTO());
+      const { q } = req.query as { q?: string };
+
+      if (!q || q.trim().length < 2) {
+        return ResponseUtil.validationError(res, 'Validation error', [
+          {
+            field: 'q',
+            message:
+              'The query parameter "q" is required and must be at least 2 characters long.',
+          },
+        ]);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch products matching the query
+      // ──────────────────────────────────────────────────────────────────────
+      const where = { description: { $like: `%${q.trim()}%` } };
+
+      const products = await em.find(Product, where, {
+        orderBy: { description: 'asc' },
+      });
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
       const message = ResponseUtil.generateListMessage(
-        decisionsDTO.length,
-        'strategic decision'
+        products.length,
+        'product',
+        `that match "${q}"`
+      );
+
+      return ResponseUtil.successList(
+        res,
+        message,
+        products.map((p) => p.toDTO())
+      );
+    } catch (err) {
+      return ResponseUtil.internalError(res, 'Error searching for products', err);
+    }
+  }
+
+  /**
+   * Retrieves all products.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getAllProducts(req: Request, res: Response) {
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all products
+      // ──────────────────────────────────────────────────────────────────────
+      const products = await em.find(
+        Product,
+        {},
+        {
+          orderBy: { description: 'asc' },
+        }
       );
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, decisionsDTO);
-    } catch (err) {
-      console.error('Error getting strategic decisions:', err);
-      return ResponseUtil.internalError(
+      const message = ResponseUtil.generateListMessage(products.length, 'product');
+
+      return ResponseUtil.successList(
         res,
-        'Error getting strategic decisions',
-        err
+        message,
+        products.map((p) => p.toDTO())
       );
+    } catch (err) {
+      return ResponseUtil.internalError(res, 'Error getting products', err);
     }
   }
 
   /**
-   * Retrieves a single strategic decision by ID.
+   * Retrieves a single product by ID.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getOneDecisionById(req: Request, res: Response) {
+  async getOneProductById(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Fetch product by ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch strategic decision by ID with related topic
-      // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      const id = Number(req.params.id);
+      const product = await em.findOne(Product, { id });
+      if (!product) {
+        return ResponseUtil.notFound(res, 'Product', id);
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -95,134 +136,95 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
-        'Strategic decision found successfully',
-        decision.toDTO()
+        'Product found successfully',
+        product.toDTO()
       );
     } catch (err) {
-      console.error('Error searching for strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error searching for strategic decision',
-        err
-      );
+      return ResponseUtil.internalError(res, 'Error searching for product', err);
     }
   }
 
   /**
-   * Creates a new strategic decision.
+   * Creates a new product.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async createDecision(req: Request, res: Response) {
-    const { topicId, description, startDate, endDate } =
-      res.locals.validated.body;
-
+  async createProduct(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Check for existing decision with the same description
+      // Validate request body and create product
       // ──────────────────────────────────────────────────────────────────────
-      let decision = await em.findOne(StrategicDecision, {
-        description: description,
-      });
+      const validatedData = createProductSchema.parse(req.body);
 
-      if (decision) {
-        return ResponseUtil.conflict(
-          res,
-          'A strategic decision with that description already exists',
-          'description'
-        );
-      }
+      const product = new Product(
+        validatedData.price,
+        validatedData.stock,
+        validatedData.description,
+        validatedData.isIllegal
+      );
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Find the related topic
-      // ──────────────────────────────────────────────────────────────────────
-      let topic = await em.findOne(Topic, {
-        id: topicId,
-      });
-
-      if (!topic) {
-        return ResponseUtil.notFound(res, 'Topic', topicId);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create and persist the new strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const newDecision = em.create(StrategicDecision, {
-        description,
-        startDate,
-        endDate,
-        topic,
-      });
-
-      await em.persistAndFlush(newDecision);
+      await em.persistAndFlush(product);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.created(
         res,
-        'Strategic decision created successfully',
-        newDecision.toDTO()
+        'Product created successfully',
+        product.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error creating strategic decision',
-        err
-      );
+      if (err.errors) {
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR',
+        }));
+        return ResponseUtil.validationError(
+          res,
+          'Validation error',
+          validationErrors
+        );
+      } else {
+        return ResponseUtil.internalError(res, 'Error creating product', err);
+      }
     }
   }
 
   /**
-   * Updates an existing strategic decision.
+   * Updates an existing product.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async updateDecision(req: Request, res: Response) {
+  async updateProduct(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Validate request and fetch product
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
+      const id = Number(req.params.id);
+      const validatedData = updateProductSchema.parse(req.body);
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      const product = await em.findOne(Product, { id });
+      if (!product) {
+        return ResponseUtil.notFound(res, 'Product', id);
       }
 
       // ──────────────────────────────────────────────────────────────────────
       // Apply updates
       // ──────────────────────────────────────────────────────────────────────
-      const updates = res.locals.validated.body;
+      if (validatedData.description !== undefined)
+        product.description = validatedData.description;
+      if (validatedData.price !== undefined)
+        product.price = validatedData.price;
+      if (validatedData.stock !== undefined)
+        product.stock = validatedData.stock;
+      if (validatedData.isIllegal !== undefined)
+        product.isIllegal = validatedData.isIllegal;
 
-      if (updates.topicId) {
-        const topic = await em.findOne(Topic, { id: updates.topicId });
-        if (!topic) {
-          return ResponseUtil.notFound(res, 'Topic', updates.topicId);
-        }
-        decision.topic = topic;
-        delete updates.topicId;
-      }
-
-      em.assign(decision, updates);
       await em.flush();
 
       // ──────────────────────────────────────────────────────────────────────
@@ -230,65 +232,72 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
-        'Strategic decision updated successfully',
-        decision.toDTO()
+        'Product updated successfully',
+        product.toDTO()
       );
-    } catch (err) {
-      console.error('Error updating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error updating strategic decision',
-        err
-      );
+    } catch (err: any) {
+      if (err.errors) {
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR',
+        }));
+        return ResponseUtil.validationError(
+          res,
+          'Validation error',
+          validationErrors
+        );
+      } else {
+        return ResponseUtil.internalError(res, 'Error updating product', err);
+      }
     }
   }
 
   /**
-   * Deletes a strategic decision by ID.
+   * Deletes a product by ID.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async deleteDecision(req: Request, res: Response) {
+  async deleteProduct(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Fetch product and handle related entities
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
+      const id = Number(req.params.id);
+      const product = await em.findOne(
+        Product,
         { id },
-        { populate: ['topic'] }
+        { populate: ['distributors', 'details'] }
       );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      if (!product) {
+        return ResponseUtil.notFound(res, 'Product', id);
+      }
+
+      if (product.details.isInitialized() && product.details.length > 0) {
+        await em.nativeDelete(Detail, { product: id });
+      }
+
+      if (
+        product.distributors.isInitialized() &&
+        product.distributors.length > 0
+      ) {
+        product.distributors.removeAll();
+        await em.flush();
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Delete the strategic decision
+      // Delete the product
       // ──────────────────────────────────────────────────────────────────────
-      await em.removeAndFlush(decision);
-      return ResponseUtil.deleted(
-        res,
-        'Strategic decision deleted successfully'
-      );
+      await em.removeAndFlush(product);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.deleted(res, 'Product deleted successfully');
     } catch (err) {
-      console.error('Error deleting strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error deleting strategic decision',
-        err
-      );
+      return ResponseUtil.internalError(res, 'Error deleting product', err);
     }
   }
 }

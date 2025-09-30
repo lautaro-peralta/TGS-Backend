@@ -6,70 +6,58 @@ import { Request, Response } from 'express';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
+import { Topic } from './topic.entity.js';
 import { orm } from '../../shared/db/orm.js';
-import { StrategicDecision } from './decision.entity.js';
-import { Topic } from '../topic/topic.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 
-const em = orm.em.fork();
+const entityManager = orm.em.fork();
 
 // ============================================================================
-// CONTROLLER - Decision
+// CONTROLLER - Topic
 // ============================================================================
 
 /**
- * Controller for handling strategic decision-related operations.
- * @class DecisionController
+ * Controller for handling topic-related operations.
+ * @class TopicController
  */
-export class DecisionController {
+export class TopicController {
   /**
-   * Retrieves all strategic decisions.
+   * Retrieves all topics.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getAllDecisions(req: Request, res: Response) {
+  async getAllTopics(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch all strategic decisions with related topic
+      // Fetch all topics
       // ──────────────────────────────────────────────────────────────────────
-      const decisions = await em.find(
-        StrategicDecision,
-        {},
-        { populate: ['topic'] }
-      );
-      const decisionsDTO = decisions.map((d) => d.toDTO());
-      const message = ResponseUtil.generateListMessage(
-        decisionsDTO.length,
-        'strategic decision'
-      );
+      const topics = await entityManager.find(Topic, {});
+      const topicsDTO = topics.map((topic) => topic.toDTO());
+      const message = ResponseUtil.generateListMessage(topicsDTO.length, 'topic');
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, decisionsDTO);
+      return ResponseUtil.successList(res, message, topicsDTO);
     } catch (err) {
-      console.error('Error getting strategic decisions:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error getting strategic decisions',
-        err
-      );
+      console.error('Error getting topics:', err);
+      return ResponseUtil.internalError(res, 'Error getting topics', err);
     }
   }
 
   /**
-   * Retrieves a single strategic decision by ID.
+   * Retrieves a single topic by ID.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async getOneDecisionById(req: Request, res: Response) {
+  async getOneTopicById(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Validate and extract topic ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
@@ -79,15 +67,16 @@ export class DecisionController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch strategic decision by ID with related topic
+      // Fetch topic by ID with related decisions
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
+      const topic = await entityManager.findOne(
+        Topic,
         { id },
-        { populate: ['topic'] }
+        { populate: ['decisions'] }
       );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+
+      if (!topic) {
+        return ResponseUtil.notFound(res, 'Topic', id);
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -95,98 +84,75 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(
         res,
-        'Strategic decision found successfully',
-        decision.toDTO()
+        'Topic found successfully',
+        topic.toDetailedDTO()
       );
     } catch (err) {
-      console.error('Error searching for strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error searching for strategic decision',
-        err
-      );
+      console.error('Error searching for topic:', err);
+      return ResponseUtil.internalError(res, 'Error searching for topic', err);
     }
   }
 
   /**
-   * Creates a new strategic decision.
+   * Creates a new topic.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async createDecision(req: Request, res: Response) {
-    const { topicId, description, startDate, endDate } =
-      res.locals.validated.body;
+  async createTopic(req: Request, res: Response) {
+    const { description } = res.locals.validated.body;
 
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Check for existing decision with the same description
+      // Check for existing topic with the same description
       // ──────────────────────────────────────────────────────────────────────
-      let decision = await em.findOne(StrategicDecision, {
+      let topic = await entityManager.findOne(Topic, {
         description: description,
       });
 
-      if (decision) {
+      if (topic) {
         return ResponseUtil.conflict(
           res,
-          'A strategic decision with that description already exists',
+          'Topic already exists',
           'description'
         );
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Find the related topic
+      // Create and persist the new topic
       // ──────────────────────────────────────────────────────────────────────
-      let topic = await em.findOne(Topic, {
-        id: topicId,
-      });
-
-      if (!topic) {
-        return ResponseUtil.notFound(res, 'Topic', topicId);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create and persist the new strategic decision
-      // ──────────────────────────────────────────────────────────────────────
-      const newDecision = em.create(StrategicDecision, {
+      const newTopic = entityManager.create(Topic, {
         description,
-        startDate,
-        endDate,
-        topic,
       });
 
-      await em.persistAndFlush(newDecision);
+      await entityManager.persistAndFlush(newTopic);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.created(
         res,
-        'Strategic decision created successfully',
-        newDecision.toDTO()
+        'Topic created successfully',
+        newTopic.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error creating strategic decision',
-        err
-      );
+      console.error('Error creating topic:', err);
+      return ResponseUtil.internalError(res, 'Error creating topic', err);
     }
   }
 
   /**
-   * Updates an existing strategic decision.
+   * Updates an existing topic.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async updateDecision(req: Request, res: Response) {
+  async updateTopic(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Validate and extract topic ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
@@ -196,64 +162,45 @@ export class DecisionController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
+      // Fetch the topic
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      const topic = await entityManager.findOne(Topic, { id });
+      if (!topic) {
+        return ResponseUtil.notFound(res, 'Topic', id);
       }
 
       // ──────────────────────────────────────────────────────────────────────
       // Apply updates
       // ──────────────────────────────────────────────────────────────────────
       const updates = res.locals.validated.body;
-
-      if (updates.topicId) {
-        const topic = await em.findOne(Topic, { id: updates.topicId });
-        if (!topic) {
-          return ResponseUtil.notFound(res, 'Topic', updates.topicId);
-        }
-        decision.topic = topic;
-        delete updates.topicId;
-      }
-
-      em.assign(decision, updates);
-      await em.flush();
+      entityManager.assign(topic, updates);
+      await entityManager.flush();
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(
         res,
-        'Strategic decision updated successfully',
-        decision.toDTO()
+        'Topic updated successfully',
+        topic.toDTO()
       );
     } catch (err) {
-      console.error('Error updating strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error updating strategic decision',
-        err
-      );
+      console.error('Error updating topic:', err);
+      return ResponseUtil.internalError(res, 'Error updating topic', err);
     }
   }
 
   /**
-   * Deletes a strategic decision by ID.
+   * Deletes a topic by ID.
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
-  async deleteDecision(req: Request, res: Response) {
+  async deleteTopic(req: Request, res: Response) {
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
+      // Validate and extract topic ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
       if (isNaN(id)) {
@@ -263,32 +210,22 @@ export class DecisionController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch the strategic decision
+      // Fetch and delete the topic
       // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      const topic = await entityManager.findOne(Topic, { id });
+      if (!topic) {
+        return ResponseUtil.notFound(res, 'Topic', id);
       }
 
+      await entityManager.removeAndFlush(topic);
+
       // ──────────────────────────────────────────────────────────────────────
-      // Delete the strategic decision
+      // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      await em.removeAndFlush(decision);
-      return ResponseUtil.deleted(
-        res,
-        'Strategic decision deleted successfully'
-      );
+      return ResponseUtil.deleted(res, 'Topic deleted successfully');
     } catch (err) {
-      console.error('Error deleting strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error deleting strategic decision',
-        err
-      );
+      console.error('Error deleting topic:', err);
+      return ResponseUtil.internalError(res, 'Error deleting topic', err);
     }
   }
 }
