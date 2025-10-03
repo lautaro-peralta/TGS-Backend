@@ -19,7 +19,7 @@ Content-Type: application/json
 }
 
 ###modificar autoridad (PUT - idempotente, modificaciones completas)
-PUT http://localhost:3000/api/authorities/10101013
+PUT http://localhost:3000/api/authorities/10101015
 Content-Type: application/json
 
 {

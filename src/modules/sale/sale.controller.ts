@@ -15,8 +15,7 @@ import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from '../bribe/bribe.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-
-const em = orm.em.fork();
+import { searchEntityByDate } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Sale
@@ -27,6 +26,12 @@ const em = orm.em.fork();
  * @class SaleController
  */
 export class SaleController {
+
+  async searchSales(req: Request, res: Response) {
+    const em = orm.em.fork();
+    return searchEntityByDate(req, res, Sale, "saleDate", "sales", em);
+  }
+  
   /**
    * Retrieves all sales.
    *
@@ -35,6 +40,7 @@ export class SaleController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getAllSales(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch all sales with related data
@@ -65,6 +71,7 @@ export class SaleController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getOneSaleById(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract sale ID
@@ -110,6 +117,7 @@ export class SaleController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async createSale(req: Request, res: Response) {
+    const em = orm.em.fork();
     const { clientDni, details, person } = res.locals.validated.body;
 
     let client = await em.findOne(Client, { dni: clientDni });
@@ -252,6 +260,7 @@ export class SaleController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async deleteSale(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract sale ID

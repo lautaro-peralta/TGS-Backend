@@ -1,17 +1,21 @@
 ### Obtener todos los productos
-GET http://localhost:3000/api/productos
+GET http://localhost:3000/api/products
+
+###
+GET http://localhost:3000/api/products/search?q=Fernet
+
 
 ### Obtener un producto por ID
-GET http://localhost:3000/api/productos/1
+GET http://localhost:3000/api/products/1
 ### Crear nuevo producto
-POST http://localhost:3000/api/productos
+POST http://localhost:3000/api/products
 Content-Type: application/json
 
 {
-  "descripcion": "Fernet Branca",
-  "precio": 1000,
+  "description": "Fernet Branca",
+  "price": 1000,
   "stock": 10,
-  "esIlegal": false
+  "isIllegal": false
 }
 
 ### Modificar producto (reemplazo completo)
@@ -19,10 +23,10 @@ PATCH http://localhost:3000/api/productos/3
 Content-Type: application/json
 
 {
-  "descripcion": "Fernet Branca",
-  "precio": 800,
+  "description": "Fernet Branca",
+  "price": 800,
   "stock": 150,
-  "esIlegal": false
+  "isIllegal": false
 }
 
 ### Modificar producto (PATCH - actualización parcial)
@@ -34,5 +38,5 @@ Content-Type: application/json
 }
 
 ### Borrar un producto
-DELETE http://localhost:3000/api/productos/2
+DELETE http://localhost:3000/api/products/2
 

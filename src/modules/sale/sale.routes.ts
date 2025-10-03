@@ -34,6 +34,8 @@ saleRouter.get(
   saleController.getAllSales
 );
 
+saleRouter.get('/search', saleController.searchSales);
+
 /**
  * @route   GET /api/sales/:id
  * @desc    Get a single sale by ID.

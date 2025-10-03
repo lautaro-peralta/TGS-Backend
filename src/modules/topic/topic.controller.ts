@@ -9,8 +9,8 @@ import { Request, Response } from 'express';
 import { Topic } from './topic.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { searchEntity } from '../../shared/utils/search.util.js';
 
-const entityManager = orm.em.fork();
 
 // ============================================================================
 // CONTROLLER - Topic
@@ -21,6 +21,12 @@ const entityManager = orm.em.fork();
  * @class TopicController
  */
 export class TopicController {
+
+  async searchTopics(req: Request, res: Response) {
+    const em = orm.em.fork();
+    return searchEntity(req, res, Topic, 'description', 'topic', em);
+  }
+  
   /**
    * Retrieves all topics.
    *
@@ -29,11 +35,12 @@ export class TopicController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getAllTopics(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch all topics
       // ──────────────────────────────────────────────────────────────────────
-      const topics = await entityManager.find(Topic, {});
+      const topics = await em.find(Topic, {});
       const topicsDTO = topics.map((topic) => topic.toDTO());
       const message = ResponseUtil.generateListMessage(topicsDTO.length, 'topic');
 
@@ -55,6 +62,7 @@ export class TopicController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getOneTopicById(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract topic ID
@@ -69,7 +77,7 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch topic by ID with related decisions
       // ──────────────────────────────────────────────────────────────────────
-      const topic = await entityManager.findOne(
+      const topic = await em.findOne(
         Topic,
         { id },
         { populate: ['decisions'] }
@@ -101,13 +109,14 @@ export class TopicController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async createTopic(req: Request, res: Response) {
+    const em = orm.em.fork();
     const { description } = res.locals.validated.body;
 
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Check for existing topic with the same description
       // ──────────────────────────────────────────────────────────────────────
-      let topic = await entityManager.findOne(Topic, {
+      let topic = await em.findOne(Topic, {
         description: description,
       });
 
@@ -122,11 +131,11 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Create and persist the new topic
       // ──────────────────────────────────────────────────────────────────────
-      const newTopic = entityManager.create(Topic, {
+      const newTopic = em.create(Topic, {
         description,
       });
 
-      await entityManager.persistAndFlush(newTopic);
+      await em.persistAndFlush(newTopic);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -150,6 +159,7 @@ export class TopicController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async updateTopic(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract topic ID
@@ -164,7 +174,7 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch the topic
       // ──────────────────────────────────────────────────────────────────────
-      const topic = await entityManager.findOne(Topic, { id });
+      const topic = await em.findOne(Topic, { id });
       if (!topic) {
         return ResponseUtil.notFound(res, 'Topic', id);
       }
@@ -173,8 +183,8 @@ export class TopicController {
       // Apply updates
       // ──────────────────────────────────────────────────────────────────────
       const updates = res.locals.validated.body;
-      entityManager.assign(topic, updates);
-      await entityManager.flush();
+      em.assign(topic, updates);
+      await em.flush();
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -198,6 +208,7 @@ export class TopicController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async deleteTopic(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract topic ID
@@ -212,12 +223,12 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch and delete the topic
       // ──────────────────────────────────────────────────────────────────────
-      const topic = await entityManager.findOne(Topic, { id });
+      const topic = await em.findOne(Topic, { id });
       if (!topic) {
         return ResponseUtil.notFound(res, 'Topic', id);
       }
 
-      await entityManager.removeAndFlush(topic);
+      await em.removeAndFlush(topic);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response

@@ -1,28 +1,30 @@
 ###obtener todas las zonas
-GET http://localhost:3000/api/zonas
+GET http://localhost:3000/api/zones
 
 ###obtener una zona
-GET http://localhost:3000/api/zonas/1
+GET http://localhost:3000/api/zones/1
+
+###obtener una zona
+GET http://localhost:3000/api/zones/search?q=Centro
 
 ### Crear nueva zona
-POST http://localhost:3000/api/zonas
+POST http://localhost:3000/api/zones
 Content-Type: application/json
 
 {
-  "nombre": "Zona central"
+  "name": "Zona NOROESTE"
 }
 
 ###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/zonas/7
+PATCH http://localhost:3000/api/zones/1
 Content-Type: application/json
 
 {
   "nombre": "Zona Centro"
 }
 
-
 ###modificar una zona
-PATCH http://localhost:3000/api/zonas/1
+PATCH http://localhost:3000/api/zones/1
 Content-Type: application/json
 
 {
@@ -30,4 +32,4 @@ Content-Type: application/json
 }
 
 ###borrar una zona
-DELETE http://localhost:3000/api/zonas/1
+DELETE http://localhost:3000/api/zones/1

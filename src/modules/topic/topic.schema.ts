@@ -14,9 +14,9 @@ export const createTopicSchema = z.object({
   /**
    * The description of the topic.
    */
-  descripcion: z
+  description: z
     .string()
-    .min(1, 'La descripción debe contener como mínimo un caracter.'),
+    .min(1, 'The description must contain at least one character.'),
 });
 
 /**
