@@ -57,8 +57,8 @@ authorityRouter.post(
  */
 authorityRouter.get(
   '/',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Role.ADMIN]),
   authorityController.getAllAuthorities
 );
 
@@ -69,8 +69,8 @@ authorityRouter.get(
  */
 authorityRouter.get(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  //authMiddleware,
+  //rolesMiddleware([Role.ADMIN]),
   validateWithSchema({ params: dniParamSchema }),
   authorityController.getOneAuthorityByDni
 );
@@ -82,8 +82,8 @@ authorityRouter.get(
  */
 authorityRouter.get(
   '/:dni/bribes',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  //authMiddleware,
+  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   authorityController.getAuthorityBribes
 );
 
@@ -94,8 +94,8 @@ authorityRouter.get(
  */
 authorityRouter.put(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  //authMiddleware,
+  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   validateWithSchema({ body: updateAuthoritySchema }),
   authorityController.putUpdateAuthority
 );
@@ -107,8 +107,8 @@ authorityRouter.put(
  */
 authorityRouter.patch(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  //authMiddleware,
+  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   validateWithSchema({ body: partialUpdateAuthoritySchema }),
   authorityController.patchUpdateAuthority
 );
@@ -120,7 +120,7 @@ authorityRouter.patch(
  */
 authorityRouter.delete(
   '/:dni',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  //authMiddleware,
+  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   authorityController.deleteAuthority
 );

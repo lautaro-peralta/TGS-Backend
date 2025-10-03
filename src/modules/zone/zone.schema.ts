@@ -14,12 +14,12 @@ export const createZoneSchema = z.object({
   /**
    * The name of the zone.
    */
-  nombre: z.string().min(1, 'Nombre de zona requerido'),
+  name: z.string().min(1, 'Nombre de zona requerido'),
   /**
    * Indicates if the zone is a headquarters.
    * Defaults to false.
    */
-  esSedeCentral: z.boolean().optional().default(false),
+  isHeadquarters: z.boolean().optional().default(false),
 });
 
 /**

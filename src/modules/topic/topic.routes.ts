@@ -27,12 +27,15 @@ const topicController = new TopicController();
  */
 topicRouter.get('/', topicController.getAllTopics);
 
+topicRouter.get('/search', topicController.searchTopics);
+
 /**
  * @route   GET /api/topics/:id
  * @desc    Get a single topic by ID.
  * @access  Public
  */
 topicRouter.get('/:id', topicController.getOneTopicById);
+
 
 /**
  * @route   POST /api/topics
