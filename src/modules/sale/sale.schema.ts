@@ -37,21 +37,9 @@ export const createSaleSchema = z.object({
    */
   person: z
     .object({
-      /**
-       * The name of the person.
-       */
       name: z.string().min(1),
-      /**
-       * The email address of the person.
-       */
       email: z.email(),
-      /**
-       * The phone number of the person.
-       */
       phone: z.string().optional(),
-      /**
-       * The address of the person.
-       */
       address: z.string().optional(),
     })
     .optional(),

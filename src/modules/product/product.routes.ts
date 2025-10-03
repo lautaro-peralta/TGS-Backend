@@ -32,6 +32,8 @@ const productController = new ProductController();
  */
 productRouter.get('/', productController.getAllProducts);
 
+productRouter.get('/search', productController.searchProducts);
+
 /**
  * @route   GET /api/products/:id
  * @desc    Get a single product by ID.

@@ -29,6 +29,8 @@ const zoneController = new ZoneController();
  */
 zoneRouter.get('/', zoneController.getAllZones);
 
+zoneRouter.get('/search', zoneController.searchZones);
+
 /**
  * @route   GET /api/zones/:id
  * @desc    Get a single zone by ID.

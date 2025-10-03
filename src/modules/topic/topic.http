@@ -5,11 +5,13 @@ GET http://localhost:3000/api/tematicas
 GET http://localhost:3000/api/tematicas/5
 
 ###
-POST http://localhost:3000/api/tematicas
+GET http://localhost:3000/api/topics/search?q=Gastronomía
+###
+POST http://localhost:3000/api/topics
 Content-Type: application/json
 
 {
-  "descripcion":"Gastronomía"
+  "description":"Gastronomía"
 }
 
 ###
