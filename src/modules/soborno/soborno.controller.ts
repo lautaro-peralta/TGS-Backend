@@ -3,17 +3,21 @@ import { orm } from '../../shared/db/orm.js';
 import { Autoridad } from '../autoridad/autoridad.entity.js';
 import { Soborno } from './soborno.entity.js';
 import { Venta } from '.././venta/venta.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 export class SobornoController {
   async getAllSobornos(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
+      const { where, limit, offset } = buildQueryOptions(req, []);
       const sobornos = await em.find(
         Soborno,
-        {},
+        where,
         {
           orderBy: { id: 'ASC' },
           populate: ['autoridad', 'venta'],
+          limit,
+          offset,
         }
       );
 

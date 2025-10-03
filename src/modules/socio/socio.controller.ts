@@ -2,37 +2,27 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Socio } from './socio.entity.js';
-
-class ResponseUtils {
-  static ok(res: Response, message: string, data?: any) {
-    return res.status(200).json({ message, data });
-  }
-  static created(res: Response, message: string, data?: any) {
-    return res.status(201).json({ message, data });
-  }
-  static notFound(res: Response, message = 'Recurso no encontrado') {
-    return res.status(404).json({ error: message });
-  }
-  static conflict(res: Response, message = 'Conflicto en la petición') {
-    return res.status(409).json({ error: message });
-  }
-  static badRequest(res: Response, message = 'Solicitud inválida') {
-    return res.status(400).json({ error: message });
-  }
-  static serverError(res: Response, message = 'Error interno del servidor') {
-    return res.status(500).json({ error: message });
-  }
-  static notImplemented(res: Response, message = 'No implementado') {
-    return res.status(501).json({ error: message });
-  }
-}
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
+import { ResponseUtils } from '../../shared/utils/response.utils.js';
 
 export class SocioController {
 
   async getAllSocios(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const socios = await em.find(Socio, {}, { populate: ['usuario'] } as any);
+      const { where, limit, offset } = buildQueryOptions(req, [
+        'dni',
+        'nombre',
+        'email',
+        'telefono',
+        'direccion',
+      ]);
+
+      const socios = await em.find(
+        Socio,
+        where,
+        { populate: ['usuario'], limit, offset } as any
+      );
 
       const data = socios.map((s) =>
         (s as any).toDetailedDTO?.() ??
@@ -51,7 +41,7 @@ export class SocioController {
       return ResponseUtils.ok(res, message, data);
     } catch (err) {
       console.error('Error al obtener socios:', err);
-      return ResponseUtils.serverError(res);
+      return ResponseUtils.serverError(res, 'Error al obtener socios');
     }
   }
 
@@ -84,29 +74,15 @@ export class SocioController {
   async createSocio(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const validated = (res as any).locals?.validated?.body as {
-        dni: string;
-        nombre: string;
-        email: string;
-        direccion: string;
-        telefono: string;
-      } | undefined;
+      // Body ya validado por Zod en middleware
+      const { dni, nombre, email, direccion, telefono } =
+        (res as any).locals?.validated?.body ?? {};
 
-      if (!validated) {
-        return ResponseUtils.badRequest(res, 'Cuerpo inválido');
-      }
-
-      const { dni, nombre, email, direccion, telefono } = validated;
-
-      if (!direccion || !telefono) {
-        return ResponseUtils.badRequest(
-          res,
-          'Los campos "direccion" y "telefono" son obligatorios'
-        );
-      }
-
+      // Duplicado por DNI
       const existeSocio = await em.findOne(Socio, { dni });
-      if (existeSocio) return ResponseUtils.conflict(res, 'Ya existe un socio con ese DNI');
+      if (existeSocio) {
+        return ResponseUtils.conflict(res, 'Ya existe un socio con ese DNI');
+      }
 
       const socio = em.create(Socio, { dni, nombre, email, direccion, telefono });
       await em.persistAndFlush(socio);
@@ -124,7 +100,7 @@ export class SocioController {
       return ResponseUtils.created(res, 'Socio creado exitosamente', data);
     } catch (error) {
       console.error('Error creando socio:', error);
-      return ResponseUtils.serverError(res);
+      return ResponseUtils.serverError(res, 'Error al crear socio');
     }
   }
 
@@ -138,9 +114,11 @@ export class SocioController {
         return ResponseUtils.notFound(res, 'Socio no encontrado');
       }
 
+      // Body ya validado por Zod
       const updates = ((res as any).locals?.validated?.body ?? {}) as Partial<
         Pick<Socio, 'nombre' | 'email' | 'direccion' | 'telefono'>
-      >; // validado por Zod en el middleware
+      >;
+
       em.assign(socio, updates);
       await em.flush();
 
@@ -178,6 +156,7 @@ export class SocioController {
     }
   }
 
+  // Placeholders alineados al diseño (se implementarán luego)
   async linkDecision(req: Request, res: Response) {
     return ResponseUtils.notImplemented(res, 'Vinculación de decisiones no implementada');
   }
@@ -190,7 +169,7 @@ export class SocioController {
     return ResponseUtils.notImplemented(res, 'Listado de decisiones no implementado');
   }
 
-
+  // Según preferencia arquitectónica: mover creación de ventas a VentaController
   async createVentaForSocio(req: Request, res: Response) {
     return ResponseUtils.notImplemented(res, 'Creación de venta para socio no implementada');
   }

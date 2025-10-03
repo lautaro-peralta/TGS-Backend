@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Producto } from './producto.entity.js';
 import { Detalle } from '../venta/detalle.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 import {
   crearProductoSchema,
   actualizarProductoSchema,
@@ -11,15 +12,12 @@ import { ZodError } from 'zod';
 const em = orm.em.fork();
 
 export class ProductoController {
-  // Obtener todos los productos (con búsqueda opcional por ?q=)
+  // Obtener todos los productos (búsqueda ?q= y paginación ?page=&limit=)
   async getAllProductos(req: Request, res: Response) {
     try {
-      const { q } = req.query as { q?: string };
+      const { where, limit, offset } = buildQueryOptions(req, ['descripcion']);
 
-      // búsqueda parcial en descripcion si viene q
-      const where = q ? { descripcion: { $like: `%${q}%` } } : {};
-
-      const productos = await em.find(Producto, where);
+      const productos = await em.find(Producto, where, { limit, offset });
 
       return res.status(200).json({
         message: `Se ${productos.length === 1 ? 'encontró' : 'encontraron'} ${

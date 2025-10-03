@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Zona } from './zona.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 export class ZonaController {
   async getAllZonas(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const zonas = await em.find(Zona, {});
+      const { where, limit, offset } = buildQueryOptions(req, ['nombre']);
+      const zonas = await em.find(Zona, where, { limit, offset });
       res.status(200).json({
         mensaje: `Se encontraron ${zonas.length} zona/s`,
         data: zonas,

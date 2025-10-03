@@ -6,6 +6,7 @@ import { Rol, Usuario } from '../auth/usuario.entity.js';
 import { Soborno } from '../../modules/soborno/soborno.entity.js';
 import argon2 from 'argon2';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 export class AutoridadController {
   async createAutoridad(req: Request, res: Response) {
@@ -80,10 +81,16 @@ export class AutoridadController {
   async getAllAutoridades(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      const { where, limit, offset } = buildQueryOptions(req, [
+        'dni',
+        'nombre',
+        'email',
+        'telefono',
+      ]);
       const autoridades = await em.find(
         Autoridad,
-        {},
-        { populate: ['zona', 'sobornos'], orderBy: { nombre: 'ASC' } }
+        where,
+        { populate: ['zona', 'sobornos'], orderBy: { nombre: 'ASC' }, limit, offset }
       );
       return res.status(200).json({
         message: `Se ${autoridades.length === 1 ? 'encontró' : 'encontraron'} ${

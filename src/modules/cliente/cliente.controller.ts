@@ -4,15 +4,24 @@ import { Cliente } from './cliente.entity.js';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import argon2 from 'argon2';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 export class ClienteController {
   async getAllClientes(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      const { where, limit, offset } = buildQueryOptions(req, [
+        'dni',
+        'nombre',
+        'email',
+        'telefono',
+        'direccion',
+      ]);
+
       const clientes = await em.find(
         Cliente,
-        {},
-        { populate: ['usuario', 'regCompras', 'regCompras.detalles'] }
+        where,
+        { populate: ['usuario', 'regCompras', 'regCompras.detalles'], limit, offset }
       );
       return res.status(200).json({
         message: `Se ${clientes.length === 1 ? 'encontró' : 'encontraron'} ${

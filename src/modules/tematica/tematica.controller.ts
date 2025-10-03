@@ -1,13 +1,15 @@
 import { Request, Response } from 'express';
 import { Tematica } from './tematica.entity.js';
 import { orm } from '../../shared/db/orm.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 const em = orm.em.fork();
 
 export class TematicaController {
   async getAllTematicas(req: Request, res: Response) {
     try {
-      const tematicas = await em.find(Tematica, {});
+      const { where, limit, offset } = buildQueryOptions(req, ['descripcion']);
+      const tematicas = await em.find(Tematica, where, { limit, offset });
       const tematicasDTO = tematicas.map((t) => t.toDTO());
       const cantidad = tematicasDTO.length;
       const mensaje = `Se ${

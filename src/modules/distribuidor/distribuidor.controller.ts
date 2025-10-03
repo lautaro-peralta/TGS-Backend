@@ -2,15 +2,23 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Distribuidor } from './distribuidor.entity.js';
 import { Producto } from '../producto/producto.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 export class DistribuidorController {
   async getAllDistribuidor(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
+      const { where, limit, offset } = buildQueryOptions(req, [
+        'dni',
+        'nombre',
+        'email',
+        'telefono',
+        'direccion',
+      ]);
       const distribuidores = await em.find(
         Distribuidor,
-        {},
-        { populate: ['productos', 'regVentas'] }
+        where,
+        { populate: ['productos', 'regVentas'], limit, offset }
       );
       return res.status(200).json({
         message: `Se ${distribuidores.length === 1 ? 'encontró' : 'encontraron'} ${distribuidores.length} distribuidor${distribuidores.length !== 1 ? 'es' : ''}`,

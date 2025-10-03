@@ -8,16 +8,18 @@ import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import { DecisionEstrategica } from './decision.entity.js';
 import { Tematica } from '../../modules/tematica/tematica.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 const em = orm.em.fork();
 
 export class DecisionController {
   async getAllDecisiones(req: Request, res: Response) {
     try {
+      const { where, limit, offset } = buildQueryOptions(req, ['descripcion']);
       const decisiones = await em.find(
         DecisionEstrategica,
-        {},
-        { populate: ['tematica'] }
+        where,
+        { populate: ['tematica'], limit, offset }
       );
       const decisionesDTO = decisiones.map((d) => d.toDTO());
       const cantidad = decisionesDTO.length;

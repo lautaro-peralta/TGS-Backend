@@ -5,6 +5,7 @@ import { validate as isUuid } from 'uuid';
 import { wrap } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
 import argon2 from 'argon2';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 export class UsuarioController {
   // Obtener perfil del usuario autenticado
   async getPerfilUsuario(req: Request, res: Response, next: NextFunction) {
@@ -28,7 +29,8 @@ export class UsuarioController {
   async getAllUsuarios(req: Request, res: Response, next: NextFunction) {
     try {
       const em = orm.em.fork();
-      const usuarios = await em.find(Usuario, {});
+      const { where, limit, offset } = buildQueryOptions(req, ['username', 'email']);
+      const usuarios = await em.find(Usuario, where, { limit, offset });
       res.status(200).json(usuarios);
     } catch (err) {
       next(err);

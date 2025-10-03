@@ -8,16 +8,18 @@ import { Autoridad } from '../autoridad/autoridad.entity.js';
 import { Soborno } from '../soborno/soborno.entity.js';
 import { Usuario, Rol } from '../auth/usuario.entity.js';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
+import { buildQueryOptions } from '../../shared/utils/query.utils.js';
 
 const em = orm.em.fork();
 
 export class VentaController {
   async getAllVentas(req: Request, res: Response) {
     try {
+      const { where, limit, offset } = buildQueryOptions(req, []);
       const ventas = await em.find(
         Venta,
-        {},
-        { populate: ['cliente', 'detalles', 'autoridad'] }
+        where,
+        { populate: ['cliente', 'detalles', 'autoridad'], limit, offset }
       );
       const ventasDTO = ventas.map((v) => v.toDTO());
       const cantidad = ventasDTO.length;
