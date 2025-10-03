@@ -1,25 +1,23 @@
 ###listar las ventas
 
-GET http://localhost:3000/api/ventas
+GET http://localhost:3000/api/sales
 
+###listar las ventas
+GET http://localhost:3000/api/sales/search?date=2025-10-03&type=exact
 ###Crear venta
-POST http://localhost:3000/api/ventas
+POST http://localhost:3000/api/sales
 Content-Type: application/json
 
 {
-  "clienteDni": "20909090",
-  "persona": {
-    "nombre":"juan",
+  "clientDni": "20909090",
+  "person": {
+    "name":"juan",
     "email":"juanq@email.com"
   },
-  "detalles": [
+  "details": [
     {
-      "productoId": 3,
-      "cantidad": 3
-    },
-    {
-      "productoId": 2,
-      "cantidad": 1
+      "productId": 1,
+      "quantity": 1
     }
   ]
 }

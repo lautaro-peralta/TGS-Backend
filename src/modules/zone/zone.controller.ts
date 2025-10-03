@@ -10,6 +10,7 @@ import { orm } from '../../shared/db/orm.js';
 import { Zone } from './zone.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { Authority } from '../authority/authority.entity.js';
+import { searchEntity } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Zone
@@ -20,6 +21,11 @@ import { Authority } from '../authority/authority.entity.js';
  * @class ZoneController
  */
 export class ZoneController {
+  
+  async searchZones(req: Request, res: Response) {
+    const em = orm.em.fork();
+    return searchEntity(req, res, Zone, 'name', 'zone', em);
+  }
   /**
    * Retrieves all zones.
    *
@@ -101,18 +107,13 @@ export class ZoneController {
         isHeadquarters?: boolean;
       };
 
-      if (!name || typeof name !== 'string' || !name.trim()) {
-        return res.status(400).json({ mensaje: 'El nombre es requerido.' });
-      }
-      const trimmedName = name.trim();
-
       // ──────────────────────────────────────────────────────────────────────
       // Check for duplicate zone name (case-insensitive)
       // ──────────────────────────────────────────────────────────────────────
       const rows = await em
         .getConnection()
         .execute(`SELECT id FROM zones WHERE LOWER(name) = ?`, [
-          trimmedName.toLowerCase(),
+          name.toLowerCase(),
         ]);
       if (rows.length > 0) {
         return ResponseUtil.conflict(
@@ -136,7 +137,7 @@ export class ZoneController {
       // Create and persist the new zone
       // ──────────────────────────────────────────────────────────────────────
       const newZone = em.create(Zone, {
-        name: trimmedName,
+        name: name,
         isHeadquarters: Boolean(isHeadquarters),
       });
       await em.persistAndFlush(newZone);
@@ -144,7 +145,7 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(res, 'Zona creada exitosamente', newZone);
+      return ResponseUtil.created(res, 'Zona creada exitosamente', newZone.toDTO());
     } catch (err: any) {
       return ResponseUtil.internalError(res, 'Error al crear zona', err);
     }

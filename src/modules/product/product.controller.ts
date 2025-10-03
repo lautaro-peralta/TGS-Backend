@@ -14,8 +14,7 @@ import {
   updateProductSchema,
 } from './product.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-
-const em = orm.em.fork();
+import { searchEntity } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Product
@@ -34,48 +33,8 @@ export class ProductController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async searchProducts(req: Request, res: Response) {
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate search query
-      // ──────────────────────────────────────────────────────────────────────
-      const { q } = req.query as { q?: string };
-
-      if (!q || q.trim().length < 2) {
-        return ResponseUtil.validationError(res, 'Validation error', [
-          {
-            field: 'q',
-            message:
-              'The query parameter "q" is required and must be at least 2 characters long.',
-          },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch products matching the query
-      // ──────────────────────────────────────────────────────────────────────
-      const where = { description: { $like: `%${q.trim()}%` } };
-
-      const products = await em.find(Product, where, {
-        orderBy: { description: 'asc' },
-      });
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      const message = ResponseUtil.generateListMessage(
-        products.length,
-        'product',
-        `that match "${q}"`
-      );
-
-      return ResponseUtil.successList(
-        res,
-        message,
-        products.map((p) => p.toDTO())
-      );
-    } catch (err) {
-      return ResponseUtil.internalError(res, 'Error searching for products', err);
-    }
+    const em = orm.em.fork();
+    return searchEntity(req, res, Product, 'description', 'product', em);
   }
 
   /**
@@ -86,6 +45,8 @@ export class ProductController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getAllProducts(req: Request, res: Response) {
+    const em = orm.em.fork();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch all products
@@ -121,6 +82,8 @@ export class ProductController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getOneProductById(req: Request, res: Response) {
+    const em = orm.em.fork();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch product by ID
@@ -152,18 +115,26 @@ export class ProductController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async createProduct(req: Request, res: Response) {
+    const em = orm.em.fork();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate request body and create product
       // ──────────────────────────────────────────────────────────────────────
       const validatedData = createProductSchema.parse(req.body);
 
-      const product = new Product(
-        validatedData.price,
-        validatedData.stock,
-        validatedData.description,
-        validatedData.isIllegal
-      );
+      const productExists = await em.findOne(Product,{description: validatedData.description})
+       
+      if(productExists){
+        return ResponseUtil.conflict(res,'A product with that description already exists.', 'description')
+      }
+
+      const product = em.create(Product,{
+        price: validatedData.price,
+        stock: validatedData.stock,
+        description: validatedData.description,
+        isIllegal: validatedData.isIllegal
+        });
 
       await em.persistAndFlush(product);
 
@@ -201,6 +172,8 @@ export class ProductController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async updateProduct(req: Request, res: Response) {
+    const em = orm.em.fork();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate request and fetch product
@@ -261,6 +234,8 @@ export class ProductController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async deleteProduct(req: Request, res: Response) {
+    const em = orm.em.fork();
+
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch product and handle related entities
