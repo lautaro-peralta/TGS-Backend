@@ -1,8 +1,7 @@
 // src/modules/partner/partner.entity.ts
-import { Entity, OneToMany, Collection } from '@mikro-orm/core';
+import { Entity, ManyToMany, Collection } from '@mikro-orm/core';
 import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
-// Optional: uncomment if Distributor entity exists and FK is defined there
-// import { Distributor } from '../distributor/distributor.entity.js';
+import { Decision } from '../decision/decision.entity.js';
 
 /**
  * NOTE:
@@ -12,32 +11,42 @@ import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
  */
 @Entity({ tableName: 'partners' })
 export class Partner extends BaseEntityPersona {
-  // 1:N relation with Distributor (only if your domain requires it)
-  // @OneToMany({ entity: () => Distributor, mappedBy: 'partner' })
-  // distributors = new Collection<Distributor>(this);
+  /**
+   * N:M Partner–Decision (strategic decisions linked to a partner).
+   * This side is the owner to control the pivot table.
+   * Adjust `pivotTable` if you already have a convention elsewhere.
+   */
+  @ManyToMany({
+    entity: () => Decision,
+    owner: true,
+    pivotTable: 'partners_decisions',
+  })
+  decisions = new Collection<Decision>(this);
 
   /** Minimal, public-facing DTO (English keys). */
   toDTO() {
     return {
       dni: this.dni,
-      name: this.nombre,         // underlying prop in Spanish, exposed in English
+      name: this.nombre,       // underlying prop in Spanish, exposed in English
       email: this.email,
-      address: this.direccion,   // underlying prop in Spanish, exposed in English
-      phone: this.telefono,      // underlying prop in Spanish, exposed in English
-      // status: this.status,     // uncomment if BaseEntityPersona provides it
+      address: this.direccion, // underlying prop in Spanish, exposed in English
+      phone: this.telefono,    // underlying prop in Spanish, exposed in English
+      // active: this.active,   // uncomment if BaseEntityPersona provides it
     };
   }
 
-  /** Detailed DTO (safe to return to clients; keep relations defensive). */
+  /**
+   * Detailed DTO (safe to return to clients; relations handled defensively).
+   * Includes decisions only if the collection is initialized (i.e., populated in the query).
+   */
   toDetailedDTO() {
     return {
       ...this.toDTO(),
-      // If you add the Distributor relation, you can expose it like this:
-      // distributors: this.distributors?.isInitialized()
-      //   ? (this.distributors.isEmpty()
-      //       ? []
-      //       : this.distributors.getItems().map(d => d.toDTO?.() ?? d))
-      //   : null, // not populated
+      decisions: this.decisions?.isInitialized()
+        ? (this.decisions.isEmpty()
+            ? []
+            : this.decisions.getItems().map(d => d.toDTO?.() ?? { id: (d as any).id }))
+        : null, // not populated
     };
   }
 }

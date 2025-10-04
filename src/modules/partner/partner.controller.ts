@@ -2,9 +2,6 @@
 import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Partner } from './partner.entity.js';
-import { Usuario, Rol } from '../auth/usuario.entity.js';
-import argon2 from 'argon2';
-// If your ResponseUtils lives elsewhere, adjust the path accordingly.
 import { ResponseUtils as R } from '../../shared/http/response.utils.js';
 
 export class PartnerController {
@@ -19,33 +16,36 @@ export class PartnerController {
         Partner,
         {},
         {
-          // Adjust populates according to your model: e.g. ['usuario', 'distributors']
+          // keep if your entity relates to 'usuario'; otherwise you can remove it
           populate: ['usuario'],
         }
       );
 
       return R.ok(res, {
-        message: `Se ${partners.length === 1 ? 'encontró' : 'encontraron'} ${partners.length} partner${partners.length !== 1 ? 's' : ''}.`,
-        data: partners.map(p => (p.toDetailedDTO ? p.toDetailedDTO() : p.toDTO())),
+        message: `Found ${partners.length} partner${partners.length !== 1 ? 's' : ''}.`,
+        data: partners.map((p) => (p.toDetailedDTO ? p.toDetailedDTO() : p.toDTO())),
       });
     } catch (err) {
-      console.error('Error al obtener partners:', err);
-      return R.fail(res, err, 'Error interno del servidor');
+      console.error('Error fetching partners:', err);
+      return R.fail(res, err, 'Internal server error');
     }
   }
 
   /**
-   * GET /partners/search?q=&status=
-   * Search partners using query params. Keep it separate from getAll.
+   * GET /partners/search?q=&active=
+   * - q: free text (name/email/dni)
+   * - active: 'true' | 'false' | '1' | '0'
    */
   async searchPartners(req: Request, res: Response) {
     const em = orm.em.fork();
-    const { q, status } = req.query as { q?: string; status?: 'active' | 'inactive' };
+    const { q, active } = req.query as { q?: string; active?: string };
 
     try {
+      const isActive =
+        active !== undefined ? active === 'true' || active === '1' : undefined;
+
       const where: any = {};
 
-      // Example text search – adjust to your fields
       if (q && q.trim()) {
         where.$or = [
           { nombre: { $like: `%${q}%` } },
@@ -54,20 +54,22 @@ export class PartnerController {
         ];
       }
 
-      if (status) {
-        // If Partner/entity has 'status' in BaseEntityPersona, include this filter
-        where.status = status;
+      if (isActive !== undefined) {
+        where.active = isActive;
       }
 
-      const partners = await em.find(Partner, where, { populate: ['usuario'] });
+      const partners =
+        (R as any).searchEntity
+          ? await (R as any).searchEntity(em, Partner, where, { populate: ['usuario'] })
+          : await em.find(Partner, where, { populate: ['usuario'] });
 
       return R.ok(res, {
-        message: `La búsqueda devolvió ${partners.length} partner${partners.length !== 1 ? 's' : ''}.`,
-        data: partners.map(p => (p.toDetailedDTO ? p.toDetailedDTO() : p.toDTO())),
+        message: `Search returned ${partners.length} partner${partners.length !== 1 ? 's' : ''}.`,
+        data: partners.map((p: any) => (p.toDetailedDTO ? p.toDetailedDTO() : p.toDTO())),
       });
     } catch (err) {
-      console.error('Error en búsqueda de partners:', err);
-      return R.fail(res, err, 'Error al buscar partners');
+      console.error('Error searching partners:', err);
+      return R.fail(res, err, 'Error searching partners');
     }
   }
 
@@ -82,120 +84,74 @@ export class PartnerController {
     try {
       const partner = await em.findOne(Partner, { dni }, { populate: ['usuario'] });
       if (!partner) {
-        return R.notFound(res, `Partner con DNI ${dni} no encontrado.`);
+        return R.notFound(res, `Partner with DNI ${dni} not found.`);
       }
 
       return R.ok(res, {
-        message: 'Partner encontrado.',
+        message: 'Partner found.',
         data: partner.toDetailedDTO ? partner.toDetailedDTO() : partner.toDTO(),
       });
     } catch (err) {
-      console.error('Error al buscar partner:', err);
-      return R.fail(res, err, 'Error al buscar partner');
+      console.error('Error fetching partner by DNI:', err);
+      return R.fail(res, err, 'Error fetching partner');
     }
   }
 
   /**
    * POST /partners
-   * Create partner (and optionally user if username/password provided).
+   * Create partner ONLY (no user creation here).
    * Body is validated by Zod middleware (res.locals.validated.body).
    */
   async createPartner(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
       // Expecting english property names validated by createPartnerSchema
-      const {
-        dni,
-        name,
-        email,
-        address,
-        phone,
-        username,
-        password,
-      }: {
-        dni: string;
-        name: string;
-        email: string;
-        address?: string;
-        phone?: string;
-        username?: string;
-        password?: string;
-      } = res.locals.validated.body;
+      const { dni, name, email, address, phone, username, password } =
+        res.locals.validated.body;
 
-      if (!dni || !name || !email) {
-        return R.badRequest(res, 'Faltan datos obligatorios: dni, name, email.');
+      // If credentials are sent, reject (this endpoint does not create users)
+      if (username !== undefined || password !== undefined) {
+        return R.badRequest(
+          res,
+          'User creation is not allowed on this endpoint. Send only partner fields.'
+        );
       }
+
+      const safeDni = String(dni).trim();
+      const safeEmail = String(email).trim().toLowerCase();
 
       // Duplicate check by DNI
-      const exists = await em.findOne(Partner, { dni });
+      const exists = await em.findOne(Partner, { dni: safeDni });
       if (exists) {
-        return R.conflict(res, `Ya existe un partner con el DNI ${dni}.`);
+        return R.conflict(res, `A partner with DNI ${safeDni} already exists.`);
       }
 
-      // Optional user creation
-      const shouldCreateUser = Boolean(username && password);
-
-      let usuario: Usuario | undefined;
-      if (shouldCreateUser) {
-        const usernameTaken = await em.findOne(Usuario, { username });
-        if (usernameTaken) {
-          return R.conflict(res, 'Ya existe un usuario con ese username.');
-        }
-
-        const hashedPassword = await argon2.hash(password!);
-        const rolPartner = (Rol as any).SOCIO ?? (Rol as any).CLIENTE ?? Rol.CLIENTE;
-
-        usuario = em.create(Usuario, {
-          email,
-          username,
-          password: hashedPassword,
-          roles: [rolPartner],
-          // If your Usuario has a relation to a "persona"/partner, wire it up here as needed
-        });
-        await em.persistAndFlush(usuario);
-
-        if (!usuario.id) {
-          return R.fail(res, new Error('User creation failed'), 'No se pudo crear el usuario.');
-        }
-      }
-
-      // Create Partner (maps english body fields to underlying spanish entity fields)
+      // Create Partner (map english to spanish fields)
       const partner = em.create(Partner, {
-        dni,
+        dni: safeDni,
         nombre: name,
-        email,
+        email: safeEmail,
         direccion: address ?? '',
         telefono: phone ?? '',
-        // usuario, // uncomment if Partner <-> Usuario relation exists
-        // status: 'active', // uncomment if you handle status
+        // active: true, // uncomment if you handle 'active' on creation
       });
 
       await em.persistAndFlush(partner);
 
       return R.created(res, {
-        message: shouldCreateUser
-          ? 'Partner y usuario creados exitosamente.'
-          : 'Partner creado exitosamente.',
-        data: {
-          partner: partner.toDTO(),
-          ...(usuario && {
-            user: {
-              id: usuario.id,
-              username: usuario.username,
-              email: usuario.email,
-            },
-          }),
-        },
+        message: 'Partner created successfully.',
+        data: partner.toDTO(),
       });
     } catch (err) {
-      console.error('Error creando partner:', err);
-      return R.fail(res, err, 'Error interno del servidor');
+      console.error('Error creating partner:', err);
+      return R.fail(res, err, 'Internal server error');
     }
   }
 
   /**
    * PATCH /partners/:dni
    * Update partner by DNI (partial update). Body validated by Zod.
+   * DNI is immutable (not part of the update schema).
    */
   async updatePartner(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -204,33 +160,40 @@ export class PartnerController {
     try {
       const partner = await em.findOne(Partner, { dni });
       if (!partner) {
-        return R.notFound(res, `Partner con DNI ${dni} no encontrado.`);
+        return R.notFound(res, `Partner with DNI ${dni} not found.`);
       }
 
-      // Body keys are in English; map to entity (Spanish underlying fields)
+      // English keys in body; map to underlying Spanish fields
       const updates = res.locals.validated.body as {
         name?: string;
         email?: string;
         address?: string;
         phone?: string;
-        // status?: 'active' | 'inactive';
+        // active?: boolean; // include if your schema allows it
       };
 
-      const mapped: any = { ...updates };
-      if (updates?.name !== undefined) mapped.nombre = updates.name;
-      if (updates?.address !== undefined) mapped.direccion = updates.address;
-      if (updates?.phone !== undefined) mapped.telefono = updates.phone;
+      // Reject empty PATCH
+      if (!updates || Object.keys(updates).length === 0) {
+        return R.badRequest(res, 'No fields provided to update.');
+      }
+
+      const mapped: any = {};
+      if (updates.name !== undefined) mapped.nombre = updates.name;
+      if (updates.email !== undefined) mapped.email = updates.email.trim().toLowerCase();
+      if (updates.address !== undefined) mapped.direccion = updates.address;
+      if (updates.phone !== undefined) mapped.telefono = updates.phone;
+      // if (updates.active !== undefined) mapped.active = updates.active;
 
       em.assign(partner, mapped);
       await em.flush();
 
       return R.ok(res, {
-        message: 'Partner actualizado exitosamente.',
+        message: 'Partner updated successfully.',
         data: partner.toDTO(),
       });
     } catch (err) {
-      console.error('Error en PATCH partner:', err);
-      return R.fail(res, err, 'Error al actualizar partner');
+      console.error('Error updating partner:', err);
+      return R.fail(res, err, 'Error updating partner');
     }
   }
 
@@ -245,18 +208,18 @@ export class PartnerController {
     try {
       const partner = await em.findOne(Partner, { dni });
       if (!partner) {
-        return R.notFound(res, `Partner con DNI ${dni} no encontrado.`);
+        return R.notFound(res, `Partner with DNI ${dni} not found.`);
       }
 
-      const nombre = (partner as any).nombre ?? 'Partner';
+      const name = (partner as any).nombre ?? 'Partner';
       await em.removeAndFlush(partner);
 
       return R.ok(res, {
-        message: `${nombre}, DNI ${dni}, eliminado/a exitosamente de la lista de partners.`,
+        message: `${name}, DNI ${dni}, deleted successfully from partners list.`,
       });
     } catch (err) {
-      console.error('Error al eliminar partner:', err);
-      return R.fail(res, err, 'Error al eliminar partner');
+      console.error('Error deleting partner:', err);
+      return R.fail(res, err, 'Error deleting partner');
     }
   }
 }

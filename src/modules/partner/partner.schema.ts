@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Schema to create a partner (all fields required)
+// Schema para crear un socio (todos los campos requeridos)
 export const createPartnerSchema = z.object({
   dni: z.string().min(1, 'DNI requerido'),
   name: z.string().min(1, 'Nombre requerido'),
@@ -9,5 +9,10 @@ export const createPartnerSchema = z.object({
   phone: z.string().min(6, 'Teléfono demasiado corto'),
 });
 
-// Schema to update a partner (all fields optional, but validated if provided)
-export const updatePartnerSchema = createPartnerSchema.partial();
+// Schema para actualizar un socio (sin permitir modificar el DNI)
+export const updatePartnerSchema = z.object({
+  name: z.string().min(1, 'Nombre requerido').optional(),
+  email: z.string().email('Email inválido').optional(),
+  address: z.string().min(1, 'Dirección requerida').optional(),
+  phone: z.string().min(6, 'Teléfono demasiado corto').optional(),
+});
