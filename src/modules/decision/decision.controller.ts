@@ -10,8 +10,8 @@ import { orm } from '../../shared/db/orm.js';
 import { StrategicDecision } from './decision.entity.js';
 import { Topic } from '../topic/topic.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { searchEntity } from '../../shared/utils/search.util.js';
 
-const em = orm.em.fork();
 
 // ============================================================================
 // CONTROLLER - Decision
@@ -22,6 +22,13 @@ const em = orm.em.fork();
  * @class DecisionController
  */
 export class DecisionController {
+    /**
+   * Search strategic decisions by description (like search in product, sale, topic, zone)
+   */
+  async searchDecisions(req: Request, res: Response) {
+    const em = orm.em.fork();
+    return searchEntity(req, res, StrategicDecision, 'description', 'strategic decision', em);
+  }
   /**
    * Retrieves all strategic decisions.
    *
@@ -30,6 +37,7 @@ export class DecisionController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getAllDecisions(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch all strategic decisions with related topic
@@ -67,6 +75,7 @@ export class DecisionController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async getOneDecisionById(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract decision ID
@@ -116,6 +125,7 @@ export class DecisionController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async createDecision(req: Request, res: Response) {
+    const em = orm.em.fork();
     const { topicId, description, startDate, endDate } =
       res.locals.validated.body;
 
@@ -184,6 +194,7 @@ export class DecisionController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async updateDecision(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract decision ID
@@ -251,6 +262,7 @@ export class DecisionController {
    * @returns {Promise<Response>} A promise that resolves to the response.
    */
   async deleteDecision(req: Request, res: Response) {
+    const em = orm.em.fork();
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract decision ID

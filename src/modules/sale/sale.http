@@ -16,7 +16,7 @@ Content-Type: application/json
   },
   "details": [
     {
-      "productId": 1,
+      "productId": 3,
       "quantity": 1
     }
   ]

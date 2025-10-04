@@ -12,14 +12,14 @@ POST http://localhost:3000/api/products
 Content-Type: application/json
 
 {
-  "description": "Fernet Branca",
+  "description": "Hambugeruesa con queso",
   "price": 1000,
   "stock": 10,
-  "isIllegal": false
+  "isIllegal": true
 }
 
 ### Modificar producto (reemplazo completo)
-PATCH http://localhost:3000/api/productos/3
+PATCH http://localhost:3000/api/products/1
 Content-Type: application/json
 
 {

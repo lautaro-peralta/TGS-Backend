@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 import {
   EntityName,
@@ -107,6 +108,49 @@ export async function searchEntityByDate<T extends { toDTO?: () => any }>(
     return ResponseUtil.internalError(
       res,
       `Error searching ${entityNameForMessage} by date`,
+      err
+    );
+  }
+}
+
+/**
+ * Búsqueda genérica para campos booleanos.
+ */
+export async function searchEntityByBoolean<T extends { toDTO?: () => any }>(
+  req: Request,
+  res: Response,
+  entity: EntityName<T>,
+  searchField: keyof T,
+  entityNameForMessage: string,
+  em: EntityManager
+) {
+  try {
+    const { q } = req.query as { q?: string };
+    if (q !== 'true' && q !== 'false') {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'q',
+          message: 'The query parameter "q" must be "true" or "false" for boolean search.'
+        },
+      ]);
+    }
+    const value = q === 'true';
+    const where = { [searchField]: value } as FilterQuery<T>;
+    const results = await em.find(entity, where);
+    const message = ResponseUtil.generateListMessage(
+      results.length,
+      entityNameForMessage,
+      `with ${String(searchField)} = ${q}`
+    );
+    return ResponseUtil.successList(
+      res,
+      message,
+      results.map((item) => (hasToDTO(item) ? item.toDTO() : item))
+    );
+  } catch (err) {
+    return ResponseUtil.internalError(
+      res,
+      `Error searching for ${entityNameForMessage} by boolean`,
       err
     );
   }

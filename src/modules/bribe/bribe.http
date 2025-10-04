@@ -4,6 +4,9 @@ GET http://localhost:3000/api/bribes
 ###obtener un soborno
 GET http://localhost:3000/api/bribes/1
 
+###buscar sobornos
+GET http://localhost:3000/api/bribes/search?q=true
+
 ###pagar soborno
 PATCH http://localhost:3000/api/bribes/10101013/pay
 Content-Type: application/json

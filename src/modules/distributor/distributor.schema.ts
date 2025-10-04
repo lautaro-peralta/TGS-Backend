@@ -30,11 +30,13 @@ export const createDistributorSchema = z.object({
   /**
    * Distributor's email address.
    */
-  email: z.string().email('Invalid email'),
+  email: z.email('Invalid email'),
   /**
    * Optional array of product IDs to associate with the distributor.
    */
   productsIds: z.array(z.number().int().positive()).optional(),
+
+  zoneId: z.string().transform(Number),
 });
 
 /**
@@ -62,4 +64,6 @@ export const updateDistributorSchema = z.object({
    * Optional array of product IDs to associate with the distributor.
    */
   productsIds: z.array(z.number().int().positive()).optional(),
+
+  zoneId: z.string().transform(Number).optional()
 });

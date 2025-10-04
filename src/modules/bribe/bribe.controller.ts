@@ -11,6 +11,7 @@ import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from './bribe.entity.js';
 import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { searchEntity, searchEntityByBoolean, searchEntityByDate } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Bribe
@@ -21,6 +22,14 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
  * @class BribeController
  */
 export class BribeController {
+  /**
+   * Search bribes by amount (like search in product, sale, topic, zone)
+   */ 
+  async searchBribes(req: Request, res: Response) {
+    const em = orm.em.fork();
+    return searchEntityByBoolean(req, res, Bribe, 'paid', 'bribes', em);
+  }
+  
   /**
    * Retrieves all bribes.
    *

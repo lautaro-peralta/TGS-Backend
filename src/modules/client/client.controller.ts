@@ -12,16 +12,22 @@ import { Client } from './client.entity.js';
 import { User, Role } from '../auth/user.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { searchEntity } from '../../shared/utils/search.util.js';
+
 
 // ============================================================================
 // CONTROLLER - Client
 // ============================================================================
 
-/**
- * Controller for handling client-related operations.
- * @class ClientController
- */
+
 export class ClientController {
+  /**
+   * Search clients by name (like search in product, sale, topic, zone)
+   */
+  async searchClients(req: Request, res: Response) {
+    const em = orm.em.fork();
+    return searchEntity(req, res, Client, 'name', 'client', em);
+  }
   /**
    * Retrieves all clients.
    *
