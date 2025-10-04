@@ -28,6 +28,9 @@ const clientController = new ClientController();
  * @desc    Get all clients.
  * @access  Public
  */
+
+clientRouter.get('/search', clientController.searchClients);
+
 clientRouter.get('/', clientController.getAllClients);
 
 /**

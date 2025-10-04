@@ -18,7 +18,7 @@ export const createDecisionSchema = z
     /**
      * The ID of the theme associated with the decision.
      */
-    themeId: z.number().int().positive(),
+    topicId: z.number().int().positive(),
     /**
      * The description of the strategic decision.
      */
