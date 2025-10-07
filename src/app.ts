@@ -29,6 +29,7 @@ import { distributorRouter } from './modules/distributor/distributor.routes.js';
 import { bribeRouter } from './modules/bribe/bribe.routes.js';
 import { decisionRouter } from './modules/decision/decision.routes.js';
 import { topicRouter } from './modules/topic/topic.routes.js';
+import { partnerRouter } from './modules/partner/partner.routes.js';
 
 // ============================================================================
 // APPLICATION SETUP
@@ -111,6 +112,7 @@ app.use('/api/clients', clientRouter);
 app.use('/api/sales', saleRouter);
 app.use('/api/products', productRouter);
 app.use('/api/distributors', distributorRouter);
+app.use('/api/partners', partnerRouter);
 
 // Geographic & Administrative
 app.use('/api/zones', zoneRouter);

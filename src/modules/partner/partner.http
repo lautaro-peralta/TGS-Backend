@@ -1,0 +1,44 @@
+@baseUrl = http://localhost:3000/api
+
+### Get all partners (NO query params here)
+GET {{baseUrl}}/partners
+
+### Search partners (use query params here only)
+# Examples:
+#   /partners/search?q=john
+#   /partners/search?q=3416&status=active
+GET {{baseUrl}}/partners/search?q=john&status=active
+
+### Get one partner by DNI
+GET {{baseUrl}}/partners/12345678
+
+
+### Create new partner
+POST {{baseUrl}}/partners
+Content-Type: application/json
+
+{
+  "dni": "12345678",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "address": "1234 Main St, Rosario, Santa Fe",
+  "phone": "3416007788",
+  "username": "john.doe",        // optional (creates user if username+password provided)
+  "password": "StrongPass!234"   // optional
+}
+
+
+### Update partner (PATCH — partial updates; all fields optional)
+PATCH {{baseUrl}}/partners/12345678
+Content-Type: application/json
+
+{
+  "name": "John A. Doe",
+  "email": "john.updated@example.com",
+  "address": "Cochabamba 230, Rosario, Santa Fe",
+  "phone": "3416555555"
+}
+
+
+### Delete partner
+DELETE {{baseUrl}}/partners/12345678
