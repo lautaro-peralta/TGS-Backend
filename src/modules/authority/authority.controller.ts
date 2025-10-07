@@ -13,7 +13,7 @@ import { Role, User } from '../auth/user.entity.js';
 import { Bribe } from '../../modules/bribe/bribe.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-
+import { searchEntity } from '../../shared/utils/search.util.js';
 // ============================================================================
 // CONTROLLER - Authority
 // ============================================================================
@@ -123,42 +123,16 @@ export class AuthorityController {
    */
   async getAllAuthorities(req: Request, res: Response) {
     const em = orm.em.fork();
-
     try {
-      // ─────────────── Extraer filtros y paginación ───────────────
-      const { zoneId, name, rank, page = '1', limit = '10' } = req.query;
-
-      const filters: any = {};
-      if (zoneId) filters.zone = Number(zoneId);
-      if (name) filters.name = { $ilike: `%${name}%` }; // búsqueda parcial
-      if (rank) filters.rank = Number(rank);
-
-      const pageNum = parseInt(page as string, 10);
-      const limitNum = parseInt(limit as string, 10);
-
-      // ─────────────── Buscar con filtros ───────────────
-      const [authorities, total] = await em.findAndCount(Authority, filters, {
+      const authorities = await em.find(Authority, {}, {
         populate: ['zone', 'bribes'],
-        orderBy: { name: 'ASC' },
-        limit: limitNum,
-        offset: (pageNum - 1) * limitNum,
+        orderBy: { name: 'ASC' }
       });
-
-      const message = ResponseUtil.generateListMessage(
-        authorities.length,
-        'authority'
-      );
-
-      // ─────────────── Response ───────────────
+      const message = ResponseUtil.generateListMessage(authorities.length, 'authority');
       return ResponseUtil.successList(
         res,
         message,
-        authorities.map((a) => a.toDTO()),
-        {
-          page: pageNum,
-          limit: limitNum,
-          total,
-        }
+        authorities.map((a) => a.toDTO())
       );
     } catch (error) {
       console.error('Error listing authorities:', error);
@@ -353,93 +327,123 @@ export class AuthorityController {
    */
   async getAuthorityBribes(req: Request, res: Response) {
     const em = orm.em.fork();
-    let user = (req as any).user;
+    const user = (req as any).user;
+    const authorityDniFromParam = req.params.dni;
 
     try {
-      const {
-        authorityDni,
-        paid,
-        minAmount,
-        maxAmount,
-        page = '1',
-        limit = '10',
-      } = req.query;
+      const { paid, minAmount, maxAmount, page = '1', limit = '10' } =
+        req.query;
 
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);
 
-      let filters: any = {};
+      const filters: any = {};
 
-      // ─────────────── ADMIN: puede filtrar por authorityDni ───────────────
-      if (user.roles.includes(Role.ADMIN)) {
-        if (authorityDni) {
-          const authority = await em.findOne(
-            Authority,
-            { dni: authorityDni as string },
-            { populate: ['bribes'] }
-          );
-          if (!authority) {
-            return ResponseUtil.notFound(
-              res,
-              `Authority with DNI ${authorityDni} not found`
-            );
-          }
-          filters.authority = authority;
-        }
-      }
-
-      // ─────────────── AUTHORITY: solo sus propios sobornos ───────────────
+      // ─────────────── Authorization and Filtering ───────────────
+      // An AUTHORITY can only see their own bribes.
       if (user.roles.includes(Role.AUTHORITY)) {
-        const authority = await em.findOne(
-          Authority,
-          { dni: user.dni },
-          { populate: ['bribes'] }
-        );
-        if (!authority) {
-          return ResponseUtil.notFound(res, 'Authority not found');
+        if (user.dni !== authorityDniFromParam) {
+          return ResponseUtil.forbidden(
+            res,
+            'You are not allowed to view bribes for another authority.'
+          );
         }
-        filters.authority = authority;
+        filters.authority = { dni: user.dni };
+      } else if (user.roles.includes(Role.ADMIN)) {
+        // An ADMIN can see any authority's bribes.
+        filters.authority = { dni: authorityDniFromParam };
+      } else {
+        return ResponseUtil.forbidden(
+          res,
+          'You are not allowed to perform this action.'
+        );
       }
 
-      // ─────────────── Filtros adicionales ───────────────
-      if (paid !== undefined) filters.paid = paid === 'true';
-      if (minAmount) filters.amount = { $gte: parseFloat(minAmount as string) };
+      // ─────────────── Additional Filters ───────────────
+      if (paid !== undefined) {
+        filters.paid = paid === 'true';
+      }
+      if (minAmount) {
+        filters.amount = { $gte: parseFloat(minAmount as string) };
+      }
       if (maxAmount) {
-        filters.amount = filters.amount || {};
-        filters.amount.$lte = parseFloat(maxAmount as string);
+        filters.amount = {
+          ...filters.amount,
+          $lte: parseFloat(maxAmount as string),
+        };
       }
 
-      // ─────────────── Consulta con paginación ───────────────
+      // ─────────────── Verify Authority Exists ───────────────
+      const authorityExists = await em.count(Authority, {
+        dni: authorityDniFromParam,
+      });
+      if (authorityExists === 0) {
+        return ResponseUtil.notFound(res, 'Authority', authorityDniFromParam);
+      }
+
+      // ─────────────── Query for Bribes with Pagination ───────────────
       const [bribes, total] = await em.findAndCount(Bribe, filters, {
         populate: ['authority'],
-        //orderBy: { createdAt: 'DESC' },
+        orderBy: { creationDate: 'DESC' },
         limit: limitNum,
         offset: (pageNum - 1) * limitNum,
       });
 
-      const bribesData = bribes.map((b) => ({
-        id: b.id,
-        amount: b.amount,
-        paid: b.paid,
-        authority: {
-          id: b.authority.id,
-          name: b.authority.name,
-          dni: b.authority.dni,
-        },
-        //createdAt: b.createdAt,
-      }));
+      const bribesData = bribes.map((b) => b.toDTO());
 
-      return ResponseUtil.success(res, 'Bribes obtained successfully', {
-        bribes: bribesData,
-        meta: {
+      return ResponseUtil.successList(
+        res,
+        'Bribes retrieved successfully',
+        bribesData,
+        {
           page: pageNum,
           limit: limitNum,
           total,
-        },
-      });
+        }
+      );
     } catch (err: any) {
       console.error('Error getting bribes:', err);
       return ResponseUtil.internalError(res, 'Error getting bribes', err);
+    }
+  }
+
+  /**
+   * Search for authorities based on various criteria.
+   * Can search by name/DNI (q), zoneId, and rank.
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   */
+  async searchAuthorities(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const { zone, rank, q } = req.query;
+    const filters: any = {};
+    if (zone) {
+      filters.zone = { name: { $like: `%${zone}%` } };
+    }
+    if (rank) {
+      filters.rank = Number(rank);
+    }
+    if (q) {
+      filters.name = { $like: `%${q}%` };
+    }
+    try {
+      const authorities = await em.find(Authority, filters, {
+        populate: ['zone', 'bribes'],
+        orderBy: { name: 'ASC' }
+      });
+      const message = ResponseUtil.generateListMessage(authorities.length, 'authority');
+      return ResponseUtil.successList(
+        res,
+        message,
+        authorities.map((a) => a.toDTO())
+      );
+    } catch (error) {
+      console.error('Error searching authorities:', error);
+      return ResponseUtil.internalError(
+        res,
+        'Error searching for authorities',
+        error
+      );
     }
   }
 

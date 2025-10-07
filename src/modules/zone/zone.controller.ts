@@ -10,7 +10,7 @@ import { orm } from '../../shared/db/orm.js';
 import { Zone } from './zone.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { Authority } from '../authority/authority.entity.js';
-import { searchEntity } from '../../shared/utils/search.util.js';
+import { searchEntity, searchEntityByBoolean } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Zone
@@ -21,11 +21,33 @@ import { searchEntity } from '../../shared/utils/search.util.js';
  * @class ZoneController
  */
 export class ZoneController {
-  
+
+  /**
+   * Search zones by name or by headquarters status.
+   *
+   * Query params:
+   * - q: string - Para búsqueda por nombre (min 2 chars) o por sede central ('true' | 'false')
+   * - by: 'name' | 'headquarters' (optional, default: 'name') - Tipo de búsqueda
+   */
   async searchZones(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, Zone, 'name', 'zone', em);
+    const { by } = req.query as { by?: 'name' | 'headquarters' };
+
+    // Si viene 'by=headquarters', buscar por isHeadquarters
+    if (by === 'headquarters') {
+      return searchEntityByBoolean(req, res, Zone, 'isHeadquarters', {
+        entityName: 'zone',
+        em,
+      });
+    }
+
+    // Caso por defecto: búsqueda por nombre
+    return searchEntity(req, res, Zone, 'name', {
+      entityName: 'zone',
+      em,
+    });
   }
+
   /**
    * Retrieves all zones.
    *

@@ -27,6 +27,8 @@ const bribeController = new BribeController();
  * @desc    Get all bribes.
  * @access  Private (Admin only)
  */
+
+bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN]), bribeController.searchBribes);
 bribeRouter.get(
   '/',
   authMiddleware,

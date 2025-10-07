@@ -11,6 +11,7 @@ import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from './bribe.entity.js';
 import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { searchEntity, searchEntityByBoolean, searchEntityByDate } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Bribe
@@ -21,6 +22,39 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
  * @class BribeController
  */
 export class BribeController {
+  /**
+   * Search bribes with multiple criteria.
+   *
+   * Query params:
+   * - q: 'true' | 'false' - Búsqueda por estado de pago (pagado/pendiente)
+   * - date: ISO 8601 date - Búsqueda por fecha de creación
+   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
+   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
+   *
+   * Nota: Si viene 'date', se ignora el parámetro 'q'
+   */
+  async searchBribes(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    const { date } = req.query as { date?: string };
+
+    // Si viene 'date', delegar a búsqueda por fecha
+    if (date) {
+      return searchEntityByDate(req, res, Bribe, 'creationDate', {
+        entityName: 'bribe',
+        em,
+        populate: ['authority', 'sale'] as any,
+      });
+    }
+
+    // Búsqueda por estado de pago (paid)
+    return searchEntityByBoolean(req, res, Bribe, 'paid', {
+      entityName: 'bribe',
+      em,
+      populate: ['authority', 'sale'] as any,
+    });
+  }
+  
   /**
    * Retrieves all bribes.
    *

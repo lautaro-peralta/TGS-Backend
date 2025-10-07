@@ -1,38 +1,53 @@
-### Listar
-GET http://localhost:3000/distributors
+### Listar todos los distribuidores
+GET http://localhost:3000/api/distributors
 
-### Buscar por texto (nombre o dni)
-GET http://localhost:3000/distribuidores?q=juan
+# ============================================================================
+# BÚSQUEDAS
+# ============================================================================
 
+### Búsqueda por nombre (por defecto)
+GET http://localhost:3000/api/distributors/search?q=Luca
 
-### Obtener por ID
-GET http://localhost:3000/distribuidores/1
+### Búsqueda por nombre (explícito)
+GET http://localhost:3000/api/distributors/search?q=Luca&by=name
+
+### Búsqueda por zona
+GET http://localhost:3000/api/distributors/search?q=Centro&by=zone
+
+### Búsqueda por zona - mínimo 2 caracteres
+GET http://localhost:3000/api/distributors/search?q=Ce&by=zone
+
+# ============================================================================
+# CRUD
+# ============================================================================
+
+### Obtener por dni
+GET http://localhost:3000/api/distributors/16254545
 
 
 ### Crear
-POST http://localhost:3000/distribuidores
+POST http://localhost:3000/api/distributors
 Content-Type: application/json
 
 {
 "dni": "16254545",
-"nombre": "Delprato Luca",
-"direccion": "Av. Siempreviva 742",
-"telefono": "+54 341 555-1111",
+"name": "Delprato Luca",
+"address": "Av. Siempreviva 742",
+"phone": "+54 341 555-1111",
 "email": "delpra@gmail.com",
-"productosIds": [1,2,5]
+"productsIds": [1,2,5],
+"zoneId": "1"
 }
 
 
 ### Actualizar (reemplaza productos asociados si envías productosIds)
-PUT http://localhost:3000/distribuidores/1
+PATCH http://localhost:3000/api/distributors/16254545
 Content-Type: application/json
-
 
 {
 "direccion": "San Martín 1234",
 "productosIds": [2,3]
 }
 
-
 ### Eliminar
-DELETE http://localhost:3000/distribuidores/1
+DELETE http://localhost:3000/api/distributors/16254545

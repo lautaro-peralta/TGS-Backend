@@ -87,12 +87,12 @@ export class Sale extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The distributor associated with the sale.
+   * The distributor associated with the sale (required).
    *
-   * @type {(Ref<Distributor> | Loaded<Distributor> | undefined)}
+   * @type {(Ref<Distributor> | Loaded<Distributor>)}
    */
-  @ManyToOne({ entity: () => Distributor, nullable: true })
-  distributor?: Ref<Distributor> | Loaded<Distributor>;
+  @ManyToOne({ entity: () => Distributor, nullable: false })
+  distributor!: Ref<Distributor> | Loaded<Distributor>;
 
   /**
    * The client who made the purchase.
@@ -138,10 +138,12 @@ export class Sale extends BaseObjectEntity {
       description: this.description || null,
       date: this.saleDate.toISOString(),
       amount: this.saleAmount,
-      details: this.details.getItems().map((d) => d.toDTO()),
+      details: this.details.isInitialized()
+        ? this.details.getItems().map((d) => d.toDTO())
+        : [],
       client: this.client ? callToDTO(this.client) : null,
       authority: this.authority ? callToDTO(this.authority) : null,
-      distributor: this.distributor ? callToDTO(this.distributor) : null,
+      distributor: callToDTO(this.distributor),
     };
   }
 }

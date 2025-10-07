@@ -16,6 +16,10 @@ export const createSaleSchema = z.object({
    */
   clientDni: z.string().min(1, "The client's DNI is required"),
   /**
+   * The DNI of the distributor handling the sale (required).
+   */
+  distributorDni: z.string().min(1, "The distributor's DNI is required"),
+  /**
    * An array of sale details.
    */
   details: z
