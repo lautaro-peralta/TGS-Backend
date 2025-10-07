@@ -22,11 +22,14 @@ import { searchEntity } from '../../shared/utils/search.util.js';
 
 export class ClientController {
   /**
-   * Search clients by name (like search in product, sale, topic, zone)
+   * Search clients by name.
    */
   async searchClients(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, Client, 'name', 'client', em);
+    return searchEntity(req, res, Client, 'name', {
+      entityName: 'client',
+      em,
+    });
   }
   /**
    * Retrieves all clients.
