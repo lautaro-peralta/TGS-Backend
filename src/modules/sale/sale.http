@@ -1,25 +1,100 @@
-###listar las ventas
-
+### Listar todas las ventas
 GET http://localhost:3000/api/sales
 
-###listar las ventas
-GET http://localhost:3000/api/sales/search?date=2025-10-03&type=exact
-###Crear venta
+### Buscar venta por ID
+GET http://localhost:3000/api/sales/9
+
+### ============================================================================
+### BÚSQUEDAS POR FECHA
+### ============================================================================
+
+### Búsqueda por fecha - exact (día específico)
+GET http://localhost:3000/api/sales/search?date=2025-10-06&type=exact
+
+### Búsqueda por fecha - after (desde esa fecha en adelante)
+GET http://localhost:3000/api/sales/search?date=2025-05-05&type=after
+
+### Búsqueda por fecha - before (hasta esa fecha)
+GET http://localhost:3000/api/sales/search?date=2025-10-10&type=before
+
+### Búsqueda por fecha - between (rango entre dos fechas)
+GET http://localhost:3000/api/sales/search?date=2025-05-01&endDate=2025-10-31&type=between
+
+### ============================================================================
+### BÚSQUEDAS POR TEXTO (parámetro 'by' es OBLIGATORIO)
+### ============================================================================
+
+### Búsqueda por cliente
+GET http://localhost:3000/api/sales/search?q=pedro&by=client
+
+### Búsqueda por distributor
+GET http://localhost:3000/api/sales/search?q=delprato&by=distributor
+
+### Búsqueda por zona
+GET http://localhost:3000/api/sales/search?q=Centro&by=zone
+
+### ❌ ERROR: Búsqueda sin 'by' (no permitido)
+GET http://localhost:3000/api/sales/search?q=juan
+
+### ============================================================================
+### CRUD
+### ============================================================================
+
+### Crear venta (requiere distributorDni)
 POST http://localhost:3000/api/sales
 Content-Type: application/json
 
 {
-  "clientDni": "20909090",
+  "clientDni": "21010101",
+  "distributorDni": "16254545",
   "person": {
-    "name":"juan",
+    "name":"pedro",
     "email":"juanq@email.com"
   },
   "details": [
     {
-      "productId": 1,
+      "productId": 3,
       "quantity": 1
     }
   ]
 }
 
-###Borrar una venta: NO PERMITIDO
+### Reasignar solo distributor
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "distributorDni": "16254545"
+}
+
+### Reasignar solo authority
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "authorityDni": "10101015"
+}
+
+### Reasignar ambos (distributor y authority)
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "distributorDni": "16254545",
+  "authorityDni": "20123456"
+}
+
+### Remover authority de una venta (dejar en null)
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "authorityDni": null
+}
+
+### Eliminar una venta por ID (solo si no tiene bribes asociados)
+DELETE http://localhost:3000/api/sales/1
+
+### ❌ Si intenta eliminar venta con bribes asociados
+### Respuesta: "Cannot delete sale #X because it has Y bribe(s) associated"
+DELETE http://localhost:3000/api/sales/9

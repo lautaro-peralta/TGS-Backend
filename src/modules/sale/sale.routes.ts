@@ -34,7 +34,13 @@ saleRouter.get(
   saleController.getAllSales
 );
 
+/**
+ * @route   GET /api/sales/search
+ * @desc    Search for sales by different criteria.
+ * @access  Private (Admin only)
+ */
 saleRouter.get('/search', saleController.searchSales);
+
 
 /**
  * @route   GET /api/sales/:id
@@ -59,6 +65,18 @@ saleRouter.post(
   rolesMiddleware([Role.ADMIN]),
   validateWithSchema({ body: createSaleSchema }),
   saleController.createSale
+);
+
+/**
+ * @route   PATCH /api/sales/:id
+ * @desc    Update a sale (reassign distributor).
+ * @access  Private (Admin only)
+ */
+saleRouter.patch(
+  '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  saleController.updateSale
 );
 
 /**

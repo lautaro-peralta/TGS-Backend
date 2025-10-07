@@ -10,6 +10,8 @@ import { orm } from '../../shared/db/orm.js';
 import { Distributor } from './distributor.entity.js';
 import { Product } from '../product/product.entity.js';
 import { Zone } from '../zone/zone.entity.js';
+import { searchEntity } from '../../shared/utils/search.util.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
 // ============================================================================
 // CONTROLLER - Distributor
 // ============================================================================
@@ -19,6 +21,29 @@ import { Zone } from '../zone/zone.entity.js';
  * @class DistributorController
  */
 export class DistributorController {
+
+  /**
+   * Search distributors by name or zone.
+   *
+   * Query params:
+   * - q: string (required, min 2 chars)
+   * - by: 'name' | 'zone' (optional, default: 'name')
+   */
+  async searchDistributors(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const { by } = req.query as { by?: 'name' | 'zone' };
+
+    // Determinar campos de búsqueda según el parámetro 'by'
+    const searchField = by === 'zone' ? 'zone.name' : 'name';
+
+    return searchEntity(req, res, Distributor, searchField, {
+      entityName: 'distributor',
+      em,
+      populate: ['zone'] as any,
+    });
+  }
+  
+
   /**
    * Retrieves all distributors.
    *
@@ -41,15 +66,14 @@ export class DistributorController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return res.status(200).json({
-        message: `Found ${distributors.length} distributor${
-          distributors.length !== 1 ? 's' : ''
-        }`,
-        data: distributors.map((d) => d.toDetailedDTO?.() ?? d),
-      });
+      return ResponseUtil.successList(
+        res,
+        ResponseUtil.generateListMessage(distributors.length, 'distributor'),
+        distributors.map((d) => d.toDetailedDTO?.() ?? d)
+      );
     } catch (err) {
       console.error('Error getting distributors:', err);
-      return res.status(500).json({ error: 'Internal server error' });
+  return ResponseUtil.internalError(res, 'Error getting distributors', err);
     }
   }
 
@@ -74,15 +98,9 @@ export class DistributorController {
         { populate: ['products', 'sales'] }
       );
       if (!distributor) {
-        return res.status(404).json({ error: 'Distributor not found' });
+        return ResponseUtil.notFound(res, 'Distributor', dni);
       }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return res.json({
-        data: distributor.toDetailedDTO?.() ?? distributor,
-      });
+      return ResponseUtil.success(res, 'Distributor found', distributor.toDetailedDTO());
     } catch (err) {
       console.error('Error searching for distributor:', err);
       return res.status(400).json({ error: 'Error searching for distributor' });
@@ -106,20 +124,12 @@ export class DistributorController {
       const { dni, name, address, phone, email, productsIds, zoneId } =
         res.locals.validated?.body ?? req.body;
 
-      if (!dni || !name || !phone || !email || !zoneId) {
-        return res.status(400).json({
-          message: 'Missing mandatory data (dni, name, phone, email, zoneId)',
-        });
-      }
-
       // ────────────────────────────────
       // Verificar distribuidor existente
       // ────────────────────────────────
       const existingDistributor = await em.findOne(Distributor, { dni });
       if (existingDistributor) {
-        return res
-          .status(409)
-          .json({ error: 'A distributor with that DNI already exists' });
+        return ResponseUtil.conflict(res, 'A distributor with that DNI already exists', 'dni');
       }
 
       // ────────────────────────────────
@@ -127,7 +137,7 @@ export class DistributorController {
       // ────────────────────────────────
       const zone = await em.findOne(Zone, { id: Number(zoneId) });
       if (!zone) {
-        return res.status(404).json({ error: 'Zone not found' });
+        return ResponseUtil.notFound(res, 'Zone', zoneId);
       }
 
       // ────────────────────────────────
@@ -157,17 +167,10 @@ export class DistributorController {
       // Guardar en DB
       // ────────────────────────────────
       await em.persistAndFlush(distributor);
-
-      // ────────────────────────────────
-      // Respuesta
-      // ────────────────────────────────
-      return res.status(201).json({
-        message: 'Distributor created successfully',
-        data: distributor.toDTO?.() ?? distributor,
-      });
+      return ResponseUtil.created(res, 'Distributor created successfully', distributor.toDTO());
     } catch (error) {
       console.error('Error creating distributor:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+      return ResponseUtil.internalError(res, 'Error creating distributor', error);
     }
   }
 
@@ -192,7 +195,7 @@ export class DistributorController {
         { populate: ['products'] }
       );
       if (!distributor) {
-        return res.status(404).json({ error: 'Distributor not found' });
+        return ResponseUtil.notFound(res, 'Distributor', dni);
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -220,13 +223,10 @@ export class DistributorController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return res.status(200).json({
-        message: 'Distributor updated successfully',
-        data: distributor.toDTO?.() ?? distributor,
-      });
+      return ResponseUtil.updated(res, 'Distributor updated successfully', distributor.toDTO());
     } catch (err) {
       console.error('Error in PATCH distributor:', err);
-      return res.status(500).json({ error: 'Error updating distributor' });
+      return ResponseUtil.internalError(res, 'Error updating distributor', err);
     }
   }
 
@@ -243,25 +243,49 @@ export class DistributorController {
 
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch and delete the distributor
+      // Fetch distributor with related data
       // ──────────────────────────────────────────────────────────────────────
-      const distributor = await em.findOne(Distributor, { dni });
+      const distributor = await em.findOne(
+        Distributor,
+        { dni },
+        { populate: ['sales', 'products'] }
+      );
       if (!distributor) {
-        return res.status(404).json({ error: 'Distributor not found' });
+        return ResponseUtil.error(res, `Distributor with DNI ${dni} not found`, 404);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for associated sales
+      // ──────────────────────────────────────────────────────────────────────
+      if (distributor.sales.isInitialized() && distributor.sales.length > 0) {
+        return ResponseUtil.error(
+          res,
+          `Cannot delete distributor ${distributor.name} (DNI ${dni}) because they have ${distributor.sales.length} sale(s) associated. Please delete or reassign the sales first.`,
+          400
+        );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Remove product associations before deleting
+      // ──────────────────────────────────────────────────────────────────────
+      if (distributor.products.isInitialized() && distributor.products.length > 0) {
+        distributor.products.removeAll();
+        await em.flush();
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the distributor
+      // ──────────────────────────────────────────────────────────────────────
       const name = distributor.name;
       await em.removeAndFlush(distributor);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return res.status(200).json({
-        message: `${name}, DNI ${dni} successfully removed from the list of distributors`,
-      });
+      return ResponseUtil.deleted(res, `${name}, DNI ${dni} successfully removed from the list of distributors`);
     } catch (err) {
       console.error('Error deleting distributor:', err);
-      return res.status(500).json({ error: 'Error deleting distributor' });
+      return ResponseUtil.internalError(res, 'Error deleting distributor', err);
     }
   }
 }

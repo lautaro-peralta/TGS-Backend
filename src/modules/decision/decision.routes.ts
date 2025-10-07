@@ -28,6 +28,8 @@ const decisionController = new DecisionController();
  * @desc    Get all strategic decisions.
  * @access  Public
  */
+
+decisionRouter.get('/search', decisionController.searchDecisions);
 decisionRouter.get('/', decisionController.getAllDecisions);
 
 /**

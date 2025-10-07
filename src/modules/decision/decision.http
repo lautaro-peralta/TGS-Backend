@@ -1,25 +1,62 @@
 ### Obtener todas las decisiones estratégicas
-GET http://localhost:3000/api/decisiones
-###
-GET http://localhost:3000/api/decisiones/1
-###
-POST http://localhost:3000/api/decisiones
+GET http://localhost:3000/api/decisions
+
+# ============================================================================
+# BÚSQUEDAS
+# ============================================================================
+
+### Búsqueda por descripción (por defecto)
+GET http://localhost:3000/api/decisions/search?q=primer
+
+### Búsqueda por descripción (explícito)
+GET http://localhost:3000/api/decisions/search?q=primer&by=description
+
+### Búsqueda por topic
+GET http://localhost:3000/api/decisions/search?q=Gastronomia&by=topic
+
+### Búsqueda por fecha de inicio - exact (día específico)
+GET http://localhost:3000/api/decisions/search?date=2026-03-03&type=exact
+
+### Búsqueda por fecha de inicio - after (desde esa fecha en adelante)
+GET http://localhost:3000/api/decisions/search?date=2026-01-01&type=after
+
+### Búsqueda por fecha de inicio - before (hasta esa fecha)
+GET http://localhost:3000/api/decisions/search?date=2026-12-31&type=before
+
+### Búsqueda por fecha de inicio - between (rango entre dos fechas)
+GET http://localhost:3000/api/decisions/search?date=2026-01-01&endDate=2026-06-30&type=between
+
+### Búsqueda por fecha de fin - exact
+GET http://localhost:3000/api/decisions/search?date=2026-04-05&type=exact&dateField=endDate
+
+### Búsqueda por fecha de fin - after
+GET http://localhost:3000/api/decisions/search?date=2026-03-01&type=after&dateField=endDate
+
+# ============================================================================
+# CRUD
+# ============================================================================
+
+### Obtener una decisión por ID
+GET http://localhost:3000/api/decisions/2
+
+### Crear nueva decisión estratégica
+POST http://localhost:3000/api/decisions
 Content-Type: application/json
 
 {
-  "descripcion":"Esta es la primer decisión de todas",
-  "fechaInicio":"2026-03-03",
-  "fechaFin":"2026-04-05",
-  "tematicaId": 5
+  "description":"Esta es la primer decisión de todas",
+  "startDate":"2026-03-03",
+  "endDate":"2026-04-05",
+  "topicId": 5
 }
 
 ###
-PATCH http://localhost:3000/api/decisiones/1
+PATCH http://localhost:3000/api/decisions/2
 Content-Type: application/json
 
 {
-    "descripcion":"I want some pizza"
+    "description":"I want some pizza"
 }
 
 ###
-DELETE http://localhost:3000/api/decisiones/3
+DELETE http://localhost:3000/api/decisions/2

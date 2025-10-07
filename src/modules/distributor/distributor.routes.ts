@@ -28,6 +28,9 @@ const distributorController = new DistributorController();
  * @desc    Get all distributors.
  * @access  Public
  */
+distributorRouter.get('/search', distributorController.searchDistributors);
+
+distributorRouter.get('/search', distributorController.searchDistributors);
 distributorRouter.get('/', distributorController.getAllDistributors);
 
 /**
