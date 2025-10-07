@@ -34,7 +34,13 @@ saleRouter.get(
   saleController.getAllSales
 );
 
+/**
+ * @route   GET /api/sales/search
+ * @desc    Search for sales by different criteria.
+ * @access  Private (Admin only)
+ */
 saleRouter.get('/search', saleController.searchSales);
+
 
 /**
  * @route   GET /api/sales/:id

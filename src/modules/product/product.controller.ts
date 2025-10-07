@@ -34,7 +34,10 @@ export class ProductController {
    */
   async searchProducts(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, Product, 'description', 'product', em);
+    return searchEntity(req, res, Product, 'description', {
+      entityName: 'product',
+      em,
+    });
   }
 
   /**

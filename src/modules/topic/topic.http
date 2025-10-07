@@ -1,26 +1,54 @@
-###
-GET http://localhost:3000/api/tematicas
+### ============================================================================
+### LISTAR Y OBTENER
+### ============================================================================
 
-###
-GET http://localhost:3000/api/tematicas/5
+### Listar todas las temáticas
+GET http://localhost:3000/api/topics
 
-###
+### Obtener una temática por ID
+GET http://localhost:3000/api/topics/5
+
+### ============================================================================
+### BÚSQUEDAS
+### ============================================================================
+
+### Buscar temática por descripción
 GET http://localhost:3000/api/topics/search?q=Gastronomía
-###
+
+### Buscar temática que contenga "Salud"
+GET http://localhost:3000/api/topics/search?q=Retenciones
+
+### ============================================================================
+### CRUD
+### ============================================================================
+
+### Crear nueva temática
 POST http://localhost:3000/api/topics
 Content-Type: application/json
 
 {
-  "description":"Gastronomía"
+  "description": "Deportes"
 }
 
-###
-PATCH http://localhost:3000/api/tematicas/5
+### Crear otra temática
+POST http://localhost:3000/api/topics
 Content-Type: application/json
 
 {
-  "descripcion":"Retenciones"
+  "description": "Salud y Bienestar"
 }
 
-###
-DELETE http://localhost:3000/api/tematicas/4
+### Actualizar descripción de temática
+PATCH http://localhost:3000/api/topics/5
+Content-Type: application/json
+
+{
+  "description": "Gastronomía Premium"
+}
+
+### Eliminar una temática (solo si no tiene decisiones asociadas)
+DELETE http://localhost:3000/api/topics/5
+
+### ❌ Si intenta eliminar temática con decisiones asociadas
+### Respuesta: "Cannot delete topic... because it has X strategic decision(s) associated"
+DELETE http://localhost:3000/api/topics/1

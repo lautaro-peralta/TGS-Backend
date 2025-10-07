@@ -22,10 +22,27 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
  */
 export class DistributorController {
 
+  /**
+   * Search distributors by name or zone.
+   *
+   * Query params:
+   * - q: string (required, min 2 chars)
+   * - by: 'name' | 'zone' (optional, default: 'name')
+   */
   async searchDistributors(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity( req, res, Distributor, 'name', 'distributor', em )
+    const { by } = req.query as { by?: 'name' | 'zone' };
+
+    // Determinar campos de búsqueda según el parámetro 'by'
+    const searchField = by === 'zone' ? 'zone.name' : 'name';
+
+    return searchEntity(req, res, Distributor, searchField, {
+      entityName: 'distributor',
+      em,
+      populate: ['zone'] as any,
+    });
   }
+  
 
   /**
    * Retrieves all distributors.
@@ -83,7 +100,7 @@ export class DistributorController {
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', dni);
       }
-      return ResponseUtil.success(res, 'Distributor found', distributor.toDetailedDTO?.() ?? distributor);
+      return ResponseUtil.success(res, 'Distributor found', distributor.toDetailedDTO());
     } catch (err) {
       console.error('Error searching for distributor:', err);
       return res.status(400).json({ error: 'Error searching for distributor' });
@@ -150,7 +167,7 @@ export class DistributorController {
       // Guardar en DB
       // ────────────────────────────────
       await em.persistAndFlush(distributor);
-      return ResponseUtil.created(res, 'Distributor created successfully', distributor.toDTO?.() ?? distributor);
+      return ResponseUtil.created(res, 'Distributor created successfully', distributor.toDTO());
     } catch (error) {
       console.error('Error creating distributor:', error);
       return ResponseUtil.internalError(res, 'Error creating distributor', error);
@@ -206,7 +223,7 @@ export class DistributorController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.updated(res, 'Distributor updated successfully', distributor.toDTO?.() ?? distributor);
+      return ResponseUtil.updated(res, 'Distributor updated successfully', distributor.toDTO());
     } catch (err) {
       console.error('Error in PATCH distributor:', err);
       return ResponseUtil.internalError(res, 'Error updating distributor', err);

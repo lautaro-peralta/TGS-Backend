@@ -24,7 +24,10 @@ export class TopicController {
 
   async searchTopics(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, Topic, 'description', 'topic', em);
+    return searchEntity(req, res, Topic, 'description', {
+      entityName: 'topic',
+      em,
+    });
   }
   
   /**
@@ -221,13 +224,27 @@ export class TopicController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch and delete the topic
+      // Fetch the topic with decisions
       // ──────────────────────────────────────────────────────────────────────
-      const topic = await em.findOne(Topic, { id });
+      const topic = await em.findOne(Topic, { id }, { populate: ['decisions'] });
       if (!topic) {
         return ResponseUtil.notFound(res, 'Topic', id);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for associated decisions
+      // ──────────────────────────────────────────────────────────────────────
+      if (topic.decisions.length > 0) {
+        return ResponseUtil.error(
+          res,
+          `Cannot delete topic "${topic.description}" because it has ${topic.decisions.length} strategic decision(s) associated with it. Please delete or reassign the decisions first.`,
+          400
+        );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the topic
+      // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(topic);
 
       // ──────────────────────────────────────────────────────────────────────

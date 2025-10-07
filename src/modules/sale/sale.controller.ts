@@ -2,6 +2,7 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
+import { FilterQuery, Populate } from '@mikro-orm/core';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -13,9 +14,11 @@ import { Client } from '../client/client.entity.js';
 import { Product } from '../product/product.entity.js';
 import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from '../bribe/bribe.entity.js';
+import { Distributor } from '../distributor/distributor.entity.js';
+import { Zone } from '../zone/zone.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntityByDate } from '../../shared/utils/search.util.js';
+import { searchEntityByDate, searchEntity  } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Sale
@@ -27,9 +30,128 @@ import { searchEntityByDate } from '../../shared/utils/search.util.js';
  */
 export class SaleController {
 
+  /**
+   * Search sales with multiple criteria.
+   *
+   * Query params:
+   * - q: string (min 2 chars) - Búsqueda de texto (requerido si no viene date)
+   * - by: 'client' | 'distributor' | 'zone' (required si viene q) - Dónde buscar
+   * - date: ISO 8601 date - Búsqueda por fecha
+   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
+   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
+   *
+   * Nota: Si viene 'date', se ignoran los parámetros 'q' y 'by'
+   */
   async searchSales(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntityByDate(req, res, Sale, "saleDate", "sales", em);
+
+    const { date, by } = req.query as {
+      date?: string;
+      by?: 'client' | 'distributor' | 'zone';
+    };
+
+    // Si viene 'date', delegar a búsqueda por fecha
+    if (date) {
+      return searchEntityByDate(req, res, Sale, 'saleDate', {
+        entityName: 'sale',
+        em,
+        populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
+      });
+    }
+
+    // Validar que venga el parámetro 'by' para búsqueda por texto
+    if (!by) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'by',
+          message: 'The query parameter "by" is required. Valid values: "client", "distributor", "zone"',
+        },
+      ]);
+    }
+
+    // Validar que 'by' sea un valor válido
+    const validByValues = ['client', 'distributor', 'zone'];
+    if (!validByValues.includes(by)) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'by',
+          message: 'The query parameter "by" must be one of: "client", "distributor", "zone"',
+        },
+      ]);
+    }
+
+    // Para búsqueda por zona, necesitamos un enfoque diferente
+    if (by === 'zone') {
+      const { q } = req.query as { q?: string };
+
+      if (!q || q.trim().length < 2) {
+        return ResponseUtil.validationError(res, 'Validation error', [
+          {
+            field: 'q',
+            message: 'The query parameter "q" is required and must be at least 2 characters long.'
+          },
+        ]);
+      }
+
+      const trimmedQuery = q.trim();
+      const sanitizedValue = trimmedQuery.replace(/[%_]/g, '\\$&');
+
+      // Buscar zonas que coincidan
+      const zones = await em.find(Zone, {
+        name: { $like: `%${sanitizedValue}%` }
+      });
+
+      if (zones.length === 0) {
+        const message = ResponseUtil.generateListMessage(0, 'sale', `that match "${trimmedQuery}"`);
+        return ResponseUtil.successList(res, message, []);
+      }
+
+      // Buscar ventas de distributors en esas zonas
+      const results = await em.find(Sale, {
+        distributor: { zone: { $in: zones.map((z: any) => z.id) } }
+      }, {
+        populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
+        orderBy: { saleDate: 'desc' } as any,
+      });
+
+      const message = ResponseUtil.generateListMessage(
+        results.length,
+        'sale',
+        `that match "${trimmedQuery}"`
+      );
+
+      return ResponseUtil.successList(
+        res,
+        message,
+        results.map((item) => item.toDTO())
+      );
+    }
+
+    // Para client y distributor, usar búsqueda normal
+    let searchField: string;
+
+    switch (by) {
+      case 'client':
+        searchField = 'client.name';
+        break;
+      case 'distributor':
+        searchField = 'distributor.name';
+        break;
+    }
+
+    // Búsqueda de texto
+    return searchEntity(
+      req,
+      res,
+      Sale,
+      searchField,
+      {
+        entityName: 'sale',
+        em,
+        populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
+        orderBy: { saleDate: 'desc' } as any,
+      }
+    );
   }
   
   /**
@@ -118,11 +240,19 @@ export class SaleController {
    */
   async createSale(req: Request, res: Response) {
     const em = orm.em.fork();
-    const { clientDni, details, person } = res.locals.validated.body;
+    const { clientDni, distributorDni, details, person } = res.locals.validated.body;
 
     let client = await em.findOne(Client, { dni: clientDni });
 
     try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Find distributor (required)
+      // ──────────────────────────────────────────────────────────────────────
+      const distributor = await em.findOne(Distributor, { dni: distributorDni });
+      if (!distributor) {
+        return ResponseUtil.notFound(res, 'Distributor', distributorDni);
+      }
+
       // ──────────────────────────────────────────────────────────────────────
       // Find or create client
       // ──────────────────────────────────────────────────────────────────────
@@ -164,6 +294,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       const newSale = em.create(Sale, {
         client,
+        distributor,
         saleDate: new Date(),
         saleAmount: 0,
         details: [],
@@ -266,44 +397,50 @@ export class SaleController {
       // Validate and extract sale ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id.trim());
-      if (isNaN(id)) return res.status(400).send({ message: 'Invalid ID' });
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
+        ]);
+      }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch sale by ID
+      // Fetch sale by ID with related data
       // ──────────────────────────────────────────────────────────────────────
       const sale = await em.findOne(
         Sale,
         { id },
-        { populate: ['authority', 'details'] }
+        { populate: ['client', 'distributor', 'details'] }
       );
-      if (!sale) return res.status(404).send({ message: 'Sale not found' });
+
+      if (!sale) {
+        return ResponseUtil.notFound(res, 'Sale', id);
+      }
 
       // ──────────────────────────────────────────────────────────────────────
       // Check for associated bribes before deletion
       // ──────────────────────────────────────────────────────────────────────
-      const associatedBribe = await em.count(Bribe, {
-        sale: sale.id,
-      });
-      if (associatedBribe > 0) {
-        return res.status(400).send({
-          message: 'The sale cannot be deleted: it has associated bribes',
-        });
+      const bribesCount = await em.count(Bribe, { sale: sale.id });
+
+      if (bribesCount > 0) {
+        return ResponseUtil.error(
+          res,
+          `Cannot delete sale #${id} because it has ${bribesCount} bribe(s) associated with it. Please delete the bribes first.`,
+          400
+        );
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Delete the sale
+      // Delete the sale (cascade will delete details automatically)
       // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(sale);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return res.status(200).send({
-        message: `Sale deleted successfully`,
-      });
+      return ResponseUtil.deleted(res, 'Sale deleted successfully');
     } catch (err) {
       console.error('Error deleting sale:', err);
-      return res.status(500).send({ message: 'Error deleting sale' });
+      return ResponseUtil.internalError(res, 'Error deleting sale', err);
     }
   }
 }

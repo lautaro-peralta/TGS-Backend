@@ -23,11 +23,18 @@ import { searchEntity, searchEntityByBoolean, searchEntityByDate } from '../../s
  */
 export class BribeController {
   /**
-   * Search bribes by amount (like search in product, sale, topic, zone)
-   */ 
+   * Search bribes by paid status.
+   *
+   * Query params:
+   * - q: 'true' | 'false' (required)
+   */
   async searchBribes(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntityByBoolean(req, res, Bribe, 'paid', 'bribes', em);
+    return searchEntityByBoolean(req, res, Bribe, 'paid', {
+      entityName: 'bribe',
+      em,
+      populate: ['authority', 'sale'] as any,
+    });
   }
   
   /**

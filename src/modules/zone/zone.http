@@ -1,35 +1,66 @@
-###obtener todas las zonas
+### ============================================================================
+### LISTAR Y OBTENER
+### ============================================================================
+
+### Listar todas las zonas
 GET http://localhost:3000/api/zones
 
-###obtener una zona
+### Obtener una zona por ID
 GET http://localhost:3000/api/zones/1
 
-###obtener una zona
-GET http://localhost:3000/api/zones/search?q=Centro
+### ============================================================================
+### BÚSQUEDAS
+### ============================================================================
+
+### Buscar zona por nombre (por defecto)
+GET http://localhost:3000/api/zones/search?q=Central
+
+### Buscar zona por nombre - explícito
+GET http://localhost:3000/api/zones/search?q=Norte&by=name
+
+### Buscar la zona que ES sede central
+GET http://localhost:3000/api/zones/search?q=true&by=headquarters
+
+### Buscar zonas que NO son sede central
+GET http://localhost:3000/api/zones/search?q=false&by=headquarters
+
+### ============================================================================
+### CRUD
+### ============================================================================
 
 ### Crear nueva zona
 POST http://localhost:3000/api/zones
 Content-Type: application/json
 
 {
-  "name": "Zona NOROESTE"
+  "name": "Zona Norte",
+  "isHeadquarters": false
 }
 
-###modificar nueva zona(PATCH - no necesariamente idempotente, modificaciones parciales)
+### Crear zona como sede central
+POST http://localhost:3000/api/zones
+Content-Type: application/json
+
+{
+  "name": "Sede Central",
+  "isHeadquarters": true
+}
+
+### Actualizar nombre de zona
 PATCH http://localhost:3000/api/zones/1
 Content-Type: application/json
 
 {
-  "nombre": "Zona Centro"
+  "name": "Zona Centro"
 }
 
-###modificar una zona
+### Establecer zona como sede central
 PATCH http://localhost:3000/api/zones/1
 Content-Type: application/json
 
 {
-  "esSedeCentral":true
+  "isHeadquarters": true
 }
 
-###borrar una zona
+### Eliminar una zona
 DELETE http://localhost:3000/api/zones/1

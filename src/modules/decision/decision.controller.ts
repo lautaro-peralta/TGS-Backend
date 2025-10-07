@@ -27,7 +27,10 @@ export class DecisionController {
    */
   async searchDecisions(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, StrategicDecision, 'description', 'strategic decision', em);
+    return searchEntity(req, res, StrategicDecision, 'description', {
+      entityName: 'strategic decision',
+      em,
+    });
   }
   /**
    * Retrieves all strategic decisions.
