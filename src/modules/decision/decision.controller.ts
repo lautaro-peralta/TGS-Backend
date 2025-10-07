@@ -10,7 +10,7 @@ import { orm } from '../../shared/db/orm.js';
 import { StrategicDecision } from './decision.entity.js';
 import { Topic } from '../topic/topic.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity } from '../../shared/utils/search.util.js';
+import { searchEntity, searchEntityByDate } from '../../shared/utils/search.util.js';
 
 
 // ============================================================================
@@ -22,14 +22,45 @@ import { searchEntity } from '../../shared/utils/search.util.js';
  * @class DecisionController
  */
 export class DecisionController {
-    /**
-   * Search strategic decisions by description (like search in product, sale, topic, zone)
+  /**
+   * Search strategic decisions with multiple criteria.
+   *
+   * Query params:
+   * - q: string (min 2 chars) - Búsqueda de texto por descripción o topic
+   * - by: 'description' | 'topic' (optional, default: 'description') - Tipo de búsqueda de texto
+   * - date: ISO 8601 date - Búsqueda por fecha (startDate o endDate)
+   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
+   * - dateField: 'startDate' | 'endDate' (optional, default: 'startDate') - Campo de fecha a filtrar
+   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
+   *
+   * Nota: Si viene 'date', se ignoran los parámetros 'q' y 'by'
    */
   async searchDecisions(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, StrategicDecision, 'description', {
+
+    const { date, by, dateField } = req.query as {
+      date?: string;
+      by?: 'description' | 'topic';
+      dateField?: 'startDate' | 'endDate';
+    };
+
+    // Si viene 'date', delegar a búsqueda por fecha
+    if (date) {
+      const fieldToSearch = dateField === 'endDate' ? 'endDate' : 'startDate';
+      return searchEntityByDate(req, res, StrategicDecision, fieldToSearch, {
+        entityName: 'strategic decision',
+        em,
+        populate: ['topic'] as any,
+      });
+    }
+
+    // Búsqueda de texto: por descripción o por topic
+    const searchField = by === 'topic' ? 'topic.description' : 'description';
+
+    return searchEntity(req, res, StrategicDecision, searchField, {
       entityName: 'strategic decision',
       em,
+      populate: ['topic'] as any,
     });
   }
   /**

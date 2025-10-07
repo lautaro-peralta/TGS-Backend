@@ -14,7 +14,7 @@ import {
   updateProductSchema,
 } from './product.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity } from '../../shared/utils/search.util.js';
+import { searchEntity, searchEntityByRange } from '../../shared/utils/search.util.js';
 
 // ============================================================================
 // CONTROLLER - Product
@@ -26,14 +26,59 @@ import { searchEntity } from '../../shared/utils/search.util.js';
  */
 export class ProductController {
   /**
-   * Searches for products based on a query string.
+   * Search products with multiple criteria.
    *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
+   * Query params:
+   * - q: string (min 2 chars) - Búsqueda de texto por descripción (requerido si no viene 'by' o range)
+   * - by: 'description' | 'legal' (optional, default: 'description') - Tipo de búsqueda
+   * - min: number (opcional) - Precio mínimo (solo cuando by no está presente o viene como 'description')
+   * - max: number (opcional) - Precio máximo (solo cuando by no está presente o viene como 'description')
+   *
+   * Nota: Si viene 'by=legal', busca por legalidad (q='true' para legales, q='false' para ilegales)
+   * Nota: Si vienen min/max, se busca por rango de precio
    */
   async searchProducts(req: Request, res: Response) {
     const em = orm.em.fork();
+
+    const { by, min, max, q } = req.query as {
+      by?: 'description' | 'legal';
+      min?: string;
+      max?: string;
+      q?: string;
+    };
+
+    // Si viene 'by=legal', buscar por legalidad (q=true -> legales, q=false -> ilegales)
+    if (by === 'legal') {
+      if (q !== 'true' && q !== 'false') {
+        return ResponseUtil.validationError(res, 'Validation error', [
+          {
+            field: 'q',
+            message: 'The query parameter "q" must be "true" or "false" when searching by legal status.'
+          },
+        ]);
+      }
+
+      const isIllegal = q === 'false';
+      const results = await em.find(Product, { isIllegal });
+      const message = ResponseUtil.generateListMessage(
+        results.length,
+        'product',
+        `that are ${q === 'true' ? 'legal' : 'illegal'}`
+      );
+
+      return ResponseUtil.successList(res, message, results.map((p) => p.toDTO()));
+    }
+
+    // Si vienen parámetros de rango (min o max), buscar por precio
+    if (min || max) {
+      return searchEntityByRange(req, res, Product, 'price', {
+        entityName: 'product',
+        em,
+        orderBy: { price: 'asc' } as any,
+      });
+    }
+
+    // Caso por defecto: búsqueda por descripción
     return searchEntity(req, res, Product, 'description', {
       entityName: 'product',
       em,

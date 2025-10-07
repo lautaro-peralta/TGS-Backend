@@ -1,9 +1,37 @@
 ### Obtener todos los productos
 GET http://localhost:3000/api/products
 
-###
+# ============================================================================
+# BÚSQUEDAS
+# ============================================================================
+
+### Búsqueda por descripción
 GET http://localhost:3000/api/products/search?q=Fernet
 
+### Búsqueda por descripción - mínimo 2 caracteres
+GET http://localhost:3000/api/products/search?q=Ha
+
+### Búsqueda productos legales (isIllegal=false)
+GET http://localhost:3000/api/products/search?by=legal&q=true
+
+### Búsqueda productos ilegales (isIllegal=true)
+GET http://localhost:3000/api/products/search?by=legal&q=false
+
+### Búsqueda por precio mínimo
+GET http://localhost:3000/api/products/search?min=500
+
+### Búsqueda por precio máximo
+GET http://localhost:3000/api/products/search?max=1000
+
+### Búsqueda por rango de precio (entre 500 y 1000)
+GET http://localhost:3000/api/products/search?min=500&max=1000
+
+### Búsqueda por precio exacto (usando min y max iguales)
+GET http://localhost:3000/api/products/search?min=800&max=800
+
+# ============================================================================
+# CRUD
+# ============================================================================
 
 ### Obtener un producto por ID
 GET http://localhost:3000/api/products/1
@@ -12,7 +40,7 @@ POST http://localhost:3000/api/products
 Content-Type: application/json
 
 {
-  "description": "Hambugeruesa con queso",
+  "description": "Hamburguesa con queso",
   "price": 1000,
   "stock": 10,
   "isIllegal": true
@@ -30,7 +58,7 @@ Content-Type: application/json
 }
 
 ### Modificar producto (PATCH - actualización parcial)
-PATCH http://localhost:3000/api/productos/3
+PATCH http://localhost:3000/api/products/3
 Content-Type: application/json
 
 {
@@ -38,5 +66,5 @@ Content-Type: application/json
 }
 
 ### Borrar un producto
-DELETE http://localhost:3000/api/products/2
+DELETE http://localhost:3000/api/products/3
 

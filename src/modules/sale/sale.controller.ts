@@ -384,6 +384,102 @@ export class SaleController {
   }
 
   /**
+   * Updates a sale (reassign distributor and/or authority).
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async updateSale(req: Request, res: Response) {
+    const em = orm.em.fork();
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract sale ID
+      // ──────────────────────────────────────────────────────────────────────
+      const id = Number(req.params.id.trim());
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
+        ]);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch sale by ID with related data
+      // ──────────────────────────────────────────────────────────────────────
+      const sale = await em.findOne(
+        Sale,
+        { id },
+        { populate: ['distributor', 'authority', 'client', 'details'] }
+      );
+
+      if (!sale) {
+        return ResponseUtil.notFound(res, 'Sale', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Extract fields from request body
+      // ──────────────────────────────────────────────────────────────────────
+      const { distributorDni, authorityDni } = req.body;
+
+      // Validar que al menos uno de los dos venga
+      if (!distributorDni && authorityDni === undefined) {
+        return ResponseUtil.validationError(res, 'Validation error', [
+          {
+            field: 'body',
+            message: 'At least one of "distributorDni" or "authorityDni" is required'
+          },
+        ]);
+      }
+
+      const updates: string[] = [];
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Reassign distributor if provided
+      // ──────────────────────────────────────────────────────────────────────
+      if (distributorDni) {
+        const newDistributor = await em.findOne(Distributor, { dni: distributorDni });
+        if (!newDistributor) {
+          return ResponseUtil.error(res, `Distributor with DNI ${distributorDni} not found`, 404);
+        }
+        sale.distributor = newDistributor;
+        updates.push(`distributor to ${newDistributor.name} (DNI ${distributorDni})`);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Reassign authority if provided
+      // ──────────────────────────────────────────────────────────────────────
+      if (authorityDni !== undefined) {
+        if (authorityDni === null) {
+          // Permitir remover la autoridad
+          sale.authority = undefined;
+          updates.push('authority removed');
+        } else {
+          const newAuthority = await em.findOne(Authority, { dni: authorityDni });
+          if (!newAuthority) {
+            return ResponseUtil.error(res, `Authority with DNI ${authorityDni} not found`, 404);
+          }
+          sale.authority = newAuthority;
+          updates.push(`authority to ${newAuthority.name} (DNI ${authorityDni})`);
+        }
+      }
+
+      await em.flush();
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.updated(
+        res,
+        `Sale #${id} updated: ${updates.join(', ')}`,
+        sale.toDTO()
+      );
+    } catch (err) {
+      console.error('Error updating sale:', err);
+      return ResponseUtil.internalError(res, 'Error updating sale', err);
+    }
+  }
+
+  /**
    * Deletes a sale by ID.
    *
    * @param {Request} req - The Express request object.

@@ -1,45 +1,46 @@
-###obtener todos los clientes
-GET http://localhost:3000/api/clientes
+### Obtener todos los clientes
+GET http://localhost:3000/api/clients
 
-###obtener un cliente
-GET http://localhost:3000/api/clientes/12345678
+# ============================================================================
+# BÚSQUEDAS
+# ============================================================================
+
+### Búsqueda por nombre
+GET http://localhost:3000/api/clients/search?q=pedro
+
+### Búsqueda por nombre - mínimo 2 caracteres
+GET http://localhost:3000/api/clients/search?q=He
+
+# ============================================================================
+# CRUD
+# ============================================================================
+
+### Obtener un cliente por DNI
+GET http://localhost:3000/api/clients/12345678
 
 
 ### Crear nuevo cliente
-POST http://localhost:3000/api/clientes/
+POST http://localhost:3000/api/clients/
 Content-Type: application/json
 
 {
   "dni":"12345678",
-  "nombre": "Lautaro Herrera",
+  "name": "Lautaro Herrera",
   "email": "lautaro.herrera@example.com",
-  "direccion": "Av. Pellegrini 1234, Rosario, Santa Fe",
-  "telefono": "3416007788"
+  "address": "Av. Pellegrini 1234, Rosario, Santa Fe",
+  "phone": "3416007788"
 }
 
-### DESHABILITADO. Modificar nuevo cliente (PUT - idempotente, modificaciones completas)
-PUT http://localhost:3000/api/clientes/12345678
+### Modificar cliente (PATCH - modificaciones parciales)
+PATCH http://localhost:3000/api/clients/12345678
 Content-Type: application/json
 
 {
-  "nombre": "Lautaro FERNANDEZ",
+  "name": "Lautaro FERNANDEZ",
   "email": "lautaro.herrera@example.com",
-  "direccion": "Av. Pellegrini 1234, Rosario, Santa Fe",
-  "telefono": "3416007788"
+  "address": "Cochabamba 230, Rosario, Santa Fe",
+  "phone": "3416007788"
 }
 
-
-###modificar nuevo cliente (PATCH - no necesariamente idempotente, modificaciones parciales)
-PATCH http://localhost:3000/api/clientes/12345678
-Content-Type: application/json
-
-{
-  "nombre": "Lautaro FERNANDEZ",
-  "email": "lautaro.herrera@example.com",
-  "direccion": "Av. Pellegrini 1234, Rosario, Santa Fe",
-  "telefono": "3416007788",
-  "direccion":"Cochabamba 230, Rosario, Santa Fe"
-}
-
-###borrar un cliente
-DELETE http://localhost:3000/api/clientes/12345678
+### Borrar un cliente
+DELETE http://localhost:3000/api/clients/12345678
