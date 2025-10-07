@@ -465,6 +465,135 @@ export async function searchEntityByBoolean<T extends { toDTO?: () => any }>(
 }
 
 /**
+ * Búsqueda de entidades por rango numérico.
+ *
+ * Query params esperados:
+ * - min: number (opcional) - Valor mínimo (inclusive)
+ * - max: number (opcional) - Valor máximo (inclusive)
+ *
+ * Al menos uno de los dos parámetros debe ser proporcionado.
+ *
+ * @param req - Request de Express
+ * @param res - Response de Express
+ * @param entity - Entidad de MikroORM
+ * @param numericField - Campo numérico a filtrar
+ * @param options - Opciones de búsqueda
+ */
+export async function searchEntityByRange<T extends { toDTO?: () => any }>(
+  req: Request,
+  res: Response,
+  entity: EntityName<T>,
+  numericField: keyof T,
+  options: {
+    entityName: string;
+    em: EntityManager;
+    additionalFilters?: FilterQuery<T>;
+    populate?: Populate<T, string>;
+    orderBy?: OrderDefinition<T>;
+  }
+) {
+  try {
+    const { min, max } = req.query as { min?: string; max?: string };
+
+    // Validación: al menos uno debe estar presente
+    if (!min && !max) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'range',
+          message: 'At least one of "min" or "max" query parameters is required.'
+        },
+      ]);
+    }
+
+    // Parsear valores
+    const minValue = min ? parseFloat(min) : undefined;
+    const maxValue = max ? parseFloat(max) : undefined;
+
+    // Validar que sean números válidos
+    if (minValue !== undefined && isNaN(minValue)) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'min',
+          message: '"min" must be a valid number.'
+        },
+      ]);
+    }
+
+    if (maxValue !== undefined && isNaN(maxValue)) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'max',
+          message: '"max" must be a valid number.'
+        },
+      ]);
+    }
+
+    // Validar que min <= max si ambos están presentes
+    if (minValue !== undefined && maxValue !== undefined && minValue > maxValue) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        {
+          field: 'range',
+          message: '"min" must be less than or equal to "max".'
+        },
+      ]);
+    }
+
+    // Construir filtro de rango
+    let rangeFilter: FilterQuery<T> = {};
+    if (minValue !== undefined && maxValue !== undefined) {
+      rangeFilter = { [numericField]: { $gte: minValue, $lte: maxValue } } as FilterQuery<T>;
+    } else if (minValue !== undefined) {
+      rangeFilter = { [numericField]: { $gte: minValue } } as FilterQuery<T>;
+    } else if (maxValue !== undefined) {
+      rangeFilter = { [numericField]: { $lte: maxValue } } as FilterQuery<T>;
+    }
+
+    // Combinar con filtros adicionales
+    const where: FilterQuery<T> = {
+      ...options.additionalFilters,
+      ...rangeFilter,
+    };
+
+    // Determinar ordenamiento
+    const orderBy = options.orderBy ?? createOrder<T>(numericField, 'asc');
+
+    // Ejecutar búsqueda
+    const results = await options.em.find(entity, where, {
+      orderBy,
+      ...(options.populate && { populate: options.populate }),
+    });
+
+    // Construir mensaje apropiado
+    let rangeMessage: string;
+    if (minValue !== undefined && maxValue !== undefined) {
+      rangeMessage = `with ${String(numericField)} between ${minValue} and ${maxValue}`;
+    } else if (minValue !== undefined) {
+      rangeMessage = `with ${String(numericField)} >= ${minValue}`;
+    } else {
+      rangeMessage = `with ${String(numericField)} <= ${maxValue}`;
+    }
+
+    const message = ResponseUtil.generateListMessage(
+      results.length,
+      options.entityName,
+      rangeMessage
+    );
+
+    return ResponseUtil.successList(
+      res,
+      message,
+      results.map((item) => (hasToDTO(item) ? item.toDTO() : item))
+    );
+  } catch (err) {
+    return ResponseUtil.internalError(
+      res,
+      `Error searching for ${options.entityName} by range`,
+      err
+    );
+  }
+}
+
+/**
  * Búsqueda genérica de entidades por texto.
  *
  * Características:

@@ -23,13 +23,31 @@ import { searchEntity, searchEntityByBoolean, searchEntityByDate } from '../../s
  */
 export class BribeController {
   /**
-   * Search bribes by paid status.
+   * Search bribes with multiple criteria.
    *
    * Query params:
-   * - q: 'true' | 'false' (required)
+   * - q: 'true' | 'false' - Búsqueda por estado de pago (pagado/pendiente)
+   * - date: ISO 8601 date - Búsqueda por fecha de creación
+   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
+   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
+   *
+   * Nota: Si viene 'date', se ignora el parámetro 'q'
    */
   async searchBribes(req: Request, res: Response) {
     const em = orm.em.fork();
+
+    const { date } = req.query as { date?: string };
+
+    // Si viene 'date', delegar a búsqueda por fecha
+    if (date) {
+      return searchEntityByDate(req, res, Bribe, 'creationDate', {
+        entityName: 'bribe',
+        em,
+        populate: ['authority', 'sale'] as any,
+      });
+    }
+
+    // Búsqueda por estado de pago (paid)
     return searchEntityByBoolean(req, res, Bribe, 'paid', {
       entityName: 'bribe',
       em,

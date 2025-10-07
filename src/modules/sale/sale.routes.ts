@@ -68,6 +68,18 @@ saleRouter.post(
 );
 
 /**
+ * @route   PATCH /api/sales/:id
+ * @desc    Update a sale (reassign distributor).
+ * @access  Private (Admin only)
+ */
+saleRouter.patch(
+  '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  saleController.updateSale
+);
+
+/**
  * @route   DELETE /api/sales/:id
  * @desc    Delete a sale by ID.
  * @access  Private (Admin only)

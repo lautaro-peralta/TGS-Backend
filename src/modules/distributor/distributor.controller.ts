@@ -243,13 +243,39 @@ export class DistributorController {
 
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Fetch and delete the distributor
+      // Fetch distributor with related data
       // ──────────────────────────────────────────────────────────────────────
-      const distributor = await em.findOne(Distributor, { dni });
+      const distributor = await em.findOne(
+        Distributor,
+        { dni },
+        { populate: ['sales', 'products'] }
+      );
       if (!distributor) {
-        return ResponseUtil.notFound(res, 'Distributor', dni);
+        return ResponseUtil.error(res, `Distributor with DNI ${dni} not found`, 404);
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for associated sales
+      // ──────────────────────────────────────────────────────────────────────
+      if (distributor.sales.isInitialized() && distributor.sales.length > 0) {
+        return ResponseUtil.error(
+          res,
+          `Cannot delete distributor ${distributor.name} (DNI ${dni}) because they have ${distributor.sales.length} sale(s) associated. Please delete or reassign the sales first.`,
+          400
+        );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Remove product associations before deleting
+      // ──────────────────────────────────────────────────────────────────────
+      if (distributor.products.isInitialized() && distributor.products.length > 0) {
+        distributor.products.removeAll();
+        await em.flush();
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Delete the distributor
+      // ──────────────────────────────────────────────────────────────────────
       const name = distributor.name;
       await em.removeAndFlush(distributor);
 

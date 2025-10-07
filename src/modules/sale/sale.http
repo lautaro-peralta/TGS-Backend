@@ -59,6 +59,39 @@ Content-Type: application/json
   ]
 }
 
+### Reasignar solo distributor
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "distributorDni": "16254545"
+}
+
+### Reasignar solo authority
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "authorityDni": "10101015"
+}
+
+### Reasignar ambos (distributor y authority)
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "distributorDni": "16254545",
+  "authorityDni": "20123456"
+}
+
+### Remover authority de una venta (dejar en null)
+PATCH http://localhost:3000/api/sales/9
+Content-Type: application/json
+
+{
+  "authorityDni": null
+}
+
 ### Eliminar una venta por ID (solo si no tiene bribes asociados)
 DELETE http://localhost:3000/api/sales/1
 

@@ -38,6 +38,18 @@ const dniParamSchema = z.object({
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
+ * @route   GET /api/authorities/search
+ * @desc    Search for authorities.
+ * @access  Private (Admin only)
+ */
+authorityRouter.get(
+  '/search',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  authorityController.searchAuthorities
+);
+
+/**
  * @route   POST /api/authorities
  * @desc    Create a new authority.
  * @access  Private (Admin only)
@@ -82,8 +94,8 @@ authorityRouter.get(
  */
 authorityRouter.get(
   '/:dni/bribes',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
   authorityController.getAuthorityBribes
 );
 

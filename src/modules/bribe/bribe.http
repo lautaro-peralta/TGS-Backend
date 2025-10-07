@@ -1,13 +1,36 @@
-###obtener todos los sobornos
+### Obtener todos los sobornos
 GET http://localhost:3000/api/bribes
 
-###obtener un soborno
-GET http://localhost:3000/api/bribes/1
+# ============================================================================
+# BÚSQUEDAS
+# ============================================================================
 
-###buscar sobornos
+### Búsqueda por estado - sobornos pagados (paid=true)
 GET http://localhost:3000/api/bribes/search?q=true
 
-###pagar soborno
+### Búsqueda por estado - sobornos pendientes (paid=false)
+GET http://localhost:3000/api/bribes/search?q=false
+
+### Búsqueda por fecha de creación - exact (día específico)
+GET http://localhost:3000/api/bribes/search?date=2025-10-06&type=exact
+
+### Búsqueda por fecha de creación - after (desde esa fecha en adelante)
+GET http://localhost:3000/api/bribes/search?date=2025-09-01&type=after
+
+### Búsqueda por fecha de creación - before (hasta esa fecha)
+GET http://localhost:3000/api/bribes/search?date=2025-12-31&type=before
+
+### Búsqueda por fecha de creación - between (rango entre dos fechas)
+GET http://localhost:3000/api/bribes/search?date=2025-09-01&endDate=2025-11-30&type=between
+
+# ============================================================================
+# CRUD
+# ============================================================================
+
+### Obtener un soborno por ID
+GET http://localhost:3000/api/bribes/1
+
+### Pagar soborno de una autoridad específica
 PATCH http://localhost:3000/api/bribes/10101013/pay
 Content-Type: application/json
 
@@ -15,15 +38,13 @@ Content-Type: application/json
   "ids":[1]
 }
 
-###pagar sobornos
+### Pagar múltiples sobornos (sin filtrar por autoridad)
 PATCH http://localhost:3000/api/bribes/pay
 Content-Type: application/json
 
 {
-  "ids":
-  [
-    2,3,5
-  ]
+  "ids": [2, 3, 5]
 }
 
-###borrar un soborno: NO PERMITIDO
+### Borrar un soborno por ID
+DELETE http://localhost:3000/api/bribes/1

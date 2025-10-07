@@ -1,9 +1,25 @@
-### Listar
+### Listar todos los distribuidores
 GET http://localhost:3000/api/distributors
 
-### Buscar por texto (nombre o dni)
-GET http://localhost:3000/api/distributors/search?q=delprato
+# ============================================================================
+# BÚSQUEDAS
+# ============================================================================
 
+### Búsqueda por nombre (por defecto)
+GET http://localhost:3000/api/distributors/search?q=Luca
+
+### Búsqueda por nombre (explícito)
+GET http://localhost:3000/api/distributors/search?q=Luca&by=name
+
+### Búsqueda por zona
+GET http://localhost:3000/api/distributors/search?q=Centro&by=zone
+
+### Búsqueda por zona - mínimo 2 caracteres
+GET http://localhost:3000/api/distributors/search?q=Ce&by=zone
+
+# ============================================================================
+# CRUD
+# ============================================================================
 
 ### Obtener por dni
 GET http://localhost:3000/api/distributors/16254545
@@ -33,6 +49,5 @@ Content-Type: application/json
 "productosIds": [2,3]
 }
 
-
 ### Eliminar
-DELETE http://localhost:3000/distribuidores/1
+DELETE http://localhost:3000/api/distributors/16254545
