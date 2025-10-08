@@ -8,7 +8,7 @@ import { Router } from 'express';
 // ============================================================================
 import { UserController } from './user.controller.js';
 import { authMiddleware, rolesMiddleware } from './auth.middleware.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import { changeRoleSchema } from './user.schema.js';
 import { Role } from '../auth/user.entity.js';
 

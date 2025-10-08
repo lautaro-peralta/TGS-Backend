@@ -1,36 +1,35 @@
-
-### Obtener todas las autoridades
+### Get all authorities
 GET http://localhost:3000/api/authorities
 
-### Obtener una autoridad por DNI
+### Get an authority by DNI
 GET http://localhost:3000/api/authorities/10101015
 
-### Buscar autoridades por nombre
+### Search authorities by name
 GET http://localhost:3000/api/authorities/search?q=Juan
 
-### Buscar autoridades por zona
+### Search authorities by zone
 GET http://localhost:3000/api/authorities?zone=Centro
 
-### Buscar autoridades por nombre y filtrar por zona
+### Search authorities by name and filter by zone
 GET http://localhost:3000/api/authorities/search?q=Juan&zone=Centro
 
-### Buscar autoridades por nombre y filtrar por rango
+### Search authorities by name and filter by rank
 GET http://localhost:3000/api/authorities/search?q=Juan&rank=1
 
-### Filtrar autoridades por zona y rango (sin búsqueda por nombre)
+### Filter authorities by zone and rank (without name search)
 GET http://localhost:3000/api/authorities/search?zone=Centro&rank=1
 
-### Obtener sobornos de una autoridad
+### Get bribes from an authority
 GET http://localhost:3000/api/authorities/10101015/bribes
 
-### Obtener sobornos de una autoridad con filtros
+### Get bribes from an authority with filters
 GET http://localhost:3000/api/authorities/10101015/bribes?paid=true&minAmount=100&maxAmount=500&page=1&limit=5
 
 #=======================================================================
 #CRUD
 #=======================================================================
 
-### 9. Crear nueva autoridad
+### 9. Create new authority
 POST http://localhost:3000/api/authorities
 Content-Type: application/json
 {
@@ -43,7 +42,7 @@ Content-Type: application/json
   "zoneId": "1"
 }
 
-### 10. Modificar autoridad (PUT - idempotente, modificaciones completas)
+### 10. Modify authority (PUT - idempotent, full modifications)
 PUT http://localhost:3000/api/authorities/10101015
 Content-Type: application/json
 {
@@ -52,13 +51,12 @@ Content-Type: application/json
   "zoneId": "1"
 }
 
-### 11. Modificar autoridad (PATCH - modificaciones parciales)
+### 11. Modify authority (PATCH - partial modifications)
 PATCH http://localhost:3000/api/authorities/10101015
 Content-Type: application/json
 {
   "rank":"2"
 }
 
-### 12. Borrar una autoridad
+### 12. Delete an authority
 DELETE http://localhost:3000/api/authorities/10101010
-

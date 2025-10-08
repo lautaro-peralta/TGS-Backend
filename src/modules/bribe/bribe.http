@@ -1,36 +1,36 @@
-### Obtener todos los sobornos
+### Get all bribes
 GET http://localhost:3000/api/bribes
 
 # ============================================================================
-# BÚSQUEDAS
+# SEARCHS
 # ============================================================================
 
-### Búsqueda por estado - sobornos pagados (paid=true)
+### Search by status - paid bribes (paid=true)
 GET http://localhost:3000/api/bribes/search?q=true
 
-### Búsqueda por estado - sobornos pendientes (paid=false)
+### Search by status - pending bribes (paid=false)
 GET http://localhost:3000/api/bribes/search?q=false
 
-### Búsqueda por fecha de creación - exact (día específico)
+### Search by creation date - exact (specific day)
 GET http://localhost:3000/api/bribes/search?date=2025-10-06&type=exact
 
-### Búsqueda por fecha de creación - after (desde esa fecha en adelante)
+### Search by creation date - after (from that date onwards)
 GET http://localhost:3000/api/bribes/search?date=2025-09-01&type=after
 
-### Búsqueda por fecha de creación - before (hasta esa fecha)
+### Search by creation date - before (until that date)
 GET http://localhost:3000/api/bribes/search?date=2025-12-31&type=before
 
-### Búsqueda por fecha de creación - between (rango entre dos fechas)
+### Search by creation date - between (range between two dates)
 GET http://localhost:3000/api/bribes/search?date=2025-09-01&endDate=2025-11-30&type=between
 
 # ============================================================================
 # CRUD
 # ============================================================================
 
-### Obtener un soborno por ID
+### Get a bribe by ID
 GET http://localhost:3000/api/bribes/1
 
-### Pagar soborno de una autoridad específica
+### Pay bribe to a specific authority
 PATCH http://localhost:3000/api/bribes/10101013/pay
 Content-Type: application/json
 
@@ -38,7 +38,7 @@ Content-Type: application/json
   "ids":[1]
 }
 
-### Pagar múltiples sobornos (sin filtrar por autoridad)
+### Pay multiple bribes (without filtering by authority)
 PATCH http://localhost:3000/api/bribes/pay
 Content-Type: application/json
 
@@ -46,5 +46,5 @@ Content-Type: application/json
   "ids": [2, 3, 5]
 }
 
-### Borrar un soborno por ID
+### Delete a bribe by ID
 DELETE http://localhost:3000/api/bribes/1

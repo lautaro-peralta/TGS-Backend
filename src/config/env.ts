@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Carga el archivo correcto según NODE_ENV (default: development)
+// Load the correct file according to NODE_ENV (default: development)
 config({ path: `.env.${process.env.NODE_ENV ?? 'development'}` });
 
 const envSchema = z.object({
@@ -16,7 +16,7 @@ const envSchema = z.object({
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
 
-  JWT_SECRET: z.string().min(10, 'JWT_SECRET es demasiado corto.'),
+  JWT_SECRET: z.string().min(10, 'JWT_SECRET is too short.'),
   JWT_EXPIRES_IN: z.string().default('1h'),
 
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),

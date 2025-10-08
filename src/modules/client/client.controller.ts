@@ -12,7 +12,9 @@ import { Client } from './client.entity.js';
 import { User, Role } from '../auth/user.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchClientsSchema } from './client.schema.js';
 
 
 // ============================================================================
@@ -21,91 +23,40 @@ import { searchEntity } from '../../shared/utils/search.util.js';
 
 
 export class ClientController {
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Search clients by name.
+   *
+   * Query params:
+   * - q: string (min 2 chars) - Search by name
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
    */
   async searchClients(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, Client, 'name', {
+
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchClientsSchema);
+    if (!validated) return; // Validation failed, response already sent
+
+    return searchEntityWithPagination(req, res, Client, {
       entityName: 'client',
       em,
+      searchFields: 'name',
+      buildFilters: () => ({}),
+      orderBy: { name: 'ASC' } as any,
     });
   }
-  /**
-   * Retrieves all clients.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getAllClients(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all clients with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const clients = await em.find(
-        Client,
-        {},
-        { populate: ['user', 'purchases', 'purchases.details'] }
-      );
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      const message = ResponseUtil.generateListMessage(clients.length, 'client');
-      return ResponseUtil.successList(
-        res,
-        message,
-        clients.map((c) => c.toDetailedDTO())
-      );
-    } catch (err) {
-      console.error('Error getting clients:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error getting the list of clients',
-        err
-      );
-    }
-  }
-
-  /**
-   * Retrieves a single client by DNI.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getOneClientByDni(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const dni = req.params.dni.trim();
-
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch client by DNI with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const client = await em.findOne(
-        Client,
-        { dni },
-        { populate: ['user', 'purchases'] }
-      );
-      if (!client) {
-        return ResponseUtil.notFound(res, 'Client', dni);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.success(
-        res,
-        'Client found successfully',
-        client.toDetailedDTO()
-      );
-    } catch (err) {
-      console.error('Error searching for client:', err);
-      return ResponseUtil.internalError(res, 'Error searching for client', err);
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Creates a new client.
@@ -236,6 +187,79 @@ export class ClientController {
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all clients with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getAllClients(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    return searchEntityWithPagination(req, res, Client, {
+      entityName: 'client',
+      em,
+      buildFilters: () => ({}),
+      populate: ['user', 'purchases', 'purchases.details'] as any,
+      orderBy: { name: 'ASC' } as any,
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves a single client by DNI.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getOneClientByDni(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const dni = req.params.dni.trim();
+
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch client by DNI with related data
+      // ──────────────────────────────────────────────────────────────────────
+      const client = await em.findOne(
+        Client,
+        { dni },
+        { populate: ['user', 'purchases'] }
+      );
+      if (!client) {
+        return ResponseUtil.notFound(res, 'Client', dni);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Client found successfully',
+        client.toDetailedDTO()
+      );
+    } catch (err) {
+      console.error('Error searching for client:', err);
+      return ResponseUtil.internalError(res, 'Error searching for client', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Partially updates an existing client using PATCH method.
    *
@@ -276,6 +300,10 @@ export class ClientController {
       return ResponseUtil.internalError(res, 'Error updating client', err);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a client by DNI.

@@ -9,7 +9,9 @@ import { Request, Response } from 'express';
 import { Topic } from './topic.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchTopicsSchema } from './topic.schema.js';
 
 
 // ============================================================================
@@ -21,17 +23,100 @@ import { searchEntity } from '../../shared/utils/search.util.js';
  * @class TopicController
  */
 export class TopicController {
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Search topics by description.
+   *
+   * Query params:
+   * - q: string (min 2 chars) - Search by description
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   */
   async searchTopics(req: Request, res: Response) {
     const em = orm.em.fork();
-    return searchEntity(req, res, Topic, 'description', {
+
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchTopicsSchema);
+    if (!validated) return; // Validation failed, response already sent
+
+    return searchEntityWithPagination(req, res, Topic, {
       entityName: 'topic',
       em,
+      searchFields: 'description',
+      buildFilters: () => ({}),
+      orderBy: { description: 'ASC' } as any,
     });
   }
-  
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
-   * Retrieves all topics.
+   * Creates a new topic.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   */
+  async createTopic(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const { description } = res.locals.validated.body;
+
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Check for existing topic with the same description
+      // ──────────────────────────────────────────────────────────────────────
+      let topic = await em.findOne(Topic, {
+        description: description,
+      });
+
+      if (topic) {
+        return ResponseUtil.conflict(
+          res,
+          'Topic already exists',
+          'description'
+        );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Create and persist the new topic
+      // ──────────────────────────────────────────────────────────────────────
+      const newTopic = em.create(Topic, {
+        description,
+      });
+
+      await em.persistAndFlush(newTopic);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.created(
+        res,
+        'Topic created successfully',
+        newTopic.toDTO()
+      );
+    } catch (err: any) {
+      console.error('Error creating topic:', err);
+      return ResponseUtil.internalError(res, 'Error creating topic', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all topics with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
@@ -39,23 +124,18 @@ export class TopicController {
    */
   async getAllTopics(req: Request, res: Response) {
     const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all topics
-      // ──────────────────────────────────────────────────────────────────────
-      const topics = await em.find(Topic, {});
-      const topicsDTO = topics.map((topic) => topic.toDTO());
-      const message = ResponseUtil.generateListMessage(topicsDTO.length, 'topic');
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, topicsDTO);
-    } catch (err) {
-      console.error('Error getting topics:', err);
-      return ResponseUtil.internalError(res, 'Error getting topics', err);
-    }
+    return searchEntityWithPagination(req, res, Topic, {
+      entityName: 'topic',
+      em,
+      buildFilters: () => ({}),
+      orderBy: { description: 'ASC' } as any,
+    });
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Retrieves a single topic by ID.
@@ -104,55 +184,9 @@ export class TopicController {
     }
   }
 
-  /**
-   * Creates a new topic.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async createTopic(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const { description } = res.locals.validated.body;
-
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Check for existing topic with the same description
-      // ──────────────────────────────────────────────────────────────────────
-      let topic = await em.findOne(Topic, {
-        description: description,
-      });
-
-      if (topic) {
-        return ResponseUtil.conflict(
-          res,
-          'Topic already exists',
-          'description'
-        );
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create and persist the new topic
-      // ──────────────────────────────────────────────────────────────────────
-      const newTopic = em.create(Topic, {
-        description,
-      });
-
-      await em.persistAndFlush(newTopic);
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(
-        res,
-        'Topic created successfully',
-        newTopic.toDTO()
-      );
-    } catch (err: any) {
-      console.error('Error creating topic:', err);
-      return ResponseUtil.internalError(res, 'Error creating topic', err);
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Updates an existing topic.
@@ -202,6 +236,10 @@ export class TopicController {
       return ResponseUtil.internalError(res, 'Error updating topic', err);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a topic by ID.

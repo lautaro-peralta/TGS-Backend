@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { ZoneController } from './zone.controller.js';
 import { rolesMiddleware, authMiddleware } from '../auth/auth.middleware.js';
 import { updateZoneSchema, createZoneSchema } from './zone.schema.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import { Role } from '../auth/user.entity.js';
 
 // ============================================================================

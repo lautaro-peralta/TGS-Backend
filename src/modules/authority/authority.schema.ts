@@ -2,9 +2,43 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+  numericRangeSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
 // SCHEMAS - Authority
+// ============================================================================
+
+/**
+ * Schema for searching authorities by multiple criteria.
+ */
+export const searchAuthoritiesSchema = paginationSchema
+  .merge(textSearchSchema)
+  .extend({
+    zone: z.string().optional(),
+    rank: z
+      .string()
+      .optional()
+      .transform((val) => (val ? Number(val) : undefined))
+      .refine((val) => val === undefined || !isNaN(val), {
+        message: 'Rank must be a valid number',
+      }),
+  });
+
+/**
+ * Schema for filtering authority bribes.
+ */
+export const authorityBribesQuerySchema = paginationSchema
+  .merge(numericRangeSchema)
+  .extend({
+    paid: z.enum(['true', 'false']).optional(),
+  });
+
+// ============================================================================
+// SCHEMAS - Authority CRUD
 // ============================================================================
 
 /**

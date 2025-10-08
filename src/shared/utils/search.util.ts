@@ -8,111 +8,36 @@ import {
 } from '@mikro-orm/core';
 import { ResponseUtil } from './response.util.js';
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
-type DateSearchType = "exact" | "before" | "after" | "between";
-
-// ============================================================================
-// HELPER FUNCTIONS - Filtros
-// ============================================================================
+// ============================================================================ 
+// HELPER FUNCTIONS - Filters
+// ============================================================================ 
 
 /**
- * Crea un objeto Date local desde un string de fecha.
- * Evita problemas de zona horaria al parsear "YYYY-MM-DD" como fecha local.
+ * Sanitizes a search value to prevent wildcard injection.
  *
- * @param dateString - String de fecha en formato ISO (YYYY-MM-DD)
- * @returns Date object en zona horaria local
+ * @param value - Value to sanitize
+ * @returns Sanitized value
  *
- * Por qué: new Date("2025-10-07") se interpreta como UTC,
- * pero queremos la fecha en la zona horaria local del servidor.
- */
-function parseLocalDate(dateString: string): Date {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
-}
-
-/**
- * Crea un filtro de fecha con rangos precisos.
- *
- * @param field - Campo de la entidad a filtrar
- * @param date - Fecha base para el filtro (o fecha inicial para 'between')
- * @param type - Tipo de búsqueda
- * @param endDate - Fecha final (solo requerido para type 'between')
- * @returns FilterQuery con operadores de comparación de MikroORM
- *
- * Tipos de búsqueda:
- * - exact: día completo (00:00:00.000 a 23:59:59.999)
- * - before: hasta ese día (inclusive)
- * - after: desde ese día (inclusive)
- * - between: rango entre dos fechas (ambas inclusive)
- *
- * Por qué: MySQL compara datetimes con microsegundos. Usar rangos explícitos
- * (00:00:00.000 a 23:59:59.999) garantiza capturar todos los registros del día.
- */
-function createDateFilter<T>(
-  field: keyof T,
-  date: Date,
-  type: DateSearchType,
-  endDate?: Date
-): FilterQuery<T> {
-  // Crear inicio y fin del día en zona horaria local
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  switch (type) {
-    case "exact":
-      return {
-        [field]: { $gte: startOfDay, $lte: endOfDay },
-      } as FilterQuery<T>;
-    case "before":
-      return { [field]: { $lte: endOfDay } } as FilterQuery<T>;
-    case "after":
-      return { [field]: { $gte: startOfDay } } as FilterQuery<T>;
-    case "between":
-      if (!endDate) {
-        throw new Error("End date is required for 'between' search type");
-      }
-      const endOfEndDate = new Date(endDate);
-      endOfEndDate.setHours(23, 59, 59, 999);
-      return {
-        [field]: { $gte: startOfDay, $lte: endOfEndDate },
-      } as FilterQuery<T>;
-    default:
-      throw new Error("Invalid date search type");
-  }
-}
-
-/**
- * Sanitiza un valor de búsqueda para prevenir inyección de wildcards.
- *
- * @param value - Valor a sanitizar
- * @returns Valor sanitizado
- *
- * Por qué: Los caracteres % y _ son wildcards en SQL LIKE.
- * Escaparlos previene búsquedas no intencionadas.
+ * Why: The % and _ characters are wildcards in SQL LIKE.
+ * Escaping them prevents unintentional searches.
  */
 function sanitizeSearchValue(value: string): string {
-  return value.replace(/[%_]/g, '\\$&');
+  return value.replace(/[%_]/g, '\$&');
 }
 
 /**
- * Crea un filtro de búsqueda case-insensitive con sanitización.
+ * Creates a case-insensitive search filter with sanitization.
  *
- * @param field - Campo a buscar, soporta dot notation (ej: "user.name")
- * @param value - Valor a buscar
- * @returns FilterQuery con operador $like y wildcards
+ * @param field - Field to search, supports dot notation (e.g., "user.name")
+ * @param value - Value to search for
+ * @returns FilterQuery with $like operator and wildcards
  *
- * Por qué $like en lugar de $ilike:
- * - MySQL es case-insensitive por defecto en comparaciones de texto
- * - $like es más performante al evitar conversiones LOWER()
- * - Si necesita case-sensitive, configure el collation de columna a utf8mb4_bin
+ * Why $like instead of $ilike:
+ * - MySQL is case-insensitive by default in text comparisons
+ * - $like is more performant by avoiding LOWER() conversions
+ * - If you need case-sensitive, configure the column collation to utf8mb4_bin
  *
- * Dot notation: Permite buscar en relaciones (ej: "address.city")
+ * Dot notation: Allows searching in relationships (e.g., "address.city")
  */
 function createTextFilter<T>(field: string, value: string): FilterQuery<T> {
   const sanitizedValue = sanitizeSearchValue(value);
@@ -120,10 +45,10 @@ function createTextFilter<T>(field: string, value: string): FilterQuery<T> {
   const keys = field.split('.');
   const lastKey = keys.pop()!;
 
-  // Construye el filtro desde el campo más profundo hacia arriba
+  // Build the filter from the deepest field upwards
   let filter: any = { [lastKey]: { $like: `%${sanitizedValue}%` } };
 
-  // Envuelve en objetos anidados para dot notation
+  // Wrap in nested objects for dot notation
   for (let i = keys.length - 1; i >= 0; i--) {
     filter = { [keys[i]]: filter };
   }
@@ -132,13 +57,13 @@ function createTextFilter<T>(field: string, value: string): FilterQuery<T> {
 }
 
 /**
- * Crea un filtro $or para búsqueda en múltiples campos.
+ * Creates an $or filter for searching in multiple fields.
  *
- * @param fields - Array de campos donde buscar
- * @param value - Valor a buscar
- * @returns FilterQuery con operador $or
+ * @param fields - Array of fields to search in
+ * @param value - Value to search for
+ * @returns FilterQuery with $or operator
  *
- * Ejemplo: ['name', 'email'] con valor 'john' genera:
+ * Example: ['name', 'email'] with value 'john' generates:
  * { $or: [{ name: { $like: '%john%' }}, { email: { $like: '%john%' }}] }
  */
 function createMultiFieldTextFilter<T>(
@@ -164,9 +89,9 @@ function createMultiFieldTextFilter<T>(
 }
 
 /**
- * Crea definición de ordenamiento tipada.
+ * Creates a typed sort definition.
  *
- * Por qué: Centraliza la lógica de ordenamiento y previene errores de tipado.
+ * Why: Centralizes sorting logic and prevents typing errors.
  */
 function createOrder<T>(
   field: keyof T | string,
@@ -175,526 +100,207 @@ function createOrder<T>(
   return { [field]: direction } as OrderDefinition<T>;
 }
 
-// ============================================================================
-// HELPER FUNCTIONS - Utilidades
-// ============================================================================
+// ============================================================================ 
+// HELPER FUNCTIONS - Utilities
+// ============================================================================ 
 
 /**
- * Type guard para verificar si una entidad tiene método toDTO().
+ * Type guard to check if an entity has a toDTO() method.
  *
- * Por qué: Permite transformar entidades a DTOs de forma segura,
- * evitando exponer propiedades internas (passwords, timestamps, etc.)
+ * Why: Allows transforming entities to DTOs safely,
+ * avoiding exposing internal properties (passwords, timestamps, etc.)
  */
 function hasToDTO(obj: any): obj is { toDTO: () => any } {
   return typeof obj?.toDTO === 'function';
 }
 
-/**
- * Extrae el path de populate desde campos (soporta dot notation y arrays).
- *
- * @param fields - Campo único con dot notation o array de campos
- * @returns Array de relaciones a popular
- *
- * @example "user.name" → ["user"]
- * @example ["user.name", "address.city"] → ["user", "address"]
- *
- * Por qué: MikroORM necesita cargar relaciones explícitamente.
- * Sin populate, las búsquedas en relaciones fallan.
- */
-function extractPopulatePaths<T>(
-  fields: string | string[]
-): Populate<T, string> | undefined {
-  const fieldsArray = Array.isArray(fields) ? fields : [fields];
-  const populatePaths = new Set<string>();
-
-  for (const field of fieldsArray) {
-    if (field.includes('.')) {
-      populatePaths.add(field.split('.')[0]);
-    }
-  }
-
-  if (populatePaths.size === 0) return undefined;
-  return Array.from(populatePaths) as unknown as Populate<T, string>;
-}
 
 /**
- * Combina arrays de populate eliminando duplicados.
+ * Search for entities with pagination and complex filters.
  *
- * @param populateArrays - Arrays de populate a combinar
- * @returns Array único de populate
+ * Features:
+ * - Pagination with validation (page, limit)
+ * - Optional text search with sanitization (q)
+ * - Dynamic filters from query params
+ * - Support for numeric range (min/max)
+ * - Customizable sorting
  *
- * Por qué: Al combinar populate de diferentes fuentes (auto-detectado + manual),
- * evitamos duplicados que pueden causar errores.
- */
-function mergePopulate<T>(
-  ...populateArrays: (Populate<T, string> | undefined)[]
-): Populate<T, string> | undefined {
-  const merged = new Set<string>();
-
-  for (const populate of populateArrays) {
-    if (populate) {
-      const arr = Array.isArray(populate) ? populate : [populate];
-      arr.forEach(item => merged.add(item as string));
-    }
-  }
-
-  if (merged.size === 0) return undefined;
-  return Array.from(merged) as unknown as Populate<T, string>;
-}
-
-// ============================================================================
-// EXPORTED SEARCH FUNCTIONS
-// ============================================================================
-
-/**
- * Búsqueda de entidades por fecha.
+ * Standard query params:
+ * - page: page number (default: 1, min: 1)
+ * - limit: items per page (default: 10, min: 1, max: 100)
+ * - q: search text (optional, min 2 chars)
  *
- * Casos de uso:
- * - exact: Registros del día específico
- * - before: Registros hasta esa fecha (inclusive)
- * - after: Registros desde esa fecha (inclusive)
- * - between: Registros en un rango de fechas (ambas inclusive)
- *
- * Query params esperados:
- * - date: ISO 8601 string (ej: "2025-01-15") - Fecha inicial
- * - type: "exact" | "before" | "after" | "between"
- * - endDate: ISO 8601 string (solo requerido si type es "between")
- *
- * @param req - Request de Express
- * @param res - Response de Express
- * @param entity - Entidad de MikroORM
- * @param dateField - Campo de fecha a filtrar
- * @param options - Opciones de búsqueda
- */
-export async function searchEntityByDate<T extends { toDTO?: () => any }>(
-  req: Request,
-  res: Response,
-  entity: EntityName<T>,
-  dateField: keyof T,
-  options: {
-    entityName: string;
-    em: EntityManager;
-    additionalFilters?: FilterQuery<T>;
-    populate?: Populate<T, string>;
-  }
-) {
-  try {
-    const { date, type, endDate } = req.query as {
-      date?: string;
-      type?: DateSearchType;
-      endDate?: string;
-    };
-
-    // Validación de parámetros requeridos
-    if (!date || !type) {
-      return ResponseUtil.validationError(res, "Validation error", [
-        {
-          field: "date",
-          message: '"date" and "type" query params are required',
-        },
-      ]);
-    }
-
-    // Validación y parseo de fecha inicial usando zona horaria local
-    const parsedDate = parseLocalDate(date);
-    if (isNaN(parsedDate.getTime())) {
-      return ResponseUtil.validationError(res, "Validation error", [
-        {
-          field: "date",
-          message: '"date" must be a valid ISO 8601 date (YYYY-MM-DD)',
-        },
-      ]);
-    }
-
-    // Validación de tipo de búsqueda
-    const validTypes: DateSearchType[] = ["exact", "before", "after", "between"];
-    if (!validTypes.includes(type)) {
-      return ResponseUtil.validationError(res, "Validation error", [
-        {
-          field: "type",
-          message: '"type" must be "exact", "before", "after", or "between"',
-        },
-      ]);
-    }
-
-    // Validación de endDate para tipo "between"
-    let parsedEndDate: Date | undefined;
-    if (type === "between") {
-      if (!endDate) {
-        return ResponseUtil.validationError(res, "Validation error", [
-          {
-            field: "endDate",
-            message: '"endDate" is required when type is "between"',
-          },
-        ]);
-      }
-      parsedEndDate = parseLocalDate(endDate);
-      if (isNaN(parsedEndDate.getTime())) {
-        return ResponseUtil.validationError(res, "Validation error", [
-          {
-            field: "endDate",
-            message: '"endDate" must be a valid ISO 8601 date (YYYY-MM-DD)',
-          },
-        ]);
-      }
-      if (parsedEndDate < parsedDate) {
-        return ResponseUtil.validationError(res, "Validation error", [
-          {
-            field: "endDate",
-            message: '"endDate" must be greater than or equal to "date"',
-          },
-        ]);
-      }
-    }
-
-    // Construir filtro de fecha
-    const dateFilter = createDateFilter(dateField, parsedDate, type, parsedEndDate);
-
-    // Combinar con filtros adicionales
-    const where: FilterQuery<T> = {
-      ...options.additionalFilters,
-      ...dateFilter,
-    };
-
-    // Ejecutar búsqueda
-    const results = await options.em.find(entity, where, {
-      populate: options.populate,
-    });
-
-    // Construir mensaje apropiado
-    let dateRangeMessage: string;
-    if (type === "between" && parsedEndDate) {
-      dateRangeMessage = `between ${parsedDate.toISOString().split('T')[0]} and ${parsedEndDate.toISOString().split('T')[0]}`;
-    } else {
-      dateRangeMessage = `for ${type} ${parsedDate.toISOString().split('T')[0]}`;
-    }
-
-    const message = ResponseUtil.generateListMessage(
-      results.length,
-      options.entityName,
-      dateRangeMessage
-    );
-
-    // Transformación a DTO si existe
-    return ResponseUtil.successList(
-      res,
-      message,
-      results.map((item) => (hasToDTO(item) ? item.toDTO() : item))
-    );
-  } catch (err) {
-    return ResponseUtil.internalError(
-      res,
-      `Error searching ${options.entityName} by date`,
-      err
-    );
-  }
-}
-
-/**
- * Búsqueda de entidades por campos booleanos.
- *
- * Query param esperado:
- * - q: "true" | "false" (string, no boolean)
- *
- * Por qué validar como string: Express convierte query params a strings.
- *
- * @param req - Request de Express
- * @param res - Response de Express
- * @param entity - Entidad de MikroORM
- * @param searchField - Campo booleano a filtrar
- * @param options - Opciones de búsqueda
- */
-export async function searchEntityByBoolean<T extends { toDTO?: () => any }>(
-  req: Request,
-  res: Response,
-  entity: EntityName<T>,
-  searchField: keyof T,
-  options: {
-    entityName: string;
-    em: EntityManager;
-    additionalFilters?: FilterQuery<T>;
-    populate?: Populate<T, string>;
-  }
-) {
-  try {
-    const { q } = req.query as { q?: string };
-
-    if (q !== 'true' && q !== 'false') {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'q',
-          message: 'The query parameter "q" must be "true" or "false".'
-        },
-      ]);
-    }
-
-    const value = q === 'true';
-
-    // Construir filtro booleano
-    const booleanFilter = { [searchField]: value } as FilterQuery<T>;
-
-    // Combinar con filtros adicionales
-    const where: FilterQuery<T> = {
-      ...options.additionalFilters,
-      ...booleanFilter,
-    };
-
-    // Ejecutar búsqueda
-    const results = await options.em.find(entity, where, {
-      populate: options.populate,
-    });
-
-    const message = ResponseUtil.generateListMessage(
-      results.length,
-      options.entityName,
-      `with ${String(searchField)} = ${q}`
-    );
-
-    return ResponseUtil.successList(
-      res,
-      message,
-      results.map((item) => (hasToDTO(item) ? item.toDTO() : item))
-    );
-  } catch (err) {
-    return ResponseUtil.internalError(
-      res,
-      `Error searching for ${options.entityName} by boolean`,
-      err
-    );
-  }
-}
-
-/**
- * Búsqueda de entidades por rango numérico.
- *
- * Query params esperados:
- * - min: number (opcional) - Valor mínimo (inclusive)
- * - max: number (opcional) - Valor máximo (inclusive)
- *
- * Al menos uno de los dos parámetros debe ser proporcionado.
- *
- * @param req - Request de Express
- * @param res - Response de Express
- * @param entity - Entidad de MikroORM
- * @param numericField - Campo numérico a filtrar
- * @param options - Opciones de búsqueda
- */
-export async function searchEntityByRange<T extends { toDTO?: () => any }>(
-  req: Request,
-  res: Response,
-  entity: EntityName<T>,
-  numericField: keyof T,
-  options: {
-    entityName: string;
-    em: EntityManager;
-    additionalFilters?: FilterQuery<T>;
-    populate?: Populate<T, string>;
-    orderBy?: OrderDefinition<T>;
-  }
-) {
-  try {
-    const { min, max } = req.query as { min?: string; max?: string };
-
-    // Validación: al menos uno debe estar presente
-    if (!min && !max) {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'range',
-          message: 'At least one of "min" or "max" query parameters is required.'
-        },
-      ]);
-    }
-
-    // Parsear valores
-    const minValue = min ? parseFloat(min) : undefined;
-    const maxValue = max ? parseFloat(max) : undefined;
-
-    // Validar que sean números válidos
-    if (minValue !== undefined && isNaN(minValue)) {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'min',
-          message: '"min" must be a valid number.'
-        },
-      ]);
-    }
-
-    if (maxValue !== undefined && isNaN(maxValue)) {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'max',
-          message: '"max" must be a valid number.'
-        },
-      ]);
-    }
-
-    // Validar que min <= max si ambos están presentes
-    if (minValue !== undefined && maxValue !== undefined && minValue > maxValue) {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'range',
-          message: '"min" must be less than or equal to "max".'
-        },
-      ]);
-    }
-
-    // Construir filtro de rango
-    let rangeFilter: FilterQuery<T> = {};
-    if (minValue !== undefined && maxValue !== undefined) {
-      rangeFilter = { [numericField]: { $gte: minValue, $lte: maxValue } } as FilterQuery<T>;
-    } else if (minValue !== undefined) {
-      rangeFilter = { [numericField]: { $gte: minValue } } as FilterQuery<T>;
-    } else if (maxValue !== undefined) {
-      rangeFilter = { [numericField]: { $lte: maxValue } } as FilterQuery<T>;
-    }
-
-    // Combinar con filtros adicionales
-    const where: FilterQuery<T> = {
-      ...options.additionalFilters,
-      ...rangeFilter,
-    };
-
-    // Determinar ordenamiento
-    const orderBy = options.orderBy ?? createOrder<T>(numericField, 'asc');
-
-    // Ejecutar búsqueda
-    const results = await options.em.find(entity, where, {
-      orderBy,
-      ...(options.populate && { populate: options.populate }),
-    });
-
-    // Construir mensaje apropiado
-    let rangeMessage: string;
-    if (minValue !== undefined && maxValue !== undefined) {
-      rangeMessage = `with ${String(numericField)} between ${minValue} and ${maxValue}`;
-    } else if (minValue !== undefined) {
-      rangeMessage = `with ${String(numericField)} >= ${minValue}`;
-    } else {
-      rangeMessage = `with ${String(numericField)} <= ${maxValue}`;
-    }
-
-    const message = ResponseUtil.generateListMessage(
-      results.length,
-      options.entityName,
-      rangeMessage
-    );
-
-    return ResponseUtil.successList(
-      res,
-      message,
-      results.map((item) => (hasToDTO(item) ? item.toDTO() : item))
-    );
-  } catch (err) {
-    return ResponseUtil.internalError(
-      res,
-      `Error searching for ${options.entityName} by range`,
-      err
-    );
-  }
-}
-
-/**
- * Búsqueda genérica de entidades por texto.
- *
- * Características:
- * - Búsqueda case-insensitive con wildcards (LIKE %query%)
- * - Soporta búsqueda en un campo único o múltiples campos (con $or)
- * - Soporta dot notation para relaciones (ej: "user.name")
- * - Auto-populate de relaciones necesarias
- * - Filtros adicionales combinables con AND
- *
- * Query param esperado:
- * - q: string (mínimo 2 caracteres)
- *
- * Por qué mínimo 2 caracteres: Evita queries extremadamente amplias
- * que degradan performance en tablas grandes.
- *
- * @param req - Request de Express
- * @param res - Response de Express
- * @param entity - Entidad de MikroORM
- * @param searchFields - Campo único o array de campos donde buscar
- * @param options - Opciones de búsqueda
+ * @param req - Express Request
+ * @param res - Express Response
+ * @param entity - MikroORM Entity
+ * @param options - Search options
  *
  * @example
- * // Búsqueda simple en un campo
- * searchEntity(req, res, Client, 'name', { entityName: 'client', em })
- *
- * @example
- * // Búsqueda en múltiples campos
- * searchEntity(req, res, Sale, ['client.name', 'distributor.name'], {
- *   entityName: 'sale',
+ * // Search with dynamic and text filters
+ * await searchEntityWithPagination(req, res, Bribe, {
+ *   entityName: 'bribe',
  *   em,
- *   populate: ['client', 'distributor']
+ *   searchFields: 'authority.name', // Field for text search
+ *   buildFilters: (query) => {
+ *     const filters: any = {};
+ *     if (query.paid) filters.paid = query.paid === 'true';
+ *     return filters;
+ *   },
+ *   populate: ['authority', 'sale'],
+ *   orderBy: { creationDate: 'DESC' }
  * })
  */
-export async function searchEntity<T extends { toDTO?: () => any }>(
+export async function searchEntityWithPagination<T extends { toDTO?: () => any }>(
   req: Request,
   res: Response,
   entity: EntityName<T>,
-  searchFields: string | string[],
   options: {
     entityName: string;
     em: EntityManager;
+    searchFields?: string | string[]; // Fields for text search
+    buildFilters: (query: any) => FilterQuery<T>;
     populate?: Populate<T, string>;
-    additionalFilters?: FilterQuery<T>;
     orderBy?: OrderDefinition<T>;
+    defaultLimit?: number;
+    maxLimit?: number;
   }
 ) {
   try {
-    const { q } = req.query as { q?: string };
+    // ──────────────────────────────────────────────────────────────────────
+    // Validate and parse pagination
+    // ──────────────────────────────────────────────────────────────────────
+    const { page = '1', limit = String(options.defaultLimit ?? 10), q } = req.query;
 
-    // Validación de query param
-    if (!q || q.trim().length < 2) {
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+    const maxLimit = options.maxLimit ?? 100;
+
+    if (isNaN(pageNum) || pageNum < 1) {
       return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'q',
-          message: 'The query parameter "q" is required and must be at least 2 characters long.'
-        },
+        { field: 'page', message: 'Page must be a positive number' },
       ]);
     }
 
-    const trimmedQuery = q.trim();
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > maxLimit) {
+      return ResponseUtil.validationError(res, 'Validation error', [
+        { field: 'limit', message: `Limit must be between 1 and ${maxLimit}` },
+      ]);
+    }
 
-    // Crear filtro de búsqueda (simple o múltiple)
-    const searchFilter = Array.isArray(searchFields)
-      ? createMultiFieldTextFilter<T>(searchFields, trimmedQuery)
-      : createTextFilter<T>(searchFields, trimmedQuery);
+    // ──────────────────────────────────────────────────────────────────────
+    // Validate text search (if applicable)
+    // ──────────────────────────────────────────────────────────────────────
+    if (q !== undefined && typeof q === 'string') {
+      if (q.trim().length < 2) {
+        return ResponseUtil.validationError(res, 'Validation error', [
+          { field: 'q', message: 'Search query must be at least 2 characters long' },
+        ]);
+      }
+    }
 
-    // Combinar con filtros adicionales (AND implícito)
-    const where: FilterQuery<T> = {
-      ...options.additionalFilters,
-      ...searchFilter,
-    };
+    // ──────────────────────────────────────────────────────────────────────
+    // Build filters
+    // ──────────────────────────────────────────────────────────────────────
+    let filters = options.buildFilters(req.query);
 
-    // Determinar populate: prioriza el manual, sino usa auto-detectado
-    const autoPopulate = extractPopulatePaths<T>(searchFields);
-    const populate = options.populate ?? autoPopulate;
+    // Add text search filter if it exists
+    if (q && typeof q === 'string' && q.trim().length >= 2 && options.searchFields) {
+      const trimmedQuery = q.trim();
+      const searchFilter = Array.isArray(options.searchFields)
+        ? createMultiFieldTextFilter<T>(options.searchFields, trimmedQuery)
+        : createTextFilter<T>(options.searchFields, trimmedQuery);
 
-    // Determinar ordenamiento
-    const orderBy = options.orderBy ?? createOrder<T>('id', 'asc');
+      filters = {
+        ...filters,
+        ...searchFilter,
+      };
+    }
 
-    // Ejecutar búsqueda
-    const results = await options.em.find(entity, where, {
-      orderBy,
-      ...(populate && { populate }),
+    // ──────────────────────────────────────────────────────────────────────
+    // Execute search with pagination
+    // ──────────────────────────────────────────────────────────────────────
+    const [results, total] = await options.em.findAndCount(entity, filters, {
+      populate: options.populate,
+      orderBy: options.orderBy ?? createOrder<T>('id', 'asc'),
+      limit: limitNum,
+      offset: (pageNum - 1) * limitNum,
     });
 
-    const message = ResponseUtil.generateListMessage(
-      results.length,
-      options.entityName,
-      `that match "${trimmedQuery}"`
-    );
+    // ──────────────────────────────────────────────────────────────────────
+    // Prepare response
+    // ──────────────────────────────────────────────────────────────────────
+    const searchInfo = q && typeof q === 'string' ? ` matching "${q}"` : '';
+    const message = total === 0
+      ? `No ${options.entityName}s found${searchInfo}`
+      : `Found ${total} ${options.entityName}${total === 1 ? '' : 's'}${searchInfo}`;
 
     return ResponseUtil.successList(
       res,
       message,
-      results.map((item) => (hasToDTO(item) ? item.toDTO() : item))
+      results.map((item) => (hasToDTO(item) ? item.toDTO() : item)),
+      {
+        page: pageNum,
+        limit: limitNum,
+        total,
+      }
     );
   } catch (err) {
     return ResponseUtil.internalError(
       res,
-      `Error searching for ${options.entityName}`,
+      `Error searching for ${options.entityName}s`,
       err
     );
   }
+}
+
+/**
+ * Helper to validate and parse numeric range filters.
+ *
+ * @param min - Minimum value as a string
+ * @param max - Maximum value as a string
+ * @param fieldName - Field name for error messages
+ * @returns Object with parsed values and validation errors
+ */
+export function validateRangeFilter(
+  min?: string,
+  max?: string,
+  fieldName: string = 'value'
+): {
+  minValue?: number;
+  maxValue?: number;
+  errors: Array<{ field: string; message: string }>;
+} {
+  const errors: Array<{ field: string; message: string }> = [];
+  let minValue: number | undefined;
+  let maxValue: number | undefined;
+
+  if (min) {
+    minValue = parseFloat(min);
+    if (isNaN(minValue) || minValue < 0) {
+      errors.push({
+        field: `min${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`,
+        message: `Minimum ${fieldName} must be a positive number`,
+      });
+    }
+  }
+
+  if (max) {
+    maxValue = parseFloat(max);
+    if (isNaN(maxValue) || maxValue < 0) {
+      errors.push({
+        field: `max${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`,
+        message: `Maximum ${fieldName} must be a positive number`,
+      });
+    }
+  }
+
+  // Validate range if both are present
+  if (minValue !== undefined && maxValue !== undefined && minValue > maxValue) {
+    errors.push({
+      field: `min${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`,
+      message: `Minimum ${fieldName} cannot be greater than maximum ${fieldName}`,
+    });
+  }
+
+  return { minValue, maxValue, errors };
 }

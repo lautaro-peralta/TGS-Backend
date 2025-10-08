@@ -11,7 +11,7 @@ import {
   updateClientSchema,
   createClientSchema,
 } from './client.schema.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 
 // ============================================================================
 // ROUTER - Client

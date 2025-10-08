@@ -21,7 +21,7 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
  * JWT secret key for token signing and verification
  * Should be set via environment variable in production
  */
-const JWT_SECRET = process.env.JWT_SECRET || 'secreto-ultra-seguro';
+const JWT_SECRET = process.env.JWT_SECRET || 'ultra-secure-secret';
 
 // ============================================================================
 // AUTHENTICATION CONTROLLER

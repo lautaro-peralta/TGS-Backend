@@ -18,7 +18,9 @@ import { Distributor } from '../distributor/distributor.entity.js';
 import { Zone } from '../zone/zone.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntityByDate, searchEntity  } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchSalesSchema } from './sale.schema.js';
 
 // ============================================================================
 // CONTROLLER - Sale
@@ -30,206 +32,84 @@ import { searchEntityByDate, searchEntity  } from '../../shared/utils/search.uti
  */
 export class SaleController {
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Search sales with multiple criteria.
    *
    * Query params:
-   * - q: string (min 2 chars) - Búsqueda de texto (requerido si no viene date)
-   * - by: 'client' | 'distributor' | 'zone' (required si viene q) - Dónde buscar
-   * - date: ISO 8601 date - Búsqueda por fecha
-   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
-   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
-   *
-   * Nota: Si viene 'date', se ignoran los parámetros 'q' y 'by'
+   * - q: string (min 2 chars) - Search by client, distributor, or zone name
+   * - by: 'client' | 'distributor' | 'zone' - Field to search (required if q is provided)
+   * - date: ISO 8601 date - Filter by sale date
+   * - type: 'exact' | 'before' | 'after' | 'between' - Date search type (required if date is provided)
+   * - endDate: ISO 8601 date - End date (only for type='between')
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    */
   async searchSales(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    const { date, by } = req.query as {
-      date?: string;
-      by?: 'client' | 'distributor' | 'zone';
-    };
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchSalesSchema);
+    if (!validated) return; // Validation failed, response already sent
 
-    // Si viene 'date', delegar a búsqueda por fecha
-    if (date) {
-      return searchEntityByDate(req, res, Sale, 'saleDate', {
-        entityName: 'sale',
-        em,
-        populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
-      });
-    }
+    return searchEntityWithPagination(req, res, Sale, {
+      entityName: 'sale',
+      em,
+      searchFields: (() => {
+        const { by } = validated;
+        switch (by) {
+          case 'client': return 'client.name';
+          case 'distributor': return 'distributor.name';
+          case 'zone': return 'distributor.zone.name';
+          default: return 'client.name';
+        }
+      })(),
+      buildFilters: () => {
+        const { date, type, endDate } = validated;
+        const filters: any = {};
 
-    // Validar que venga el parámetro 'by' para búsqueda por texto
-    if (!by) {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'by',
-          message: 'The query parameter "by" is required. Valid values: "client", "distributor", "zone"',
-        },
-      ]);
-    }
+        // Filter by date (already validated by Zod)
+        if (date && type) {
+          const parsedDate = new Date(date);
+          const startOfDay = new Date(parsedDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(parsedDate);
+          endOfDay.setHours(23, 59, 59, 999);
 
-    // Validar que 'by' sea un valor válido
-    const validByValues = ['client', 'distributor', 'zone'];
-    if (!validByValues.includes(by)) {
-      return ResponseUtil.validationError(res, 'Validation error', [
-        {
-          field: 'by',
-          message: 'The query parameter "by" must be one of: "client", "distributor", "zone"',
-        },
-      ]);
-    }
+          switch (type) {
+            case 'exact':
+              filters.saleDate = { $gte: startOfDay, $lte: endOfDay };
+              break;
+            case 'before':
+              filters.saleDate = { $lte: endOfDay };
+              break;
+            case 'after':
+              filters.saleDate = { $gte: startOfDay };
+              break;
+            case 'between':
+              if (endDate) {
+                const parsedEndDate = new Date(endDate);
+                const endOfEndDate = new Date(parsedEndDate);
+                endOfEndDate.setHours(23, 59, 59, 999);
+                filters.saleDate = { $gte: startOfDay, $lte: endOfEndDate };
+              }
+              break;
+          }
+        }
 
-    // Para búsqueda por zona, necesitamos un enfoque diferente
-    if (by === 'zone') {
-      const { q } = req.query as { q?: string };
-
-      if (!q || q.trim().length < 2) {
-        return ResponseUtil.validationError(res, 'Validation error', [
-          {
-            field: 'q',
-            message: 'The query parameter "q" is required and must be at least 2 characters long.'
-          },
-        ]);
-      }
-
-      const trimmedQuery = q.trim();
-      const sanitizedValue = trimmedQuery.replace(/[%_]/g, '\\$&');
-
-      // Buscar zonas que coincidan
-      const zones = await em.find(Zone, {
-        name: { $like: `%${sanitizedValue}%` }
-      });
-
-      if (zones.length === 0) {
-        const message = ResponseUtil.generateListMessage(0, 'sale', `that match "${trimmedQuery}"`);
-        return ResponseUtil.successList(res, message, []);
-      }
-
-      // Buscar ventas de distributors en esas zonas
-      const results = await em.find(Sale, {
-        distributor: { zone: { $in: zones.map((z: any) => z.id) } }
-      }, {
-        populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
-        orderBy: { saleDate: 'desc' } as any,
-      });
-
-      const message = ResponseUtil.generateListMessage(
-        results.length,
-        'sale',
-        `that match "${trimmedQuery}"`
-      );
-
-      return ResponseUtil.successList(
-        res,
-        message,
-        results.map((item) => item.toDTO())
-      );
-    }
-
-    // Para client y distributor, usar búsqueda normal
-    let searchField: string;
-
-    switch (by) {
-      case 'client':
-        searchField = 'client.name';
-        break;
-      case 'distributor':
-        searchField = 'distributor.name';
-        break;
-    }
-
-    // Búsqueda de texto
-    return searchEntity(
-      req,
-      res,
-      Sale,
-      searchField,
-      {
-        entityName: 'sale',
-        em,
-        populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
-        orderBy: { saleDate: 'desc' } as any,
-      }
-    );
-  }
-  
-  /**
-   * Retrieves all sales.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getAllSales(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all sales with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const sales = await em.find(
-        Sale,
-        {},
-        { populate: ['client', 'details', 'authority'] }
-      );
-      const salesDTO = sales.map((s) => s.toDTO());
-      const message = ResponseUtil.generateListMessage(salesDTO.length, 'sale');
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, salesDTO);
-    } catch (err) {
-      console.error('Error getting sales:', err);
-      return ResponseUtil.internalError(res, 'Error getting sales', err);
-    }
+        return filters;
+      },
+      populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
+      orderBy: { saleDate: 'desc' } as any,
+    });
   }
 
-  /**
-   * Retrieves a single sale by ID.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getOneSaleById(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract sale ID
-      // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch sale by ID with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const sale = await em.findOne(
-        Sale,
-        { id },
-        { populate: ['client', 'details.product'] }
-      );
-      if (!sale) {
-        return ResponseUtil.notFound(res, 'Sale', id);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.success(res, 'Sale found successfully', sale.toDTO());
-    } catch (err) {
-      console.error('Error searching for sale:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error searching for the sale',
-        err
-      );
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Creates a new sale.
@@ -383,6 +263,87 @@ export class SaleController {
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all sales with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getAllSales(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    return searchEntityWithPagination(req, res, Sale, {
+      entityName: 'sale',
+      em,
+      buildFilters: () => ({}),
+      populate: ['client', 'details', 'authority'] as any,
+      orderBy: { saleDate: 'DESC' } as any,
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves a single sale by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getOneSaleById(req: Request, res: Response) {
+    const em = orm.em.fork();
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract sale ID
+      // ──────────────────────────────────────────────────────────────────────
+      const id = Number(req.params.id.trim());
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
+        ]);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch sale by ID with related data
+      // ──────────────────────────────────────────────────────────────────────
+      const sale = await em.findOne(
+        Sale,
+        { id },
+        { populate: ['client', 'details.product'] }
+      );
+      if (!sale) {
+        return ResponseUtil.notFound(res, 'Sale', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(res, 'Sale found successfully', sale.toDTO());
+    } catch (err) {
+      console.error('Error searching for sale:', err);
+      return ResponseUtil.internalError(
+        res,
+        'Error searching for the sale',
+        err
+      );
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Updates a sale (reassign distributor and/or authority).
    *
@@ -421,7 +382,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       const { distributorDni, authorityDni } = req.body;
 
-      // Validar que al menos uno de los dos venga
+      // Validate that at least one of the two is present
       if (!distributorDni && authorityDni === undefined) {
         return ResponseUtil.validationError(res, 'Validation error', [
           {
@@ -450,7 +411,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       if (authorityDni !== undefined) {
         if (authorityDni === null) {
-          // Permitir remover la autoridad
+          // Allow removing the authority
           sale.authority = undefined;
           updates.push('authority removed');
         } else {
@@ -478,6 +439,10 @@ export class SaleController {
       return ResponseUtil.internalError(res, 'Error updating sale', err);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a sale by ID.

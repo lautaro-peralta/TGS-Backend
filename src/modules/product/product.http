@@ -1,52 +1,52 @@
-### Obtener todos los productos
+### Get all products
 GET http://localhost:3000/api/products
 
 # ============================================================================
-# BÚSQUEDAS
+# SEARCHS
 # ============================================================================
 
-### Búsqueda por descripción
+### Search by description
 GET http://localhost:3000/api/products/search?q=Fernet
 
-### Búsqueda por descripción - mínimo 2 caracteres
+### Search by description - minimum 2 characters
 GET http://localhost:3000/api/products/search?q=Ha
 
-### Búsqueda productos legales (isIllegal=false)
+### Search legal products (isIllegal=false)
 GET http://localhost:3000/api/products/search?by=legal&q=true
 
-### Búsqueda productos ilegales (isIllegal=true)
+### Search illegal products (isIllegal=true)
 GET http://localhost:3000/api/products/search?by=legal&q=false
 
-### Búsqueda por precio mínimo
+### Search by minimum price
 GET http://localhost:3000/api/products/search?min=500
 
-### Búsqueda por precio máximo
+### Search by maximum price
 GET http://localhost:3000/api/products/search?max=1000
 
-### Búsqueda por rango de precio (entre 500 y 1000)
+### Search by price range (between 500 and 1000)
 GET http://localhost:3000/api/products/search?min=500&max=1000
 
-### Búsqueda por precio exacto (usando min y max iguales)
+### Search by exact price (using equal min and max)
 GET http://localhost:3000/api/products/search?min=800&max=800
 
 # ============================================================================
 # CRUD
 # ============================================================================
 
-### Obtener un producto por ID
+### Get a product by ID
 GET http://localhost:3000/api/products/1
-### Crear nuevo producto
+### Create new product
 POST http://localhost:3000/api/products
 Content-Type: application/json
 
 {
-  "description": "Hamburguesa con queso",
+  "description": "Cheeseburger",
   "price": 1000,
   "stock": 10,
   "isIllegal": true
 }
 
-### Modificar producto (reemplazo completo)
+### Modify product (full replacement)
 PATCH http://localhost:3000/api/products/1
 Content-Type: application/json
 
@@ -57,14 +57,13 @@ Content-Type: application/json
   "isIllegal": false
 }
 
-### Modificar producto (PATCH - actualización parcial)
-PATCH http://localhost:3000/api/products/3
+### Modify product (PATCH - partial update)
+PATCH http://localhost:3000/api/products/4
 Content-Type: application/json
 
 {
   "stock": 120
 }
 
-### Borrar un producto
-DELETE http://localhost:3000/api/products/3
-
+### Delete a product
+DELETE http://localhost:3000/api/products/4

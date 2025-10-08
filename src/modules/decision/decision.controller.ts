@@ -10,7 +10,9 @@ import { orm } from '../../shared/db/orm.js';
 import { StrategicDecision } from './decision.entity.js';
 import { Topic } from '../topic/topic.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity, searchEntityByDate } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchDecisionsSchema } from './decision.schema.js';
 
 
 // ============================================================================
@@ -22,134 +24,78 @@ import { searchEntity, searchEntityByDate } from '../../shared/utils/search.util
  * @class DecisionController
  */
 export class DecisionController {
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Search strategic decisions with multiple criteria.
    *
    * Query params:
-   * - q: string (min 2 chars) - Búsqueda de texto por descripción o topic
-   * - by: 'description' | 'topic' (optional, default: 'description') - Tipo de búsqueda de texto
-   * - date: ISO 8601 date - Búsqueda por fecha (startDate o endDate)
-   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
-   * - dateField: 'startDate' | 'endDate' (optional, default: 'startDate') - Campo de fecha a filtrar
-   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
-   *
-   * Nota: Si viene 'date', se ignoran los parámetros 'q' y 'by'
+   * - q: string (min 2 chars) - Search by description or topic
+   * - by: 'description' | 'topic' (optional, default: 'description') - Search field
+   * - date: ISO 8601 date - Filter by date (startDate or endDate)
+   * - type: 'exact' | 'before' | 'after' | 'between' - Date search type (required if date is provided)
+   * - dateField: 'startDate' | 'endDate' (optional, default: 'startDate') - Date field to filter
+   * - endDate: ISO 8601 date - End date (only for type='between')
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    */
   async searchDecisions(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    const { date, by, dateField } = req.query as {
-      date?: string;
-      by?: 'description' | 'topic';
-      dateField?: 'startDate' | 'endDate';
-    };
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchDecisionsSchema);
+    if (!validated) return; // Validation failed, response already sent
 
-    // Si viene 'date', delegar a búsqueda por fecha
-    if (date) {
-      const fieldToSearch = dateField === 'endDate' ? 'endDate' : 'startDate';
-      return searchEntityByDate(req, res, StrategicDecision, fieldToSearch, {
-        entityName: 'strategic decision',
-        em,
-        populate: ['topic'] as any,
-      });
-    }
-
-    // Búsqueda de texto: por descripción o por topic
-    const searchField = by === 'topic' ? 'topic.description' : 'description';
-
-    return searchEntity(req, res, StrategicDecision, searchField, {
+    return searchEntityWithPagination(req, res, StrategicDecision, {
       entityName: 'strategic decision',
       em,
+      searchFields: (validated.by === 'topic') ? 'topic.description' : 'description',
+      buildFilters: () => {
+        const { date, type, endDate } = validated;
+        const filters: any = {};
+
+        // Filter by date (already validated by Zod)
+        if (date && type) {
+          const parsedDate = new Date(date);
+          const startOfDay = new Date(parsedDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(parsedDate);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          switch (type) {
+            case 'exact':
+              filters.startDate = { $gte: startOfDay, $lte: endOfDay };
+              break;
+            case 'before':
+              filters.startDate = { $lte: endOfDay };
+              break;
+            case 'after':
+              filters.startDate = { $gte: startOfDay };
+              break;
+            case 'between':
+              if (endDate) {
+                const parsedEndDate = new Date(endDate);
+                const endOfEndDate = new Date(parsedEndDate);
+                endOfEndDate.setHours(23, 59, 59, 999);
+                filters.startDate = { $gte: startOfDay, $lte: endOfEndDate };
+              }
+              break;
+          }
+        }
+
+        return filters;
+      },
       populate: ['topic'] as any,
+      orderBy: { startDate: 'DESC' } as any,
     });
   }
-  /**
-   * Retrieves all strategic decisions.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getAllDecisions(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all strategic decisions with related topic
-      // ──────────────────────────────────────────────────────────────────────
-      const decisions = await em.find(
-        StrategicDecision,
-        {},
-        { populate: ['topic'] }
-      );
-      const decisionsDTO = decisions.map((d) => d.toDTO());
-      const message = ResponseUtil.generateListMessage(
-        decisionsDTO.length,
-        'strategic decision'
-      );
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, decisionsDTO);
-    } catch (err) {
-      console.error('Error getting strategic decisions:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error getting strategic decisions',
-        err
-      );
-    }
-  }
-
-  /**
-   * Retrieves a single strategic decision by ID.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getOneDecisionById(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract decision ID
-      // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'Invalid ID', [
-          { field: 'id', message: 'The ID must be a valid number' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch strategic decision by ID with related topic
-      // ──────────────────────────────────────────────────────────────────────
-      const decision = await em.findOne(
-        StrategicDecision,
-        { id },
-        { populate: ['topic'] }
-      );
-      if (!decision) {
-        return ResponseUtil.notFound(res, 'Strategic decision', id);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.success(
-        res,
-        'Strategic decision found successfully',
-        decision.toDTO()
-      );
-    } catch (err) {
-      console.error('Error searching for strategic decision:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error searching for strategic decision',
-        err
-      );
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Creates a new strategic decision.
@@ -220,6 +166,91 @@ export class DecisionController {
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all strategic decisions with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getAllDecisions(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    return searchEntityWithPagination(req, res, StrategicDecision, {
+      entityName: 'strategic decision',
+      em,
+      buildFilters: () => ({}),
+      populate: ['topic'] as any,
+      orderBy: { startDate: 'DESC' } as any,
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves a single strategic decision by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getOneDecisionById(req: Request, res: Response) {
+    const em = orm.em.fork();
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract decision ID
+      // ──────────────────────────────────────────────────────────────────────
+      const id = Number(req.params.id.trim());
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
+        ]);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch strategic decision by ID with related topic
+      // ──────────────────────────────────────────────────────────────────────
+      const decision = await em.findOne(
+        StrategicDecision,
+        { id },
+        { populate: ['topic'] }
+      );
+      if (!decision) {
+        return ResponseUtil.notFound(res, 'Strategic decision', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Strategic decision found successfully',
+        decision.toDTO()
+      );
+    } catch (err) {
+      console.error('Error searching for strategic decision:', err);
+      return ResponseUtil.internalError(
+        res,
+        'Error searching for strategic decision',
+        err
+      );
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Updates an existing strategic decision.
    *
@@ -287,6 +318,10 @@ export class DecisionController {
       );
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a strategic decision by ID.
