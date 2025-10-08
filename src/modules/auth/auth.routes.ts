@@ -7,7 +7,7 @@ import { Router } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { AuthController } from './auth.controller.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import { loginSchema, registerSchema } from './auth.schema.js';
 
 // ============================================================================

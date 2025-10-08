@@ -10,7 +10,9 @@ import { orm } from '../../shared/db/orm.js';
 import { Zone } from './zone.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { Authority } from '../authority/authority.entity.js';
-import { searchEntity, searchEntityByBoolean } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchZonesSchema } from './zone.schema.js';
 
 // ============================================================================
 // CONTROLLER - Zone
@@ -21,94 +23,56 @@ import { searchEntity, searchEntityByBoolean } from '../../shared/utils/search.u
  * @class ZoneController
  */
 export class ZoneController {
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Search zones by name or by headquarters status.
    *
    * Query params:
-   * - q: string - Para búsqueda por nombre (min 2 chars) o por sede central ('true' | 'false')
-   * - by: 'name' | 'headquarters' (optional, default: 'name') - Tipo de búsqueda
+   * - q: string (min 2 chars) - Search by name or headquarters status ('true'/'false')
+   * - by: 'name' | 'headquarters' (optional, default: 'name') - Search type
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    */
   async searchZones(req: Request, res: Response) {
     const em = orm.em.fork();
-    const { by } = req.query as { by?: 'name' | 'headquarters' };
 
-    // Si viene 'by=headquarters', buscar por isHeadquarters
-    if (by === 'headquarters') {
-      return searchEntityByBoolean(req, res, Zone, 'isHeadquarters', {
-        entityName: 'zone',
-        em,
-      });
-    }
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchZonesSchema);
+    if (!validated) return; // Validation failed, response already sent
 
-    // Caso por defecto: búsqueda por nombre
-    return searchEntity(req, res, Zone, 'name', {
+    return searchEntityWithPagination(req, res, Zone, {
       entityName: 'zone',
       em,
+      searchFields: validated.by === 'headquarters' ? undefined : 'name',
+      buildFilters: () => {
+        const { by, q } = validated;
+        const filters: any = {};
+
+        // Filter by headquarters status
+        if (by === 'headquarters') {
+          if (q !== 'true' && q !== 'false') {
+            const error: any = new Error('Validation error');
+            error.validationErrors = [{
+              field: 'q',
+              message: 'Query parameter "q" must be "true" or "false" when searching by headquarters'
+            }];
+            throw error;
+          }
+          filters.isHeadquarters = q === 'true';
+        }
+
+        return filters;
+      },
+      orderBy: { name: 'ASC' } as any,
     });
   }
 
-  /**
-   * Retrieves all zones.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getAllZones(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all zones
-      // ──────────────────────────────────────────────────────────────────────
-      const zones = await em.find(Zone, {});
-      const message = ResponseUtil.generateListMessage(zones.length, 'zone');
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(res, message, zones);
-    } catch (err) {
-      return ResponseUtil.internalError(res, 'Error al obtener zonas', err);
-    }
-  }
-
-  /**
-   * Retrieves a single zone by ID.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getOneZoneById(req: Request, res: Response) {
-    const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate and extract zone ID
-      // ──────────────────────────────────────────────────────────────────────
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'ID inválido', [
-          { field: 'id', message: 'El ID debe ser un número válido' },
-        ]);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch zone by ID
-      // ──────────────────────────────────────────────────────────────────────
-      const zone = await em.findOne(Zone, { id });
-      if (!zone) {
-        return ResponseUtil.notFound(res, 'Zone', id);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.success(res, 'Zona encontrada exitosamente', zone);
-    } catch (err) {
-      return ResponseUtil.internalError(res, 'Error al buscar zona', err);
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Creates a new zone.
@@ -140,7 +104,7 @@ export class ZoneController {
       if (rows.length > 0) {
         return ResponseUtil.conflict(
           res,
-          'Ya existe otra zona con ese nombre (sin importar mayúsculas/minúsculas)'
+          'Another zone with that name already exists (case-insensitive)'
         );
       }
 
@@ -167,11 +131,82 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(res, 'Zona creada exitosamente', newZone.toDTO());
+      return ResponseUtil.created(res, 'Zone created successfully', newZone.toDTO());
     } catch (err: any) {
-      return ResponseUtil.internalError(res, 'Error al crear zona', err);
+      return ResponseUtil.internalError(res, 'Error creating zone', err);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all zones with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getAllZones(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    return searchEntityWithPagination(req, res, Zone, {
+      entityName: 'zone',
+      em,
+      buildFilters: () => ({}),
+      orderBy: { name: 'ASC' } as any,
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves a single zone by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getOneZoneById(req: Request, res: Response) {
+    const em = orm.em.fork();
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate and extract zone ID
+      // ──────────────────────────────────────────────────────────────────────
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
+        ]);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch zone by ID
+      // ──────────────────────────────────────────────────────────────────────
+      const zone = await em.findOne(Zone, { id });
+      if (!zone) {
+        return ResponseUtil.notFound(res, 'Zone', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(res, 'Zone found successfully', zone);
+    } catch (err) {
+      return ResponseUtil.internalError(res, 'Error finding zone', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Updates an existing zone.
@@ -189,8 +224,8 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'ID inválido', [
-          { field: 'id', message: 'El ID debe ser un número válido' },
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
         ]);
       }
 
@@ -212,21 +247,23 @@ export class ZoneController {
         if (!newName) {
           return ResponseUtil.validationError(
             res,
-            'Error de datos de entrada para actualizar zona',
-            [{ field: 'name', message: 'El nombre no puede estar vacío' }]
+            'Input data error for updating zone',
+            [{ field: 'name', message: 'The name cannot be empty' }]
           );
         }
 
         if (newName.toLowerCase() !== zone.name.toLowerCase()) {
-          const rows = await em.find(Zone, {
-            name: { $like: `%${newName.toLowerCase()}%` },
-            id: { $ne: id },
-          });
+          const rows = await em
+            .getConnection()
+            .execute(`SELECT id FROM zones WHERE LOWER(name) = ? AND id != ?`, [
+              newName.toLowerCase(),
+              id
+            ]);
 
           if (rows.length > 0) {
             return ResponseUtil.conflict(
               res,
-              'Ya existe otra zona con ese nombre (sin importar mayúsculas/minúsculas)'
+              'Another zone with that name already exists (case-insensitive)'
             );
           }
         }
@@ -234,7 +271,7 @@ export class ZoneController {
         zone.name = newName;
       }
 
-      if (input.isHeadquarters !== undefined) {
+      if (input.isHeadquarters !== undefined && input.isHeadquarters !== zone.isHeadquarters) {
         if (input.isHeadquarters === true) {
           const currentHQ = await em.findOne(Zone, {
             isHeadquarters: true,
@@ -256,7 +293,7 @@ export class ZoneController {
           if (otherHQs === 0) {
             return ResponseUtil.error(
               res,
-              'No se puede quitar la sede central porque quedaría el sistema sin ninguna. Debe existir al menos otra zona como sede central.',
+              'The headquarters cannot be removed because the system would be left without any. There must be at least one other zone as headquarters.',
               400
             );
           }
@@ -270,12 +307,16 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.updated(res, 'Zona actualizada correctamente', zone);
+      return ResponseUtil.updated(res, 'Zone updated successfully', zone);
     } catch (err) {
       console.error(err);
-      return ResponseUtil.internalError(res, 'Error al actualizar zona', err);
+      return ResponseUtil.internalError(res, 'Error updating zone', err);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a zone by ID.
@@ -292,8 +333,8 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return ResponseUtil.validationError(res, 'ID inválido', [
-          { field: 'id', message: 'El ID debe ser un número válido' },
+        return ResponseUtil.validationError(res, 'Invalid ID', [
+          { field: 'id', message: 'The ID must be a valid number' },
         ]);
       }
 
@@ -315,7 +356,7 @@ export class ZoneController {
         if (!anotherHQ) {
           return ResponseUtil.error(
             res,
-            'No se puede eliminar esta zona porque es la sede central actual. Primero debe marcar otra zona como sede central antes de eliminarla.',
+            'This zone cannot be deleted because it is the current headquarters. You must first mark another zone as headquarters before deleting it.',
             400
           );
         }
@@ -325,7 +366,7 @@ export class ZoneController {
       if (authorities.length > 0) {
         return ResponseUtil.error(
           res,
-          `No se puede eliminar la zona porque tiene ${authorities.length} autoridad(es) asociada(s).`,
+          `The zone cannot be deleted because it has ${authorities.length} associated authority(s).`,
           400
         );
       }
@@ -334,9 +375,9 @@ export class ZoneController {
       // Delete the zone
       // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(zone);
-      return ResponseUtil.deleted(res, 'Zona eliminada correctamente');
+      return ResponseUtil.deleted(res, 'Zone deleted successfully');
     } catch (err) {
-      return ResponseUtil.internalError(res, 'Error al eliminar zona', err);
+      return ResponseUtil.internalError(res, 'Error deleting zone', err);
     }
   }
 }

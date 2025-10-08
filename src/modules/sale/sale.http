@@ -1,46 +1,46 @@
-### Listar todas las ventas
+### List all sales
 GET http://localhost:3000/api/sales
 
-### Buscar venta por ID
+### Search sale by ID
 GET http://localhost:3000/api/sales/9
 
 ### ============================================================================
-### BÚSQUEDAS POR FECHA
+### SEARCH BY DATE
 ### ============================================================================
 
-### Búsqueda por fecha - exact (día específico)
-GET http://localhost:3000/api/sales/search?date=2025-10-06&type=exact
+### Search by date - exact (specific day)
+GET http://localhost:3000/api/sales/search?date=2025-10-07&type=exact
 
-### Búsqueda por fecha - after (desde esa fecha en adelante)
+### Search by date - after (from that date onwards)
 GET http://localhost:3000/api/sales/search?date=2025-05-05&type=after
 
-### Búsqueda por fecha - before (hasta esa fecha)
+### Search by date - before (until that date)
 GET http://localhost:3000/api/sales/search?date=2025-10-10&type=before
 
-### Búsqueda por fecha - between (rango entre dos fechas)
+### Search by date - between (range between two dates)
 GET http://localhost:3000/api/sales/search?date=2025-05-01&endDate=2025-10-31&type=between
 
 ### ============================================================================
-### BÚSQUEDAS POR TEXTO (parámetro 'by' es OBLIGATORIO)
+### TEXT SEARCH (parameter 'by' is REQUIRED)
 ### ============================================================================
 
-### Búsqueda por cliente
+### Search by client
 GET http://localhost:3000/api/sales/search?q=pedro&by=client
 
-### Búsqueda por distributor
+### Search by distributor
 GET http://localhost:3000/api/sales/search?q=delprato&by=distributor
 
-### Búsqueda por zona
+### Search by zone
 GET http://localhost:3000/api/sales/search?q=Centro&by=zone
 
-### ❌ ERROR: Búsqueda sin 'by' (no permitido)
+### ❌ ERROR: Search without 'by' (not allowed)
 GET http://localhost:3000/api/sales/search?q=juan
 
 ### ============================================================================
 ### CRUD
 ### ============================================================================
 
-### Crear venta (requiere distributorDni)
+### Create sale (requires distributorDni)
 POST http://localhost:3000/api/sales
 Content-Type: application/json
 
@@ -59,7 +59,7 @@ Content-Type: application/json
   ]
 }
 
-### Reasignar solo distributor
+### Reassign only distributor
 PATCH http://localhost:3000/api/sales/9
 Content-Type: application/json
 
@@ -67,7 +67,7 @@ Content-Type: application/json
   "distributorDni": "16254545"
 }
 
-### Reasignar solo authority
+### Reassign only authority
 PATCH http://localhost:3000/api/sales/9
 Content-Type: application/json
 
@@ -75,7 +75,7 @@ Content-Type: application/json
   "authorityDni": "10101015"
 }
 
-### Reasignar ambos (distributor y authority)
+### Reassign both (distributor and authority)
 PATCH http://localhost:3000/api/sales/9
 Content-Type: application/json
 
@@ -84,7 +84,7 @@ Content-Type: application/json
   "authorityDni": "20123456"
 }
 
-### Remover authority de una venta (dejar en null)
+### Remove authority from a sale (leave as null)
 PATCH http://localhost:3000/api/sales/9
 Content-Type: application/json
 
@@ -92,9 +92,9 @@ Content-Type: application/json
   "authorityDni": null
 }
 
-### Eliminar una venta por ID (solo si no tiene bribes asociados)
+### Delete a sale by ID (only if it has no associated bribes)
 DELETE http://localhost:3000/api/sales/1
 
-### ❌ Si intenta eliminar venta con bribes asociados
-### Respuesta: "Cannot delete sale #X because it has Y bribe(s) associated"
+### ❌ If you try to delete a sale with associated bribes
+### Response: "Cannot delete sale #X because it has Y bribe(s) associated"
 DELETE http://localhost:3000/api/sales/9

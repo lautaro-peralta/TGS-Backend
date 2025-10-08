@@ -8,7 +8,7 @@ import { Router } from 'express';
 // ============================================================================
 import { TopicController } from './topic.controller.js';
 import { updateTopicSchema, createTopicSchema } from './topic.schema.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 
 // ============================================================================
 // ROUTER - Topic

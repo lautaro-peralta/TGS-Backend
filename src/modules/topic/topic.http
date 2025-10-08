@@ -1,28 +1,28 @@
 ### ============================================================================
-### LISTAR Y OBTENER
+### LIST AND GET
 ### ============================================================================
 
-### Listar todas las temáticas
+### List all topics
 GET http://localhost:3000/api/topics
 
-### Obtener una temática por ID
+### Get a topic by ID
 GET http://localhost:3000/api/topics/5
 
 ### ============================================================================
-### BÚSQUEDAS
+### SEARCHS
 ### ============================================================================
 
-### Buscar temática por descripción
+### Search topic by description
 GET http://localhost:3000/api/topics/search?q=Gastronomía
 
-### Buscar temática que contenga "Salud"
+### Search for a topic containing "Retenciones"
 GET http://localhost:3000/api/topics/search?q=Retenciones
 
 ### ============================================================================
 ### CRUD
 ### ============================================================================
 
-### Crear nueva temática
+### Create new topic
 POST http://localhost:3000/api/topics
 Content-Type: application/json
 
@@ -30,7 +30,7 @@ Content-Type: application/json
   "description": "Deportes"
 }
 
-### Crear otra temática
+### Create another topic
 POST http://localhost:3000/api/topics
 Content-Type: application/json
 
@@ -38,7 +38,7 @@ Content-Type: application/json
   "description": "Salud y Bienestar"
 }
 
-### Actualizar descripción de temática
+### Update topic description
 PATCH http://localhost:3000/api/topics/5
 Content-Type: application/json
 
@@ -46,9 +46,9 @@ Content-Type: application/json
   "description": "Gastronomía Premium"
 }
 
-### Eliminar una temática (solo si no tiene decisiones asociadas)
+### Delete a topic (only if it has no associated decisions)
 DELETE http://localhost:3000/api/topics/5
 
-### ❌ Si intenta eliminar temática con decisiones asociadas
-### Respuesta: "Cannot delete topic... because it has X strategic decision(s) associated"
+### ❌ If you try to delete a topic with associated decisions
+### Response: "Cannot delete topic... because it has X strategic decision(s) associated"
 DELETE http://localhost:3000/api/topics/1

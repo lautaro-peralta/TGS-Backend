@@ -7,7 +7,7 @@ import { Router } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { DecisionController } from './decision.controller.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import {
   createDecisionSchema,
   updateDecisionSchema,

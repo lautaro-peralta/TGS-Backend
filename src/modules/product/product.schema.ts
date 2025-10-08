@@ -2,9 +2,41 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+  numericRangeSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Product
+// SCHEMAS - Product Search
+// ============================================================================
+
+/**
+ * Schema for searching products with multiple criteria.
+ */
+export const searchProductsSchema = paginationSchema
+  .merge(textSearchSchema)
+  .merge(numericRangeSchema)
+  .extend({
+    by: z.enum(['description', 'legal']).optional().default('description'),
+  })
+  .refine(
+    (data) => {
+      // If searching by legal status, q must be 'true' or 'false'
+      if (data.by === 'legal' && data.q) {
+        return data.q === 'true' || data.q === 'false';
+      }
+      return true;
+    },
+    {
+      message: 'Query parameter "q" must be "true" or "false" when searching by legal status',
+      path: ['q'],
+    }
+  );
+
+// ============================================================================
+// SCHEMAS - Product CRUD
 // ============================================================================
 
 /**

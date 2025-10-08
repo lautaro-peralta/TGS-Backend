@@ -2,9 +2,41 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+  dateSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Sale
+// SCHEMAS - Sale Search
+// ============================================================================
+
+/**
+ * Schema for searching sales with multiple criteria.
+ */
+export const searchSalesSchema = paginationSchema
+  .merge(textSearchSchema)
+  .merge(dateSearchSchema)
+  .extend({
+    by: z.enum(['client', 'distributor', 'zone']).optional(),
+  })
+  .refine(
+    (data) => {
+      // If q is provided, by must also be provided
+      if (data.q && !data.by) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Parameter "by" is required when searching with "q"',
+      path: ['by'],
+    }
+  );
+
+// ============================================================================
+// SCHEMAS - Sale CRUD
 // ============================================================================
 
 /**

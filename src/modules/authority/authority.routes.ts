@@ -12,7 +12,7 @@ import {
   rolesMiddleware,
 } from '../../modules/auth/auth.middleware.js';
 import { AuthorityController } from './authority.controller.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import {
   createAuthoritySchema,
   updateAuthoritySchema,
