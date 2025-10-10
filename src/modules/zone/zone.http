@@ -1,34 +1,34 @@
 ### ============================================================================
-### LISTAR Y OBTENER
+### LIST AND GET
 ### ============================================================================
 
-### Listar todas las zonas
+### List all zones
 GET http://localhost:3000/api/zones
 
-### Obtener una zona por ID
+### Get a zone by ID
 GET http://localhost:3000/api/zones/1
 
 ### ============================================================================
-### BÚSQUEDAS
+### SEARCHS
 ### ============================================================================
 
-### Buscar zona por nombre (por defecto)
+### Search zone by name (default)
 GET http://localhost:3000/api/zones/search?q=Central
 
-### Buscar zona por nombre - explícito
+### Search zone by name - explicit
 GET http://localhost:3000/api/zones/search?q=Norte&by=name
 
-### Buscar la zona que ES sede central
+### Search for the zone that IS headquarters
 GET http://localhost:3000/api/zones/search?q=true&by=headquarters
 
-### Buscar zonas que NO son sede central
+### Search for zones that are NOT headquarters
 GET http://localhost:3000/api/zones/search?q=false&by=headquarters
 
 ### ============================================================================
 ### CRUD
 ### ============================================================================
 
-### Crear nueva zona
+### Create new zone
 POST http://localhost:3000/api/zones
 Content-Type: application/json
 
@@ -37,7 +37,7 @@ Content-Type: application/json
   "isHeadquarters": false
 }
 
-### Crear zona como sede central
+### Create zone as headquarters
 POST http://localhost:3000/api/zones
 Content-Type: application/json
 
@@ -46,21 +46,21 @@ Content-Type: application/json
   "isHeadquarters": true
 }
 
-### Actualizar nombre de zona
+### Update zone name
 PATCH http://localhost:3000/api/zones/1
 Content-Type: application/json
 
 {
-  "name": "Zona Centro"
+  "name": "Zona Cntro"
 }
 
-### Establecer zona como sede central
+### Set zone as headquarters
 PATCH http://localhost:3000/api/zones/1
 Content-Type: application/json
 
 {
-  "isHeadquarters": true
+  "isHeadquarters": false
 }
 
-### Eliminar una zona
+### Delete a zone
 DELETE http://localhost:3000/api/zones/1

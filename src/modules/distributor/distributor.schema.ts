@@ -2,9 +2,26 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Distributor
+// SCHEMAS - Distributor Search
+// ============================================================================
+
+/**
+ * Schema for searching distributors by name or zone.
+ */
+export const searchDistributorsSchema = paginationSchema
+  .merge(textSearchSchema)
+  .extend({
+    by: z.enum(['name', 'zone']).optional().default('name'),
+  });
+
+// ============================================================================
+// SCHEMAS - Distributor CRUD
 // ============================================================================
 
 /**

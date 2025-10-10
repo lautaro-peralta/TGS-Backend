@@ -12,9 +12,11 @@ import { Detail } from '../sale/detail.entity.js';
 import {
   createProductSchema,
   updateProductSchema,
+  searchProductsSchema,
 } from './product.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity, searchEntityByRange } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
 
 // ============================================================================
 // CONTROLLER - Product
@@ -25,68 +27,128 @@ import { searchEntity, searchEntityByRange } from '../../shared/utils/search.uti
  * @class ProductController
  */
 export class ProductController {
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Search products with multiple criteria.
    *
    * Query params:
-   * - q: string (min 2 chars) - Búsqueda de texto por descripción (requerido si no viene 'by' o range)
-   * - by: 'description' | 'legal' (optional, default: 'description') - Tipo de búsqueda
-   * - min: number (opcional) - Precio mínimo (solo cuando by no está presente o viene como 'description')
-   * - max: number (opcional) - Precio máximo (solo cuando by no está presente o viene como 'description')
+   * - q: string (min 2 chars) - Search by description or legal status
+   * - by: 'description' | 'legal' (optional, default: 'description') - Search type
+   * - min: number (optional) - Minimum price
+   * - max: number (optional) - Maximum price
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    *
-   * Nota: Si viene 'by=legal', busca por legalidad (q='true' para legales, q='false' para ilegales)
-   * Nota: Si vienen min/max, se busca por rango de precio
+   * Note: If by='legal', q must be 'true' (legal) or 'false' (illegal)
    */
   async searchProducts(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    const { by, min, max, q } = req.query as {
-      by?: 'description' | 'legal';
-      min?: string;
-      max?: string;
-      q?: string;
-    };
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchProductsSchema);
+    if (!validated) return; // Validation failed, response already sent
 
-    // Si viene 'by=legal', buscar por legalidad (q=true -> legales, q=false -> ilegales)
-    if (by === 'legal') {
-      if (q !== 'true' && q !== 'false') {
-        return ResponseUtil.validationError(res, 'Validation error', [
-          {
-            field: 'q',
-            message: 'The query parameter "q" must be "true" or "false" when searching by legal status.'
-          },
-        ]);
-      }
-
-      const isIllegal = q === 'false';
-      const results = await em.find(Product, { isIllegal });
-      const message = ResponseUtil.generateListMessage(
-        results.length,
-        'product',
-        `that are ${q === 'true' ? 'legal' : 'illegal'}`
-      );
-
-      return ResponseUtil.successList(res, message, results.map((p) => p.toDTO()));
-    }
-
-    // Si vienen parámetros de rango (min o max), buscar por precio
-    if (min || max) {
-      return searchEntityByRange(req, res, Product, 'price', {
-        entityName: 'product',
-        em,
-        orderBy: { price: 'asc' } as any,
-      });
-    }
-
-    // Caso por defecto: búsqueda por descripción
-    return searchEntity(req, res, Product, 'description', {
+    return searchEntityWithPagination(req, res, Product, {
       entityName: 'product',
       em,
+      searchFields: validated.by === 'legal' ? undefined : 'description',
+      buildFilters: () => {
+        const { by, min, max, q } = validated;
+        const filters: any = {};
+
+        // Filter by legal status
+        if (by === 'legal' && q) {
+          filters.isIllegal = q === 'false';
+        }
+
+        // Filter by price range (already validated by Zod)
+        if (min !== undefined || max !== undefined) {
+          filters.price = {};
+          if (min !== undefined) filters.price.$gte = min;
+          if (max !== undefined) filters.price.$lte = max;
+        }
+
+        return filters;
+      },
+      orderBy: { description: 'ASC' } as any,
     });
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
-   * Retrieves all products.
+   * Creates a new product.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async createProduct(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Validate request body and create product
+      // ──────────────────────────────────────────────────────────────────────
+      const validatedData = createProductSchema.parse(req.body);
+
+      const productExists = await em.findOne(Product,{description: validatedData.description})
+
+      if(productExists){
+        return ResponseUtil.conflict(res,'A product with that description already exists.', 'description')
+      }
+
+      const product = em.create(Product,{
+        price: validatedData.price,
+        stock: validatedData.stock ?? 0,
+        description: validatedData.description,
+        detail: validatedData.detail ?? '',
+        isIllegal: validatedData.isIllegal ?? false
+        });
+
+      await em.persistAndFlush(product);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.created(
+        res,
+        'Product created successfully',
+        product.toDTO()
+      );
+    } catch (err: any) {
+      if (err.errors) {
+        const validationErrors = err.errors.map((error: any) => ({
+          field: error.path?.join('.'),
+          message: error.message,
+          code: 'VALIDATION_ERROR',
+        }));
+        return ResponseUtil.validationError(
+          res,
+          'Validation error',
+          validationErrors
+        );
+      } else {
+        return ResponseUtil.internalError(res, 'Error creating product', err);
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all products with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
@@ -95,32 +157,17 @@ export class ProductController {
   async getAllProducts(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all products
-      // ──────────────────────────────────────────────────────────────────────
-      const products = await em.find(
-        Product,
-        {},
-        {
-          orderBy: { description: 'asc' },
-        }
-      );
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      const message = ResponseUtil.generateListMessage(products.length, 'product');
-
-      return ResponseUtil.successList(
-        res,
-        message,
-        products.map((p) => p.toDTO())
-      );
-    } catch (err) {
-      return ResponseUtil.internalError(res, 'Error getting products', err);
-    }
+    return searchEntityWithPagination(req, res, Product, {
+      entityName: 'product',
+      em,
+      buildFilters: () => ({}),
+      orderBy: { description: 'ASC' } as any,
+    });
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Retrieves a single product by ID.
@@ -155,62 +202,9 @@ export class ProductController {
     }
   }
 
-  /**
-   * Creates a new product.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async createProduct(req: Request, res: Response) {
-    const em = orm.em.fork();
-
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Validate request body and create product
-      // ──────────────────────────────────────────────────────────────────────
-      const validatedData = createProductSchema.parse(req.body);
-
-      const productExists = await em.findOne(Product,{description: validatedData.description})
-       
-      if(productExists){
-        return ResponseUtil.conflict(res,'A product with that description already exists.', 'description')
-      }
-
-      const product = em.create(Product,{
-        price: validatedData.price,
-        stock: validatedData.stock,
-        description: validatedData.description,
-        isIllegal: validatedData.isIllegal
-        });
-
-      await em.persistAndFlush(product);
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(
-        res,
-        'Product created successfully',
-        product.toDTO()
-      );
-    } catch (err: any) {
-      if (err.errors) {
-        const validationErrors = err.errors.map((error: any) => ({
-          field: error.path?.join('.'),
-          message: error.message,
-          code: 'VALIDATION_ERROR',
-        }));
-        return ResponseUtil.validationError(
-          res,
-          'Validation error',
-          validationErrors
-        );
-      } else {
-        return ResponseUtil.internalError(res, 'Error creating product', err);
-      }
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Updates an existing product.
@@ -273,6 +267,10 @@ export class ProductController {
       }
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a product by ID.

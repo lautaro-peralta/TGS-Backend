@@ -2,9 +2,22 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Client
+// SCHEMAS - Client Search
+// ============================================================================
+
+/**
+ * Schema for searching clients by name.
+ */
+export const searchClientsSchema = paginationSchema.merge(textSearchSchema);
+
+// ============================================================================
+// SCHEMAS - Client CRUD
 // ============================================================================
 
 /**

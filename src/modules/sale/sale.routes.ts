@@ -7,10 +7,10 @@ import { Router } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { SaleController } from './sale.controller.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import { createSaleSchema } from './sale.schema.js';
 import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
-import { Role } from '../auth/user.entity.js';
+import { Role } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // ROUTER - Sale

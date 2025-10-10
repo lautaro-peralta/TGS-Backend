@@ -16,13 +16,13 @@ import { bold, cyan, yellow } from 'colorette';
  * @example
  * logRoutes(['/api/users', '/api/products']);
  * // Output:
- * // Rutas cargadas:
- * //   • /api/users
- * //   • /api/products
+ * // Loaded routes:
+ * //   * /api/users
+ * //   * /api/products
  */
 export function logRoutes(routes: string[]) {
-  console.log(bold(cyan('Rutas cargadas:')));
+  console.log(bold(cyan('Loaded routes:')));
   routes.forEach((route) => {
-    console.log(`  ${yellow('•')} ${yellow(route)}`);
+    console.log(`  ${yellow('*')} ${yellow(route)}`);
   });
 }

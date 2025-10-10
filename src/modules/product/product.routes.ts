@@ -8,12 +8,12 @@ import { Router } from 'express';
 // ============================================================================
 import { ProductController } from './product.controller.js';
 import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import {
   createProductSchema,
   updateProductSchema,
 } from './product.schema.js';
-import { Role } from '../auth/user.entity.js';
+import { Role } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // ROUTER - Product

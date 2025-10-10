@@ -19,12 +19,12 @@ import { StrategicDecision } from '../decision/decision.entity.js';
 // ============================================================================
 /**
  * Represents a Topic entity in the system.
- * This entity is mapped to the 'tematicas' table in the database.
+ * This entity is mapped to the 'topics' table in the database.
  *
  * @class Topic
  * @extends {BaseObjectEntity}
  */
-@Entity({ tableName: 'tematicas' })
+@Entity({ tableName: 'topics' })
 export class Topic extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
   // Properties
@@ -66,7 +66,7 @@ export class Topic extends BaseObjectEntity {
   toDTO() {
     return {
       id: this.id,
-      descripcion: this.description,
+      description: this.description,
     };
   }
 
@@ -79,13 +79,13 @@ export class Topic extends BaseObjectEntity {
   toDetailedDTO() {
     return {
       id: this.id,
-      descripcion: this.description,
-      decisiones:
+      description: this.description,
+      decisions:
         this.decisions.isInitialized() && this.decisions.length > 0
           ? this.decisions
               .getItems()
-              .map((decisiones) => decisiones.toSimpleDTO())
-          : 'Sin decisiones para esta temática aún...',
+              .map((decisions) => decisions.toSimpleDTO())
+          : 'No decisions for this topic yet...',
     };
   }
 }

@@ -14,12 +14,12 @@ export default {
   highlighter: new SqlHighlighter(),
   debug: process.env.NODE_ENV === 'development',
   migrations: {
-    path: './src/migrations', // Ruta para almacenar migraciones
+    path: './src/migrations', // Path to store migrations
     snapshot: false,
     disableForeignKeys: false,
   },
   schemaGenerator: {
-    disableForeignKeys: false, // Mantener claves foráneas
+    disableForeignKeys: false, // Keep foreign keys
     createForeignKeyConstraints: true,
     ignoreSchema: [],
   },

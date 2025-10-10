@@ -20,7 +20,7 @@ import { createAdminDev, createZoneDev } from './shared/initDev.js';
 // ============================================================================
 import { clientRouter } from './modules/client/client.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
-import { userRouter } from './modules/auth/user.routes.js';
+
 import { saleRouter } from './modules/sale/sale.routes.js';
 import { productRouter } from './modules/product/product.routes.js';
 import { authorityRouter } from './modules/authority/authority.routes.js';
@@ -30,6 +30,12 @@ import { bribeRouter } from './modules/bribe/bribe.routes.js';
 import { decisionRouter } from './modules/decision/decision.routes.js';
 import { topicRouter } from './modules/topic/topic.routes.js';
 import { partnerRouter } from './modules/partner/partner.routes.js';
+import { adminRouter } from './modules/admin/admin.routes.js';
+import { shelbyCouncilRouter } from './modules/shelbyCouncil/shelbyCouncil.routes.js';
+import { clandestineAgreementRouter } from './modules/clandestineAgreement/clandestineAgreement.routes.js'; 
+import { monthlyReviewRouter } from './modules/shelbyCouncil/monthlyReview.routes.js';
+import { roleRequestRouter } from './modules/auth/roleRequest/roleRequest.routes.js';
+import { userRouter } from './modules/auth/user/user.routes.js';
 
 // ============================================================================
 // APPLICATION SETUP
@@ -105,6 +111,7 @@ app.use((req, res, next) => {
 
 // Authentication & User management
 app.use('/api/auth', authRouter);
+app.use('/api/role-requests', roleRequestRouter);
 app.use('/api/users', userRouter);
 
 // Business entities
@@ -123,6 +130,11 @@ app.use('/api/bribes', bribeRouter);
 app.use('/api/decisions', decisionRouter);
 app.use('/api/topics', topicRouter);
 
+// Administrative & Strategic
+app.use('/api/admin', adminRouter);
+app.use('/api/shelby-council', shelbyCouncilRouter);
+app.use('/api/clandestine-agreements', clandestineAgreementRouter);
+app.use('/api/monthly-reviews', monthlyReviewRouter);
 // ============================================================================
 // ERROR HANDLERS
 // ============================================================================
@@ -180,7 +192,6 @@ export const initDev = async () => {
     logRoutes([
       '/api/clients',
       '/api/auth',
-      '/api/users',
       '/api/sales',
       '/api/authorities',
       '/api/zones',
@@ -189,6 +200,12 @@ export const initDev = async () => {
       '/api/decisions',
       '/api/topics',
       '/api/distributors',
+      '/api/admin',
+      '/api/shelby-council',
+      '/api/clandestine-agreements',
+      '/api/monthly-reviews',
+      '/api/partners',
+      '/api/role-requests',
     ]);
   }
 };

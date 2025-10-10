@@ -71,7 +71,7 @@ export class ResponseUtil {
    * @returns Express response
    *
    * @example
-   * ResponseUtil.success(res, 'Usuario encontrado', user);
+   * ResponseUtil.success(res, 'User found', user);
    */
   static success<T>(
     res: Response,
@@ -106,7 +106,7 @@ export class ResponseUtil {
    * @returns Express response with pagination metadata
    *
    * @example
-   * ResponseUtil.successList(res, 'Usuarios encontrados', users, { page: 1, limit: 10, total: 50 });
+   * ResponseUtil.successList(res, 'Users found', users, { page: 1, limit: 10, total: 50 });
    */
   static successList<T>(
     res: Response,
@@ -145,7 +145,7 @@ export class ResponseUtil {
    * @returns Express response with 201 status
    *
    * @example
-   * ResponseUtil.created(res, 'Usuario creado', newUser);
+   * ResponseUtil.created(res, 'User created', newUser);
    */
   static created<T>(res: Response, message: string, data?: T): Response {
     return this.success(res, message, data, 201);
@@ -160,7 +160,7 @@ export class ResponseUtil {
    * @returns Express response
    *
    * @example
-   * ResponseUtil.updated(res, 'Usuario actualizado', updatedUser);
+   * ResponseUtil.updated(res, 'User updated', updatedUser);
    */
   static updated<T>(res: Response, message: string, data?: T): Response {
     return this.success(res, message, data, 200);
@@ -174,7 +174,7 @@ export class ResponseUtil {
    * @returns Express response
    *
    * @example
-   * ResponseUtil.deleted(res, 'Usuario eliminado');
+   * ResponseUtil.deleted(res, 'User deleted');
    */
   static deleted(res: Response, message: string): Response {
     return this.success(res, message, undefined, 200);
@@ -194,7 +194,7 @@ export class ResponseUtil {
    * @returns Express response
    *
    * @example
-   * ResponseUtil.error(res, 'Operación fallida', 400, [{ field: 'email', message: 'Email inválido' }]);
+   * ResponseUtil.error(res, 'Operation failed', 400, [{ field: 'email', message: 'Invalid email' }]);
    */
   static error(
     res: Response,
@@ -220,19 +220,19 @@ export class ResponseUtil {
    * Used when request data fails validation
    *
    * @param res - Express response object
-   * @param message - Error message (default: 'Error de validación')
+   * @param message - Error message (default: 'Validation error')
    * @param errors - Array of validation errors with field and message
    * @returns Express response
    *
    * @example
-   * ResponseUtil.validationError(res, 'Datos inválidos', [
-   *   { field: 'email', message: 'Email es requerido' },
-   *   { field: 'password', message: 'Contraseña muy corta' }
+   * ResponseUtil.validationError(res, 'Invalid data', [
+   *   { field: 'email', message: 'Email is required' },
+   *   { field: 'password', message: 'Password is too short' }
    * ]);
    */
   static validationError(
     res: Response,
-    message: string = 'Error de validación',
+    message: string = 'Validation error',
     errors: Array<{ field?: string; message: string; code?: string }>
   ): Response {
     return this.error(res, message, 400, errors);
@@ -242,29 +242,28 @@ export class ResponseUtil {
    * Resource not found error (404)
    *
    * @param res - Express response object
-   * @param resource - Resource name (e.g., 'Usuario', 'Producto')
+   * @param resource - Resource name (e.g., 'User', 'Product')
    * @param id - Optional resource identifier
    * @returns Express response
    *
    * @example
-   * ResponseUtil.notFound(res, 'Usuario', 123);
-   * // Output: "Usuario con ID 123 no encontrado"
+   * ResponseUtil.notFound(res, 'User', 123);
+   * // Output: "User with ID 123 not found"
    */
   static notFound(
     res: Response,
-    resource: string = 'Recurso',
+    resource: string = 'Resource',
     id?: string | number
   ): Response {
     const message = id
-      ? `${resource} con ID ${id} no encontrado`
-      : `${resource} no encontrado`;
+      ? `${resource} with ID ${id} not found`
+      : `${resource} not found`;
 
     return this.error(res, message, 404);
   }
 
   /**
    * Conflict error - duplicate resource (409)
-   * Used when attempting to create a resource that already exists
    *
    * @param res - Express response object
    * @param message - Conflict message
@@ -272,7 +271,7 @@ export class ResponseUtil {
    * @returns Express response
    *
    * @example
-   * ResponseUtil.conflict(res, 'Email ya registrado', 'email');
+   * ResponseUtil.conflict(res, 'Email already registered', 'email');
    */
   static conflict(res: Response, message: string, field?: string): Response {
     const errors = field ? [{ field, message, code: 'DUPLICATE' }] : undefined;
@@ -284,15 +283,15 @@ export class ResponseUtil {
    * Used when authentication is required but not provided or invalid
    *
    * @param res - Express response object
-   * @param message - Error message (default: 'No autorizado')
+   * @param message - Error message (default: 'Unauthorized')
    * @returns Express response
    *
    * @example
-   * ResponseUtil.unauthorized(res, 'Token inválido');
+   * ResponseUtil.unauthorized(res, 'Invalid token');
    */
   static unauthorized(
     res: Response,
-    message: string = 'No autorizado'
+    message: string = 'Unauthorized'
   ): Response {
     return this.error(res, message, 401);
   }
@@ -302,15 +301,15 @@ export class ResponseUtil {
    * Used when user is authenticated but lacks permissions
    *
    * @param res - Express response object
-   * @param message - Error message (default: 'Permisos insuficientes')
+   * @param message - Error message (default: 'Insufficient permissions')
    * @returns Express response
    *
    * @example
-   * ResponseUtil.forbidden(res, 'No tienes permiso para eliminar usuarios');
+   * ResponseUtil.forbidden(res, 'You do not have permission to delete users');
    */
   static forbidden(
     res: Response,
-    message: string = 'Permisos insuficientes'
+    message: string = 'Insufficient permissions'
   ): Response {
     return this.error(res, message, 403);
   }
@@ -320,16 +319,16 @@ export class ResponseUtil {
    * In development, includes error details for debugging
    *
    * @param res - Express response object
-   * @param message - Error message (default: 'Error interno del servidor')
+   * @param message - Error message (default: 'Internal server error')
    * @param error - Optional error object (included only in development)
    * @returns Express response
    *
    * @example
-   * ResponseUtil.internalError(res, 'Error al procesar solicitud', error);
+   * ResponseUtil.internalError(res, 'Error processing request', error);
    */
   static internalError(
     res: Response,
-    message: string = 'Error interno del servidor',
+    message: string = 'Internal server error',
     error?: any
   ): Response {
     // Include error details only in development environment
@@ -337,7 +336,7 @@ export class ResponseUtil {
       process.env.NODE_ENV === 'development' && error
         ? [
             {
-              message: error.message || 'Error desconocido',
+              message: error.message || 'Unknown error',
               code: 'INTERNAL_ERROR',
             },
           ]
@@ -356,33 +355,30 @@ export class ResponseUtil {
    *
    * @param count - Number of items
    * @param resource - Resource name (singular)
-   * @param action - Action verb (default: 'encontraron')
+   * @param action - Action verb (default: 'found')
    * @returns Formatted message string
    *
    * @example
-   * generateListMessage(0, 'usuario');
-   * // Output: "No se encontraron usuarios"
+   * generateListMessage(0, 'user');
+   * // Output: "No users found"
    *
-   * generateListMessage(1, 'usuario');
-   * // Output: "Se encontró 1 usuario"
+   * generateListMessage(1, 'user');
+   * // Output: "Found 1 user"
    *
-   * generateListMessage(5, 'usuario');
-   * // Output: "Se encontraron 5 usuarios"
+   * generateListMessage(5, 'user');
+   * // Output: "Found 5 users"
    */
   static generateListMessage(
     count: number,
     resource: string,
-    action: string = 'encontraron'
+    action: string = 'found'
   ): string {
     if (count === 0) {
-      return `No se encontraron ${resource}s`;
+      return `No ${resource}s ${action}`;
     }
 
-    const verb =
-      count === 1 ? action.replace('encontraron', 'encontró') : action;
     const plural = count === 1 ? resource : `${resource}s`;
-
-    return `Se ${verb} ${count} ${plural}`;
+    return `Found ${count} ${plural}`;
   }
 
   /**
@@ -394,11 +390,11 @@ export class ResponseUtil {
    * @returns Formatted message string
    *
    * @example
-   * generateCrudMessage('created', 'Usuario', 123);
-   * // Output: "Usuario con ID 123 creado exitosamente"
+   * generateCrudMessage('created', 'User', 123);
+   * // Output: "User with ID 123 created successfully"
    *
-   * generateCrudMessage('deleted', 'Producto');
-   * // Output: "Producto eliminado exitosamente"
+   * generateCrudMessage('deleted', 'Product');
+   * // Output: "Product deleted successfully"
    */
   static generateCrudMessage(
     operation: 'created' | 'updated' | 'deleted',
@@ -406,15 +402,9 @@ export class ResponseUtil {
     identifier?: string | number
   ): string {
     const messages = {
-      created: `${resource}${
-        identifier ? ` con ID ${identifier}` : ''
-      } creado exitosamente`,
-      updated: `${resource}${
-        identifier ? ` con ID ${identifier}` : ''
-      } actualizado exitosamente`,
-      deleted: `${resource}${
-        identifier ? ` con ID ${identifier}` : ''
-      } eliminado exitosamente`,
+      created: `${resource}${identifier ? ` with ID ${identifier}` : ''} created successfully`,
+      updated: `${resource}${identifier ? ` with ID ${identifier}` : ''} updated successfully`,
+      deleted: `${resource}${identifier ? ` with ID ${identifier}` : ''} deleted successfully`,
     };
 
     return messages[operation];

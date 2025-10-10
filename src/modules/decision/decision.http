@@ -1,57 +1,57 @@
-### Obtener todas las decisiones estratégicas
+### Get all strategic decisions
 GET http://localhost:3000/api/decisions
 
 # ============================================================================
-# BÚSQUEDAS
+# SEARCHS
 # ============================================================================
 
-### Búsqueda por descripción (por defecto)
-GET http://localhost:3000/api/decisions/search?q=primer
+### Search by description (default)
+GET http://localhost:3000/api/decisions/search?q=first
 
-### Búsqueda por descripción (explícito)
-GET http://localhost:3000/api/decisions/search?q=primer&by=description
+### Search by description (explicit)
+GET http://localhost:3000/api/decisions/search?q=first&by=description
 
-### Búsqueda por topic
-GET http://localhost:3000/api/decisions/search?q=Gastronomia&by=topic
+### Search by topic
+GET http://localhost:3000/api/decisions/search?q=Gastronomy&by=topic
 
-### Búsqueda por fecha de inicio - exact (día específico)
+### Search by start date - exact (specific day)
 GET http://localhost:3000/api/decisions/search?date=2026-03-03&type=exact
 
-### Búsqueda por fecha de inicio - after (desde esa fecha en adelante)
+### Search by start date - after (from that date onwards)
 GET http://localhost:3000/api/decisions/search?date=2026-01-01&type=after
 
-### Búsqueda por fecha de inicio - before (hasta esa fecha)
+### Search by start date - before (until that date)
 GET http://localhost:3000/api/decisions/search?date=2026-12-31&type=before
 
-### Búsqueda por fecha de inicio - between (rango entre dos fechas)
+### Search by start date - between (range between two dates)
 GET http://localhost:3000/api/decisions/search?date=2026-01-01&endDate=2026-06-30&type=between
 
-### Búsqueda por fecha de fin - exact
+### Search by end date - exact
 GET http://localhost:3000/api/decisions/search?date=2026-04-05&type=exact&dateField=endDate
 
-### Búsqueda por fecha de fin - after
+### Search by end date - after
 GET http://localhost:3000/api/decisions/search?date=2026-03-01&type=after&dateField=endDate
 
 # ============================================================================
 # CRUD
 # ============================================================================
 
-### Obtener una decisión por ID
-GET http://localhost:3000/api/decisions/2
+### Get a decision by ID
+GET http://localhost:3000/api/decisions/4
 
-### Crear nueva decisión estratégica
+### Create new strategic decision
 POST http://localhost:3000/api/decisions
 Content-Type: application/json
 
 {
-  "description":"Esta es la primer decisión de todas",
+  "description":"This is the first decision of all",
   "startDate":"2026-03-03",
   "endDate":"2026-04-05",
-  "topicId": 5
+  "topicId": 2
 }
 
 ###
-PATCH http://localhost:3000/api/decisions/2
+PATCH http://localhost:3000/api/decisions/4
 Content-Type: application/json
 
 {
@@ -59,4 +59,4 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:3000/api/decisions/2
+DELETE http://localhost:3000/api/decisions/4

@@ -1,0 +1,295 @@
+###############################################################################
+# ROLE REQUEST ENDPOINTS
+# Sistema de solicitudes de roles especiales (PARTNER, DISTRIBUTOR, AUTHORITY)
+###############################################################################
+
+###############################################################################
+# USER ENDPOINTS (Authenticated)
+###############################################################################
+
+### Create a role request - PARTNER
+# Requiere: Usuario autenticado con perfil completo (profileCompleteness = 100%)
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "justification": "Tengo experiencia en el negocio y quiero ser socio de la organización"
+}
+
+### Create a role request - DISTRIBUTOR
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "DISTRIBUTOR",
+  "justification": "Cuento con los recursos y la red necesaria para distribuir productos en mi zona"
+}
+
+### Create a role request - AUTHORITY
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "AUTHORITY",
+  "justification": "Soy una figura de autoridad en mi zona y puedo facilitar operaciones"
+}
+
+### Get my role requests
+# Muestra todas las solicitudes del usuario autenticado (pendientes, aprobadas, rechazadas)
+GET http://localhost:3000/api/role-requests/me
+
+###############################################################################
+# ADMIN ENDPOINTS
+###############################################################################
+
+### Get pending requests (Admin inbox)
+# Bandeja de entrada del admin - solicitudes pendientes de revisión
+GET http://localhost:3000/api/role-requests/pending
+
+### Search all role requests with filters
+# status: PENDING | APPROVED | REJECTED
+# requestedRole: PARTNER | DISTRIBUTOR | AUTHORITY
+# userId: UUID del usuario
+# page: número de página
+# limit: elementos por página
+GET http://localhost:3000/api/role-requests?status=PENDING&limit=20
+
+### Search by specific role
+GET http://localhost:3000/api/role-requests?requestedRole=PARTNER
+
+### Search by user
+GET http://localhost:3000/api/role-requests?userId=01999310-fd1c-76ca-b828-8ed980694b5b
+
+### Approve a role request
+# Reemplaza {request-id} con el ID de la solicitud
+# Al aprobar, el usuario recibe automáticamente el rol solicitado
+PUT http://localhost:3000/api/role-requests/0199cb24-d2e1-74a9-9761-74cc929618fe/review
+Content-Type: application/json
+
+{
+  "action": "approve",
+  "comments": "Solicitud aprobada. Bienvenido al equipo."
+}
+
+### Reject a role request
+# Reemplaza {request-id} con el ID de la solicitud
+PUT http://localhost:3000/api/role-requests/{request-id}/review
+Content-Type: application/json
+
+{
+  "action": "reject",
+  "comments": "Necesitamos más información antes de aprobar esta solicitud."
+}
+
+### Approve without comments
+PUT http://localhost:3000/api/role-requests/{request-id}/review
+Content-Type: application/json
+
+{
+  "action": "approve"
+}
+
+###############################################################################
+# ERROR SCENARIOS
+###############################################################################
+
+### ERROR: Request role without complete profile
+# Fallará si el usuario no completó su perfil (DNI, name, phone, address)
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "justification": "Quiero ser socio"
+}
+
+### ERROR: Request role already held
+# Fallará si el usuario ya tiene ese rol
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "CLIENT",
+  "justification": "Ya soy cliente"
+}
+
+### ERROR: Invalid role
+# Solo se pueden solicitar PARTNER, DISTRIBUTOR, AUTHORITY
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "ADMIN",
+  "justification": "Quiero ser admin"
+}
+
+### ERROR: Duplicate pending request
+# Fallará si ya existe una solicitud pendiente para el mismo rol
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "justification": "Otra solicitud para el mismo rol"
+}
+
+###############################################################################
+# ROLE CHANGE/SWAP REQUESTS
+###############################################################################
+
+### Request role change - AUTHORITY to PARTNER
+# Usuario con rol AUTHORITY quiere cambiarlo por PARTNER
+# Requiere: Usuario autenticado con perfil completo y rol AUTHORITY
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "roleToRemove": "AUTHORITY",
+  "justification": "Quiero cambiar mi rol de autoridad a socio para participar más activamente en el negocio"
+}
+
+### Request role change - PARTNER to AUTHORITY
+# Usuario con rol PARTNER quiere cambiarlo por AUTHORITY
+# Requiere: Usuario autenticado con perfil completo y rol PARTNER
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "AUTHORITY",
+  "roleToRemove": "PARTNER",
+  "justification": "Quiero cambiar mi rol de socio a autoridad para tener influencia en las decisiones gubernamentales"
+}
+
+### Request role change - AUTHORITY to DISTRIBUTOR
+# Usuario con rol AUTHORITY quiere cambiarlo por DISTRIBUTOR
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "DISTRIBUTOR",
+  "roleToRemove": "AUTHORITY",
+  "justification": "Quiero cambiar de autoridad a distribuidor para manejar la logística en mi zona"
+}
+
+### Request role change - DISTRIBUTOR to AUTHORITY
+# Usuario con rol DISTRIBUTOR quiere cambiarlo por AUTHORITY
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "AUTHORITY",
+  "roleToRemove": "DISTRIBUTOR",
+  "justification": "Quiero cambiar de distribuidor a autoridad para influir en las políticas locales"
+}
+
+### Approve role change request
+# Admin aprueba una solicitud de cambio de rol
+# Reemplaza {request-id} con el ID de la solicitud de cambio
+PUT http://localhost:3000/api/role-requests/{request-id}/review
+Content-Type: application/json
+
+{
+  "action": "approve",
+  "comments": "Cambio de rol aprobado."
+}
+
+###############################################################################
+# ROLE CHANGE ERROR SCENARIOS
+###############################################################################
+
+### ERROR: Role change - Don't have the role to remove
+# Fallará si el usuario no tiene el rol que quiere remover
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "roleToRemove": "AUTHORITY",
+  "justification": "Quiero cambiar pero no tengo rol AUTHORITY"
+}
+
+### ERROR: Role change - Already have the requested role
+# Fallará si el usuario ya tiene el rol que está solicitando
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "roleToRemove": "DISTRIBUTOR",
+  "justification": "Ya tengo PARTNER, no tiene sentido el cambio"
+}
+
+### ERROR: Role change - Same role for both
+# Fallará si roleToRemove es igual a requestedRole
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "roleToRemove": "PARTNER",
+  "justification": "Esto no tiene sentido"
+}
+
+### ERROR: Role change would result in incompatible roles
+# Fallará si después del cambio los roles serían incompatibles
+# Ejemplo: Usuario tiene [CLIENT, PARTNER] y quiere cambiar CLIENT por AUTHORITY
+# Resultado sería [PARTNER, AUTHORITY] que es incompatible
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "AUTHORITY",
+  "roleToRemove": "CLIENT",
+  "justification": "Este cambio resultaría en roles incompatibles si ya tengo PARTNER"
+}
+
+###############################################################################
+# ROLE COMPATIBILITY VALIDATION TESTS
+###############################################################################
+
+### ERROR: Request incompatible role - PARTNER when user has AUTHORITY
+# Fallará porque AUTHORITY es incompatible con PARTNER
+# Primero el usuario debe tener rol AUTHORITY
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "PARTNER",
+  "justification": "Quiero ser socio pero ya tengo rol de autoridad"
+}
+
+### ERROR: Request incompatible role - AUTHORITY when user has PARTNER
+# Fallará porque AUTHORITY es incompatible con PARTNER
+# Primero el usuario debe tener rol PARTNER
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "AUTHORITY",
+  "justification": "Quiero ser autoridad pero ya soy socio"
+}
+
+### ERROR: Request incompatible role - DISTRIBUTOR when user has AUTHORITY
+# Fallará porque AUTHORITY es incompatible con DISTRIBUTOR
+# Primero el usuario debe tener rol AUTHORITY
+POST http://localhost:3000/api/role-requests
+Content-Type: application/json
+
+{
+  "requestedRole": "DISTRIBUTOR",
+  "justification": "Quiero ser distribuidor pero ya tengo rol de autoridad"
+}
+
+### ERROR: Admin approves incompatible role request
+# Este endpoint ahora validará compatibilidad antes de aprobar
+# Si el usuario tiene AUTHORITY y se aprueba una solicitud de PARTNER, fallará
+# Reemplaza {request-id} con el ID de una solicitud incompatible
+PUT http://localhost:3000/api/role-requests/{request-id}/review
+Content-Type: application/json
+
+{
+  "action": "approve",
+  "comments": "Intentando aprobar rol incompatible"
+}

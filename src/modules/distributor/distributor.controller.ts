@@ -10,8 +10,10 @@ import { orm } from '../../shared/db/orm.js';
 import { Distributor } from './distributor.entity.js';
 import { Product } from '../product/product.entity.js';
 import { Zone } from '../zone/zone.entity.js';
-import { searchEntity } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchDistributorsSchema } from './distributor.schema.js';
 // ============================================================================
 // CONTROLLER - Distributor
 // ============================================================================
@@ -22,30 +24,46 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
  */
 export class DistributorController {
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Search distributors by name or zone.
    *
    * Query params:
-   * - q: string (required, min 2 chars)
-   * - by: 'name' | 'zone' (optional, default: 'name')
+   * - q: string (min 2 chars) - Search by name or zone
+   * - by: 'name' | 'zone' (optional, default: 'name') - Field to search
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    */
   async searchDistributors(req: Request, res: Response) {
     const em = orm.em.fork();
-    const { by } = req.query as { by?: 'name' | 'zone' };
 
-    // Determinar campos de búsqueda según el parámetro 'by'
-    const searchField = by === 'zone' ? 'zone.name' : 'name';
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchDistributorsSchema);
+    if (!validated) return; // Validation failed, response already sent
 
-    return searchEntity(req, res, Distributor, searchField, {
+    return searchEntityWithPagination(req, res, Distributor, {
       entityName: 'distributor',
       em,
+      searchFields: (validated.by === 'zone') ? 'zone.name' : 'name',
+      buildFilters: () => ({}),
       populate: ['zone'] as any,
+      orderBy: { name: 'ASC' } as any,
     });
   }
-  
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Retrieves all distributors.
+   * Retrieves all distributors with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
@@ -53,29 +71,19 @@ export class DistributorController {
    */
   async getAllDistributors(req: Request, res: Response) {
     const em = orm.em.fork();
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all distributors with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const distributors = await em.find(
-        Distributor,
-        {},
-        { populate: ['products', 'sales'] }
-      );
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.successList(
-        res,
-        ResponseUtil.generateListMessage(distributors.length, 'distributor'),
-        distributors.map((d) => d.toDetailedDTO?.() ?? d)
-      );
-    } catch (err) {
-      console.error('Error getting distributors:', err);
-  return ResponseUtil.internalError(res, 'Error getting distributors', err);
-    }
+    return searchEntityWithPagination(req, res, Distributor, {
+      entityName: 'distributor',
+      em,
+      buildFilters: () => ({}),
+      populate: ['products', 'sales', 'zone'] as any,
+      orderBy: { name: 'ASC' } as any,
+    });
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Retrieves a single distributor by DNI.
@@ -95,7 +103,7 @@ export class DistributorController {
       const distributor = await em.findOne(
         Distributor,
         { dni },
-        { populate: ['products', 'sales'] }
+        { populate: ['products', 'sales', 'zone'] }
       );
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', dni);
@@ -106,6 +114,10 @@ export class DistributorController {
       return res.status(400).json({ error: 'Error searching for distributor' });
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Creates a new distributor.
@@ -119,13 +131,13 @@ export class DistributorController {
 
     try {
       // ────────────────────────────────
-      // Extraer y validar datos
+      // Extract and validate data
       // ────────────────────────────────
       const { dni, name, address, phone, email, productsIds, zoneId } =
         res.locals.validated?.body ?? req.body;
 
       // ────────────────────────────────
-      // Verificar distribuidor existente
+      // Verify existing distributor
       // ────────────────────────────────
       const existingDistributor = await em.findOne(Distributor, { dni });
       if (existingDistributor) {
@@ -133,7 +145,7 @@ export class DistributorController {
       }
 
       // ────────────────────────────────
-      // Verificar zona
+      // Verify zone
       // ────────────────────────────────
       const zone = await em.findOne(Zone, { id: Number(zoneId) });
       if (!zone) {
@@ -141,7 +153,7 @@ export class DistributorController {
       }
 
       // ────────────────────────────────
-      // Crear distribuidor
+      // Create distributor
       // ────────────────────────────────
       const distributor = em.create(Distributor, {
         dni,
@@ -154,7 +166,7 @@ export class DistributorController {
       });
 
       // ────────────────────────────────
-      // Asociar productos
+      // Associate products
       // ────────────────────────────────
       if (Array.isArray(productsIds) && productsIds.length > 0) {
         const products = await em.find(Product, {
@@ -164,7 +176,7 @@ export class DistributorController {
       }
 
       // ────────────────────────────────
-      // Guardar en DB
+      // Save to DB
       // ────────────────────────────────
       await em.persistAndFlush(distributor);
       return ResponseUtil.created(res, 'Distributor created successfully', distributor.toDTO());
@@ -173,6 +185,10 @@ export class DistributorController {
       return ResponseUtil.internalError(res, 'Error creating distributor', error);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Partially updates an existing distributor using PATCH method.
@@ -192,7 +208,7 @@ export class DistributorController {
       const distributor = await em.findOne(
         Distributor,
         { dni },
-        { populate: ['products'] }
+        { populate: ['products', 'zone'] }
       );
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', dni);
@@ -230,6 +246,10 @@ export class DistributorController {
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Deletes a distributor by DNI.
    *
@@ -248,7 +268,7 @@ export class DistributorController {
       const distributor = await em.findOne(
         Distributor,
         { dni },
-        { populate: ['sales', 'products'] }
+        { populate: ['sales', 'products', 'zone'] }
       );
       if (!distributor) {
         return ResponseUtil.error(res, `Distributor with DNI ${dni} not found`, 404);
