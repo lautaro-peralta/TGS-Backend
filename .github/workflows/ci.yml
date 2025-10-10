@@ -1,0 +1,87 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Unit & Integration + Coverage + SAST
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node & pnpm
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: corepack enable
+
+      - name: Install deps
+        run: pnpm i --frozen-lockfile
+
+      - name: Lint Security (SAST)
+        run: pnpm lint:sec
+
+      - name: Run tests (Vitest) with coverage
+        env:
+          NODE_ENV: test
+        run: pnpm test:ci
+
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+  perf:
+    name: k6 Smoke (performance)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & start API
+        run: |
+          pnpm i --frozen-lockfile
+          pnpm build
+          NODE_ENV=production node dist/server.js &
+          echo "Waiting API..."
+          npx --yes wait-on http://localhost:3000
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 smoke
+        run: pnpm perf:smoke
+
+  dast:
+    name: OWASP ZAP Baseline (DAST)
+    needs: perf
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & start API
+        run: |
+          pnpm i --frozen-lockfile
+          pnpm build
+          NODE_ENV=production node dist/server.js &
+          npx --yes wait-on http://localhost:3000
+
+      - name: ZAP Baseline scan
+        uses: zaproxy/action-baseline@v0.13.0
+        with:
+          target: 'http://localhost:3000'
+          fail_action: true
+
+  notify:
+    name: Notify on Failure (Slack)
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack webhook
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"❌ Backend CI failed in $GITHUB_REPOSITORY run #${{ github.run_number }}\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
