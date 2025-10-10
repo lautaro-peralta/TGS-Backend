@@ -2,9 +2,28 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+  dateSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Decision
+// SCHEMAS - Decision Search
+// ============================================================================
+
+/**
+ * Schema for searching strategic decisions with multiple criteria.
+ */
+export const searchDecisionsSchema = paginationSchema
+  .merge(textSearchSchema)
+  .merge(dateSearchSchema)
+  .extend({
+    by: z.enum(['description', 'topic']).optional().default('description'),
+  });
+
+// ============================================================================
+// SCHEMAS - Decision CRUD
 // ============================================================================
 
 const today = new Date();

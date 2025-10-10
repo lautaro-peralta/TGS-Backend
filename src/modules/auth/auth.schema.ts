@@ -16,7 +16,7 @@ export const registerSchema = z.object({
    * User's email address.
    * Must be a valid email format.
    */
-  email: z.email('El email debe ser válido'),
+  email: z.email('The email must be valid'),
 
   /**
    * User's password.
@@ -25,10 +25,10 @@ export const registerSchema = z.object({
    */
   password: z
     .string()
-    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .min(8, 'The password must be at least 8 characters long')
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-      'La contraseña debe contener al menos: una mayúscula, una minúscula, un número y un carácter especial'
+      'The password must contain at least: one uppercase letter, one lowercase letter, one number, and one special character'
     ),
 
   /**
@@ -37,7 +37,7 @@ export const registerSchema = z.object({
    */
   username: z
     .string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .min(2, 'The name must be at least 2 characters long')
     .max(100),
 });
 
@@ -50,11 +50,11 @@ export const loginSchema = z.object({
    * User's email address.
    * Must be a valid email format.
    */
-  email: z.email('Email inválido'),
+  email: z.email('Invalid email'),
 
   /**
    * User's password.
    * Cannot be empty.
    */
-  password: z.string().min(1, 'La contraseña es obligatoria'),
+  password: z.string().min(1, 'Password is required'),
 });

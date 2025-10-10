@@ -11,7 +11,7 @@ import {
   createDistributorSchema,
   updateDistributorSchema,
 } from './distributor.schema.js';
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 
 // ============================================================================
 // ROUTER - Distributor

@@ -6,11 +6,11 @@ import { Router } from 'express';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { validateWithSchema } from '../../shared/utils/zod.middleware.js';
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import { payBribesSchema } from './bribe.schema.js';
 import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
 import { BribeController } from './bribe.controller.js';
-import { Role } from '../auth/user.entity.js';
+import { Role } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // ROUTER - Bribe

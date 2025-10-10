@@ -1,25 +1,25 @@
-### Obtener todos los clientes
+### Get all clients
 GET http://localhost:3000/api/clients
 
 # ============================================================================
-# BÚSQUEDAS
+# SEARCHS
 # ============================================================================
 
-### Búsqueda por nombre
+### Search by name
 GET http://localhost:3000/api/clients/search?q=pedro
 
-### Búsqueda por nombre - mínimo 2 caracteres
-GET http://localhost:3000/api/clients/search?q=He
+### Search by name - minimum 2 characters
+GET http://localhost:3000/api/clients/search?q=pe
 
 # ============================================================================
 # CRUD
 # ============================================================================
 
-### Obtener un cliente por DNI
+### Get a client by DNI
 GET http://localhost:3000/api/clients/12345678
 
 
-### Crear nuevo cliente
+### Create new client
 POST http://localhost:3000/api/clients/
 Content-Type: application/json
 
@@ -31,7 +31,7 @@ Content-Type: application/json
   "phone": "3416007788"
 }
 
-### Modificar cliente (PATCH - modificaciones parciales)
+### Modify client (PATCH - partial modifications)
 PATCH http://localhost:3000/api/clients/12345678
 Content-Type: application/json
 
@@ -42,5 +42,5 @@ Content-Type: application/json
   "phone": "3416007788"
 }
 
-### Borrar un cliente
+### Delete a client
 DELETE http://localhost:3000/api/clients/12345678

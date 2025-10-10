@@ -1,38 +1,48 @@
-
-### Obtener todas las autoridades
+### Get all authorities (with pagination)
 GET http://localhost:3000/api/authorities
 
-### Obtener una autoridad por DNI
-GET http://localhost:3000/api/authorities/10101015
+### Get all authorities - page 2, limit 5
+GET http://localhost:3000/api/authorities?page=2&limit=5
 
-### Buscar autoridades por nombre
-GET http://localhost:3000/api/authorities/search?q=Juan
+# ============================================================================
+# SEARCHS
+# ============================================================================
 
-### Buscar autoridades por zona
-GET http://localhost:3000/api/authorities?zone=Centro
+### Search authorities by name
+GET http://localhost:3000/api/authorities/search?q=lau
 
-### Buscar autoridades por nombre y filtrar por zona
-GET http://localhost:3000/api/authorities/search?q=Juan&zone=Centro
+### Search authorities by zone
+GET http://localhost:3000/api/authorities/search?zone=Cntro
 
-### Buscar autoridades por nombre y filtrar por rango
+### Search authorities by rank
+GET http://localhost:3000/api/authorities/search?rank=1
+
+### Search authorities by name and filter by zone
+GET http://localhost:3000/api/authorities/search?q=lautaro&zone=Cntro
+
+### Search authorities by name and filter by rank
 GET http://localhost:3000/api/authorities/search?q=Juan&rank=1
 
-### Filtrar autoridades por zona y rango (sin búsqueda por nombre)
-GET http://localhost:3000/api/authorities/search?zone=Centro&rank=1
+### Filter authorities by zone and rank (without name search)
+GET http://localhost:3000/api/authorities/search?zone=Cntro&rank=1
 
-### Obtener sobornos de una autoridad
-GET http://localhost:3000/api/authorities/10101015/bribes
+# ============================================================================
+# CRUD
+# ============================================================================
 
-### Obtener sobornos de una autoridad con filtros
-GET http://localhost:3000/api/authorities/10101015/bribes?paid=true&minAmount=100&maxAmount=500&page=1&limit=5
+### Get an authority by DNI
+GET http://localhost:3000/api/authorities/10101015
 
-#=======================================================================
-#CRUD
-#=======================================================================
+### Get bribes from an authority
+GET http://localhost:3000/api/authorities/10101010/bribes
 
-### 9. Crear nueva autoridad
+### Get bribes from an authority with filters
+GET http://localhost:3000/api/authorities/10101010/bribes?paid=true&min=100&max=500&page=1&limit=5
+
+### Create new authority
 POST http://localhost:3000/api/authorities
 Content-Type: application/json
+
 {
   "dni": "10101010",
   "name": "Juan Fernandez",
@@ -43,22 +53,23 @@ Content-Type: application/json
   "zoneId": "1"
 }
 
-### 10. Modificar autoridad (PUT - idempotente, modificaciones completas)
+### Modify authority (PUT - idempotent, full modifications)
 PUT http://localhost:3000/api/authorities/10101015
 Content-Type: application/json
+
 {
   "name": "Lautaro FERNANDEZ",
   "rank": "3",
   "zoneId": "1"
 }
 
-### 11. Modificar autoridad (PATCH - modificaciones parciales)
+### Modify authority (PATCH - partial modifications)
 PATCH http://localhost:3000/api/authorities/10101015
 Content-Type: application/json
+
 {
   "rank":"2"
 }
 
-### 12. Borrar una autoridad
+### Delete an authority
 DELETE http://localhost:3000/api/authorities/10101010
-

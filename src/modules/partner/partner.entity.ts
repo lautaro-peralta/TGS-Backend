@@ -1,42 +1,52 @@
-import { Entity, ManyToMany, Collection } from '@mikro-orm/core';
-import { BaseEntityPersona } from '../../shared/db/base.persona.entity.js';
-import { Decision } from '../decision/decision.entity.js';
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
+import { Entity, ManyToMany, Collection, Property } from '@mikro-orm/core';
+
+// ============================================================================
+// IMPORTS - Internal modules
+// ============================================================================
+import { BasePersonEntity } from '../../shared/base.person.entity.js';
+import { StrategicDecision } from '../decision/decision.entity.js';
+
+// ============================================================================
+// ENTITY - Partner
+// ============================================================================
 
 /**
- * NOTE:
- * - We keep the underlying base fields from BaseEntityPersona (dni, nombre, direccion, telefono, etc.).
- * - Public DTOs are exposed in ENGLISH (name, address, phone) to align with main conventions.
- * - Table name is in English: 'partners'.
+ * Partner entity representing business partners.
+ * Extends BasePersonEntity with additional business relationships.
  */
 @Entity({ tableName: 'partners' })
-export class Partner extends BaseEntityPersona {
+export class Partner extends BasePersonEntity {
   /**
-   * N:M Partner–Decision (strategic decisions linked to a partner).
-   * This side is the owner to control the pivot table.
-   * Adjust pivotTable if you already have a convention elsewhere.
+   * N:M Partner–Decision relationship.
+   * Partners can be involved in multiple strategic decisions.
    */
   @ManyToMany({
-    entity: () => Decision,
+    entity: () => StrategicDecision,
     owner: true,
     pivotTable: 'partners_decisions',
   })
-  decisions = new Collection<Decision>(this);
+  decisions = new Collection<StrategicDecision>(this);
 
-  /** Minimal, public-facing DTO (English keys). */
+  /**
+   * Converts entity to a basic DTO for API responses.
+   * Uses English property names for consistency with API.
+   */
   toDTO() {
     return {
       dni: this.dni,
-      name: this.nombre,       // underlying prop in Spanish, exposed in English
+      name: this.name,
       email: this.email,
-      address: this.direccion, // underlying prop in Spanish, exposed in English
-      phone: this.telefono,    // underlying prop in Spanish, exposed in English
-      // active: this.active,   // uncomment if BaseEntityPersona provides it
+      address: this.address,
+      phone: this.phone,
     };
   }
 
   /**
-   * Detailed DTO (safe to return to clients; relations handled defensively).
-   * Includes decisions only if the collection is initialized (i.e., populated in the query).
+   * Converts entity to a detailed DTO including relationships.
+   * Only includes decisions if the collection is initialized.
    */
   toDetailedDTO() {
     return {
@@ -45,7 +55,7 @@ export class Partner extends BaseEntityPersona {
         ? (this.decisions.isEmpty()
             ? []
             : this.decisions.getItems().map(d => d.toDTO?.() ?? { id: (d as any).id }))
-        : null, // not populated
-    };
-  }
+        : null,
+    };
+  }
 }

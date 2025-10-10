@@ -10,9 +10,38 @@ import argon2 from 'argon2';
 // IMPORTS - Internal modules
 // ============================================================================
 import { User, Role } from './user.entity.js';
-import { orm } from '../../shared/db/orm.js';
-import { BasePersonEntity } from '../../shared/base.person.entity.js';
-import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { orm } from '../../../shared/db/orm.js';
+import { BasePersonEntity } from '../../../shared/base.person.entity.js';
+import { ResponseUtil } from '../../../shared/utils/response.util.js';
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Validates that roles are compatible.
+ * AUTHORITY role is incompatible with PARTNER, DISTRIBUTOR, and ADMIN.
+ *
+ * @param roles - Array of roles to validate
+ * @returns Error message if roles are incompatible, null otherwise
+ */
+function validateRoleCompatibility(roles: Role[]): string | null {
+  const hasAuthority = roles.includes(Role.AUTHORITY);
+  const hasPartner = roles.includes(Role.PARTNER);
+  const hasDistributor = roles.includes(Role.DISTRIBUTOR);
+  const hasAdmin = roles.includes(Role.ADMIN);
+
+  if (hasAuthority && (hasPartner || hasDistributor || hasAdmin)) {
+    const incompatibleRoles = [];
+    if (hasPartner) incompatibleRoles.push('PARTNER');
+    if (hasDistributor) incompatibleRoles.push('DISTRIBUTOR');
+    if (hasAdmin) incompatibleRoles.push('ADMIN');
+
+    return `AUTHORITY role is incompatible with: ${incompatibleRoles.join(', ')}`;
+  }
+
+  return null;
+}
 
 // ============================================================================
 // USER CONTROLLER
@@ -38,8 +67,9 @@ export class UserController {
    *
    * Process:
    * 1. Extracts user ID from JWT token (set by authMiddleware)
-   * 2. Fetches user from database
-   * 3. Returns user DTO (sanitized data)
+   * 2. Fetches user from database with person data
+   * 3. Recalculates profile completeness based on current data
+   * 4. Returns user DTO (sanitized data)
    *
    * @param req - Express request with user data from authMiddleware
    * @param res - Express response
@@ -57,14 +87,20 @@ export class UserController {
       const { id } = (req as any).user;
 
       // ────────────────────────────────────────────────────────────────────
-      // Fetch user from database
+      // Fetch user from database with person data
       // ────────────────────────────────────────────────────────────────────
       const em = orm.em.fork();
-      const user = await em.findOne(User, { id });
+      const user = await em.findOne(User, { id }, { populate: ['person'] });
 
       if (!user) {
         return ResponseUtil.notFound(res, 'User', id);
       }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Recalculate and update profile completeness
+      // ────────────────────────────────────────────────────────────────────
+      user.updateProfileCompleteness();
+      await em.flush();
 
       // ────────────────────────────────────────────────────────────────────
       // Return sanitized user data
@@ -174,8 +210,9 @@ export class UserController {
    * Process:
    * 1. Validates role value against Role enum
    * 2. Fetches target user
-   * 3. Adds role if not already present
-   * 4. Persists changes
+   * 3. Validates role compatibility
+   * 4. Adds role if not already present
+   * 5. Persists changes
    *
    * Note: Currently only adds roles, does not remove them
    * Should be used with rolesMiddleware([Role.ADMIN])
@@ -207,17 +244,44 @@ export class UserController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Fetch user
+      // Fetch user with person data
       // ────────────────────────────────────────────────────────────────────
-      const user = await em.findOne(User, { id });
+      const user = await em.findOne(User, { id }, { populate: ['person'] });
       if (!user) {
         return ResponseUtil.notFound(res, 'User', id);
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Add role if not already present
+      // Validate role compatibility
       // ────────────────────────────────────────────────────────────────────
       if (!user.roles.includes(role)) {
+        const newRoles = [...user.roles, role];
+        const validationError = validateRoleCompatibility(newRoles);
+        if (validationError) {
+          return ResponseUtil.validationError(res, validationError, [
+            { field: 'role', message: validationError }
+          ]);
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // ADMIN role requires complete personal information
+        // ──────────────────────────────────────────────────────────────────
+        if (role === Role.ADMIN && !user.hasPersonalInfo) {
+          return ResponseUtil.validationError(
+            res,
+            'User must complete personal information before being promoted to ADMIN',
+            [
+              {
+                field: 'role',
+                message: 'Complete personal data (DNI, name, phone, address) is required for ADMIN role'
+              }
+            ]
+          );
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // Add role
+        // ──────────────────────────────────────────────────────────────────
         user.roles.push(role);
         await em.flush();
         return ResponseUtil.success(
@@ -313,13 +377,13 @@ export class UserController {
     // ──────────────────────────────────────────────────────────────────────
     // Create user entity with person association
     // ──────────────────────────────────────────────────────────────────────
-    const user = em.create(User, {
+    const user = new User(
       username,
       email,
-      password: hashedPassword,
-      roles,
-      person,
-    });
+      hashedPassword,
+      roles
+    );
+    user.person = person as any;
 
     // ──────────────────────────────────────────────────────────────────────
     // Persist to database
@@ -327,5 +391,208 @@ export class UserController {
     await em.persistAndFlush(user);
 
     return ResponseUtil.success(res, 'User created successfully', user.toDTO());
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // USER UPDATE (ADMIN)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Updates user properties (Admin only)
+   *
+   * Process:
+   * 1. Validates user exists
+   * 2. Validates role compatibility if roles are being updated
+   * 3. Updates allowed properties: emailVerified, isActive, roles
+   * 4. Persists changes to database
+   * 5. Returns updated user data
+   *
+   * @param req - Express request with user ID in params
+   * @param res - Express response
+   * @returns 200 with updated user data
+   *
+   * @example
+   * PUT /api/users/:id
+   * Body: { emailVerified: true, isActive: false }
+   * Requires: ADMIN role
+   */
+  async updateUser(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // ────────────────────────────────────────────────────────────────────
+      // Extract validated data from middleware
+      // ────────────────────────────────────────────────────────────────────
+      const { id } = res.locals.validated.params;
+      const updates = res.locals.validated.body;
+
+      // ────────────────────────────────────────────────────────────────────
+      // Fetch user
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { id });
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User', id);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Validate role compatibility if roles are being updated
+      // ────────────────────────────────────────────────────────────────────
+      if (updates.roles !== undefined) {
+        const validationError = validateRoleCompatibility(updates.roles);
+        if (validationError) {
+          return ResponseUtil.validationError(res, validationError, [
+            { field: 'roles', message: validationError }
+          ]);
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // ADMIN role requires complete personal information
+        // ──────────────────────────────────────────────────────────────────
+        if (updates.roles.includes(Role.ADMIN) && !user.hasPersonalInfo) {
+          return ResponseUtil.validationError(
+            res,
+            'User must complete personal information before being promoted to ADMIN',
+            [
+              {
+                field: 'roles',
+                message: 'Complete personal data (DNI, name, phone, address) is required for ADMIN role'
+              }
+            ]
+          );
+        }
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Update allowed properties
+      // ────────────────────────────────────────────────────────────────────
+      if (updates.emailVerified !== undefined) {
+        user.emailVerified = updates.emailVerified;
+      }
+      if (updates.isActive !== undefined) {
+        user.isActive = updates.isActive;
+      }
+      if (updates.roles !== undefined) {
+        user.roles = updates.roles;
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Persist changes
+      // ────────────────────────────────────────────────────────────────────
+      await em.flush();
+
+      return ResponseUtil.updated(
+        res,
+        'User updated successfully',
+        user.toDTO()
+      );
+    } catch (err) {
+      console.error('Error updating user:', err);
+      return ResponseUtil.internalError(res, 'Error updating user', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // PROFILE COMPLETION
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Completes user profile with personal information
+   *
+   * Process:
+   * 1. Validates user is authenticated
+   * 2. Checks if profile is already complete
+   * 3. Creates or updates BasePersonEntity with provided data
+   * 4. Associates person with user
+   * 5. Updates profile completeness percentage
+   * 6. Returns updated user profile
+   *
+   * @param req - Express request with authenticated user
+   * @param res - Express response
+   * @returns 200 with updated user profile
+   *
+   * @example
+   * PUT /api/users/me/complete-profile
+   * Body: { dni: "12345678", name: "John Doe", phone: "555-1234", address: "123 Main St" }
+   */
+  async completeProfile(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // ────────────────────────────────────────────────────────────────────
+      // Extract authenticated user ID
+      // ────────────────────────────────────────────────────────────────────
+      const { id } = (req as any).user;
+      const validatedData = res.locals.validated.body;
+
+      // ────────────────────────────────────────────────────────────────────
+      // Fetch user from database
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { id }, { populate: ['person'] });
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User', id);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Check if profile is already complete
+      // ────────────────────────────────────────────────────────────────────
+      if (user.person) {
+        return ResponseUtil.error(
+          res,
+          'Profile is already complete. Use update endpoint to modify.',
+          400
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Check if DNI is already in use
+      // ────────────────────────────────────────────────────────────────────
+      const existingPerson = await em.findOne(BasePersonEntity, {
+        dni: validatedData.dni,
+      });
+
+      if (existingPerson) {
+        return ResponseUtil.conflict(
+          res,
+          'DNI is already registered to another person',
+          'dni'
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Create person entity
+      // ────────────────────────────────────────────────────────────────────
+      const person = em.create(BasePersonEntity, {
+        dni: validatedData.dni,
+        name: validatedData.name,
+        email: user.email,
+        phone: validatedData.phone,
+        address: validatedData.address,
+      });
+
+      await em.persistAndFlush(person);
+
+      // ────────────────────────────────────────────────────────────────────
+      // Associate person with user
+      // ────────────────────────────────────────────────────────────────────
+      user.person = person as any;
+
+      // ────────────────────────────────────────────────────────────────────
+      // Update profile completeness
+      // ────────────────────────────────────────────────────────────────────
+      user.updateProfileCompleteness();
+      await em.flush();
+
+      // ────────────────────────────────────────────────────────────────────
+      // Return updated user profile
+      // ────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Profile completed successfully',
+        user.toDTO()
+      );
+    } catch (err) {
+      console.error('Error completing profile:', err);
+      return ResponseUtil.internalError(res, 'Error completing profile', err);
+    }
   }
 }

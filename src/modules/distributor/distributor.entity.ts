@@ -70,7 +70,7 @@ export class Distributor extends BasePersonEntity {
    * Converts the Distributor entity to a basic Data Transfer Object (DTO).
    * This method returns a subset of the distributor's properties for general use.
    *
-   * @returns {object} A DTO containing the distributor's DNI, name, address, phone, and email.
+   * @returns {object} A DTO containing the distributor's DNI, name, address, phone, email, and zone.
    */
   toDTO() {
     return {
@@ -79,6 +79,13 @@ export class Distributor extends BasePersonEntity {
       address: this.address,
       phone: this.phone,
       email: this.email,
+      zone: this.zone
+        ? {
+            id: this.zone.id,
+            name: this.zone.name,
+            isHeadquarters: this.zone.isHeadquarters,
+          }
+        : null,
     };
   }
 

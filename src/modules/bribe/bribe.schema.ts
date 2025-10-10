@@ -2,9 +2,26 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  dateSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Bribe
+// SCHEMAS - Bribe Search
+// ============================================================================
+
+/**
+ * Schema for searching bribes with multiple criteria.
+ */
+export const searchBribesSchema = paginationSchema
+  .merge(dateSearchSchema)
+  .extend({
+    paid: z.enum(['true', 'false']).optional(),
+  });
+
+// ============================================================================
+// SCHEMAS - Bribe CRUD
 // ============================================================================
 
 /**

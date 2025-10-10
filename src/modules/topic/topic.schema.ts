@@ -2,9 +2,22 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
-// SCHEMAS - Topic
+// SCHEMAS - Topic Search
+// ============================================================================
+
+/**
+ * Schema for searching topics by description.
+ */
+export const searchTopicsSchema = paginationSchema.merge(textSearchSchema);
+
+// ============================================================================
+// SCHEMAS - Topic CRUD
 // ============================================================================
 
 /**

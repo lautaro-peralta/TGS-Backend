@@ -80,3 +80,59 @@ export const identifierSchema = z.object({
    */
   identifier: z.string().min(1, "Identifier is required"),
 });
+
+/**
+ * Zod schema for completing user profile with personal information.
+ */
+export const completeProfileSchema = z.object({
+  /**
+   * User's DNI (unique identifier).
+   */
+  dni: z.string().min(7, "DNI must be at least 7 characters").max(10, "DNI cannot exceed 10 characters"),
+  /**
+   * User's full name.
+   */
+  name: z.string().min(1, "Name is required"),
+  /**
+   * User's phone number.
+   */
+  phone: z.string().min(1, "Phone is required"),
+  /**
+   * User's address.
+   */
+  address: z.string().min(1, "Address is required"),
+});
+
+/**
+ * Zod schema for admin updating user properties.
+ */
+export const updateUserSchema = {
+  /**
+   * URL parameters.
+   */
+  params: z.object({
+    /**
+     * User's ID. Must be a valid UUID.
+     */
+    id: z.string().uuid("Invalid ID")
+  }),
+  /**
+   * Request body.
+   */
+  body: z.object({
+    /**
+     * Whether the user's email is verified.
+     */
+    emailVerified: z.boolean().optional(),
+    /**
+     * Whether the user account is active.
+     */
+    isActive: z.boolean().optional(),
+    /**
+     * User's roles.
+     */
+    roles: z.array(z.nativeEnum(Role)).optional(),
+  }).refine(data => Object.keys(data).length > 0, {
+    message: "At least one field must be provided to update"
+  }),
+};

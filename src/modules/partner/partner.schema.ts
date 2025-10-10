@@ -1,18 +1,66 @@
+// ============================================================================
+// IMPORTS - Dependencies
+// ============================================================================
 import { z } from 'zod';
+import {
+  paginationSchema,
+  textSearchSchema,
+} from '../../shared/schemas/common.schema.js';
 
-// Schema para crear un socio (todos los campos requeridos)
+// ============================================================================
+// SCHEMAS - Partner Search
+// ============================================================================
+
+/**
+ * Schema for searching partners by name, email or dni.
+ */
+export const searchPartnersSchema = paginationSchema.merge(textSearchSchema);
+
+// ============================================================================
+// SCHEMAS - Partner CRUD
+// ============================================================================
+
+/**
+ * Zod schema for creating a new partner.
+ */
 export const createPartnerSchema = z.object({
-  dni: z.string().min(1, 'DNI requerido'),
-  name: z.string().min(1, 'Nombre requerido'),
-  email: z.string().email('Email inválido'),
-  address: z.string().min(1, 'Dirección requerida'),
-  phone: z.string().min(6, 'Teléfono demasiado corto'),
+  /**
+   * Partner's DNI.
+   */
+  dni: z.string().min(1, 'DNI is required'),
+  /**
+   * Partner's name.
+   */
+  name: z.string().min(1, 'Name is required'),
+  /**
+   * Partner's email address.
+   */
+  email: z.string().email('Invalid email'),
+  /**
+   * Partner's address.
+   */
+  address: z.string().optional(),
+  /**
+   * Partner's phone number.
+   */
+  phone: z.string().min(6).optional(),
+  /**
+   * Username for partner account (optional).
+   */
+  username: z.string().min(3).optional(),
+  /**
+   * Password for partner account (optional).
+   */
+  password: z.string().min(6).optional(),
 });
 
-// Schema para actualizar un socio (sin permitir modificar el DNI)
+/**
+ * Zod schema for updating a partner.
+ * All fields are optional for partial updates (PATCH).
+ */
 export const updatePartnerSchema = z.object({
-  name: z.string().min(1, 'Nombre requerido').optional(),
-  email: z.string().email('Email inválido').optional(),
-  address: z.string().min(1, 'Dirección requerida').optional(),
-  phone: z.string().min(6, 'Teléfono demasiado corto').optional(),
+  name: z.string().min(1, 'Name is required').optional(),
+  email: z.string().email('Invalid email').optional(),
+  address: z.string().optional(),
+  phone: z.string().min(6).optional(),
 });

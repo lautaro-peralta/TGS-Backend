@@ -11,7 +11,9 @@ import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from './bribe.entity.js';
 import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntity, searchEntityByBoolean, searchEntityByDate } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { searchBribesSchema } from './bribe.schema.js';
 
 // ============================================================================
 // CONTROLLER - Bribe
@@ -22,125 +24,80 @@ import { searchEntity, searchEntityByBoolean, searchEntityByDate } from '../../s
  * @class BribeController
  */
 export class BribeController {
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SEARCH & FILTER METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Search bribes with multiple criteria.
    *
    * Query params:
-   * - q: 'true' | 'false' - Búsqueda por estado de pago (pagado/pendiente)
-   * - date: ISO 8601 date - Búsqueda por fecha de creación
-   * - type: 'exact' | 'before' | 'after' | 'between' - Tipo de búsqueda por fecha (requerido si viene date)
-   * - endDate: ISO 8601 date - Fecha final (solo para type='between')
-   *
-   * Nota: Si viene 'date', se ignora el parámetro 'q'
+   * - paid: 'true' | 'false' - Filter by payment status
+   * - date: ISO 8601 date - Filter by creation date
+   * - type: 'exact' | 'before' | 'after' | 'between' - Date search type (required if date is provided)
+   * - endDate: ISO 8601 date - End date (only for type='between')
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    */
   async searchBribes(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    const { date } = req.query as { date?: string };
+    // Validate query params
+    const validated = validateQueryParams(req, res, searchBribesSchema);
+    if (!validated) return; // Validation failed, response already sent
 
-    // Si viene 'date', delegar a búsqueda por fecha
-    if (date) {
-      return searchEntityByDate(req, res, Bribe, 'creationDate', {
-        entityName: 'bribe',
-        em,
-        populate: ['authority', 'sale'] as any,
-      });
-    }
-
-    // Búsqueda por estado de pago (paid)
-    return searchEntityByBoolean(req, res, Bribe, 'paid', {
+    return searchEntityWithPagination(req, res, Bribe, {
       entityName: 'bribe',
       em,
+      buildFilters: () => {
+        const { paid, date, type, endDate } = validated;
+        const filters: any = {};
+
+        // Filter by payment status
+        if (paid !== undefined) {
+          filters.paid = paid === 'true';
+        }
+
+        // Filter by date (already validated by Zod)
+        if (date && type) {
+          const parsedDate = new Date(date);
+          const startOfDay = new Date(parsedDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(parsedDate);
+          endOfDay.setHours(23, 59, 59, 999);
+
+          switch (type) {
+            case 'exact':
+              filters.creationDate = { $gte: startOfDay, $lte: endOfDay };
+              break;
+            case 'before':
+              filters.creationDate = { $lte: endOfDay };
+              break;
+            case 'after':
+              filters.creationDate = { $gte: startOfDay };
+              break;
+            case 'between':
+              if (endDate) {
+                const parsedEndDate = new Date(endDate);
+                const endOfEndDate = new Date(parsedEndDate);
+                endOfEndDate.setHours(23, 59, 59, 999);
+                filters.creationDate = { $gte: startOfDay, $lte: endOfEndDate };
+              }
+              break;
+          }
+        }
+
+        return filters;
+      },
       populate: ['authority', 'sale'] as any,
+      orderBy: { creationDate: 'DESC' } as any,
     });
   }
-  
-  /**
-   * Retrieves all bribes.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getAllBribes(req: Request, res: Response) {
-    const em = orm.em.fork();
 
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch all bribes with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const bribes = await em.find(
-        Bribe,
-        {},
-        {
-          orderBy: { id: 'ASC' },
-          populate: ['authority', 'sale'],
-        }
-      );
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      const bribesDTO = bribes.map((bribe) => bribe.toDTO());
-      const message = ResponseUtil.generateListMessage(bribesDTO.length, 'bribe');
-
-      return ResponseUtil.successList(res, message, bribesDTO);
-    } catch (err: any) {
-      console.error('Error listing bribes:', err);
-      return ResponseUtil.internalError(
-        res,
-        'Error getting the list of bribes',
-        err
-      );
-    }
-  }
-
-  /**
-   * Retrieves a single bribe by ID.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async getOneBribeById(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const id = Number(req.params.id);
-
-    if (isNaN(id)) {
-      return ResponseUtil.validationError(res, 'Invalid ID', [
-        { field: 'id', message: 'The ID must be a valid number' },
-      ]);
-    }
-
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch bribe by ID with related data
-      // ──────────────────────────────────────────────────────────────────────
-      const bribe = await em.findOne(
-        Bribe,
-        { id },
-        {
-          populate: ['authority.user', 'sale'],
-        }
-      );
-
-      if (!bribe) {
-        return ResponseUtil.notFound(res, 'Bribe', id);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      return ResponseUtil.success(
-        res,
-        'Bribe found successfully',
-        bribe.toDTO()
-      );
-    } catch (err: any) {
-      console.error('Error getting bribe:', err);
-      return ResponseUtil.internalError(res, 'Error searching for bribe', err);
-    }
-  }
+  // ──────────────────────────────────────────────────────────────────────────
+  // CREATE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Creates a new bribe.
@@ -202,6 +159,89 @@ export class BribeController {
     }
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ALL
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves all bribes with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getAllBribes(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    // Use searchEntityWithPagination with empty filters
+    return searchEntityWithPagination(req, res, Bribe, {
+      entityName: 'bribe',
+      em,
+      buildFilters: () => ({}), // No filters, return all
+      populate: ['authority', 'sale'] as any,
+      orderBy: { creationDate: 'DESC' } as any,
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // READ ONE
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves a single bribe by ID.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async getOneBribeById(req: Request, res: Response) {
+    const em = orm.em.fork();
+    const id = Number(req.params.id);
+
+    if (isNaN(id)) {
+      return ResponseUtil.validationError(res, 'Invalid ID', [
+        { field: 'id', message: 'The ID must be a valid number' },
+      ]);
+    }
+
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch bribe by ID with related data
+      // ──────────────────────────────────────────────────────────────────────
+      const bribe = await em.findOne(
+        Bribe,
+        { id },
+        {
+          populate: ['authority.user', 'sale'],
+        }
+      );
+
+      if (!bribe) {
+        return ResponseUtil.notFound(res, 'Bribe', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Bribe found successfully',
+        bribe.toDTO()
+      );
+    } catch (err: any) {
+      console.error('Error getting bribe:', err);
+      return ResponseUtil.internalError(res, 'Error searching for bribe', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // UPDATE
+  // ──────────────────────────────────────────────────────────────────────────
+
   /**
    * Marks bribes as paid.
    *
@@ -252,25 +292,48 @@ export class BribeController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
+      // Identify found and not found IDs
+      // ──────────────────────────────────────────────────────────────────────
+      const foundIds = selectedBribes.map((s) => s.id);
+      const notFoundIds = ids.filter((id: number) => !foundIds.includes(id));
+
+      // ──────────────────────────────────────────────────────────────────────
       // Mark bribes as paid and persist changes
       // ──────────────────────────────────────────────────────────────────────
       selectedBribes.forEach((s) => (s.paid = true));
       await em.persistAndFlush(selectedBribes);
 
       // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
+      // Prepare and send response with detailed information
       // ──────────────────────────────────────────────────────────────────────
-      const data = selectedBribes.map((s) => ({
+      const paidBribes = selectedBribes.map((s) => ({
         id: s.id,
         paid: s.paid,
       }));
 
-      return ResponseUtil.success(res, 'Bribes marked as paid', data);
+      const data: any = {
+        paid: paidBribes,
+        summary: {
+          totalRequested: ids.length,
+          successfullyPaid: paidBribes.length,
+          notFound: notFoundIds.length,
+        },
+      };
+
+      if (notFoundIds.length > 0) {
+        data.notFoundIds = notFoundIds;
+      }
+
+      return ResponseUtil.success(res, 'Bribes payment processed', data);
     } catch (err: any) {
       console.error('Error paying bribes:', err);
       return ResponseUtil.internalError(res, 'Error paying bribes', err);
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Deletes a bribe by ID.

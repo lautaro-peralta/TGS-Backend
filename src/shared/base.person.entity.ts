@@ -6,7 +6,7 @@ import {
   Ref,
   Entity,
 } from '@mikro-orm/core';
-import { User } from '../modules/auth/user.entity.js';
+import { User } from '../modules/auth/user/user.entity.js';
 import { v7 as uuidv7 } from 'uuid';
 
 @Entity({ tableName: 'persons' })
@@ -83,7 +83,7 @@ export class BasePersonEntity {
     return age;
 }
     get verificationScore(): number {
-    let score = 40; // Base por tener datos personales
+    let score = 40; // Base for having personal data
     if (this.documentVerified) score += 30;
     if (this.phoneVerified) score += 20;
     if (this.addressVerified) score += 10;
@@ -112,7 +112,7 @@ export class BasePersonEntity {
   updatedAt?: Date;
   
  
-  POR EJEMPLO, PARA AUTORIDAD, LA FECHA A PARTIR DE LA CUAL COMENZÓ A TRABAJAR
-  CLANDESTINAMENTE, O LOS SOCIOS, PARA SABER SU ANTIGÜEDAD
+  FOR EXAMPLE, FOR AN AUTHORITY, THE DATE FROM WHICH THEY STARTED WORKING
+  CLANDESTINELY, OR FOR PARTNERS, TO KNOW THEIR SENIORITY
 
   */

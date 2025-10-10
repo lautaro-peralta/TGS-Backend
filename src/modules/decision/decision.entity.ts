@@ -15,7 +15,7 @@ import {
 // ============================================================================
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
 import { Topic } from '../topic/topic.entity.js';
-import { User } from '../auth/user.entity.js';
+import { User } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // ENTITY - StrategicDecision

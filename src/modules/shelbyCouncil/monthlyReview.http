@@ -1,0 +1,223 @@
+### ============================================================================
+### MONTHLY REVIEWS - Shelby Council Sales Reviews
+### ============================================================================
+
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+### Variables (update these with actual values from your system)
+@partnerDni = 12345678
+@reviewId = 1
+@year = 2025
+@month = 1
+
+### ============================================================================
+### CREATE - New Monthly Review
+### ============================================================================
+
+### Create a new monthly review for January 2025
+POST {{baseUrl}}/monthly-reviews
+Content-Type: {{contentType}}
+
+{
+  "year": 2025,
+  "month": 1,
+  "partnerDni": "{{partnerDni}}",
+  "reviewDate": "2025-02-01T10:00:00Z",
+  "status": "PENDING",
+  "observations": "Revisión de ventas de enero 2025. Se observa un incremento del 15% respecto al mes anterior.",
+  "recommendations": "Continuar con estrategia actual. Considerar expansión en zona norte."
+}
+
+### Create review for current month (auto-calculates stats)
+POST {{baseUrl}}/monthly-reviews
+Content-Type: {{contentType}}
+
+{
+  "year": {{year}},
+  "month": {{month}},
+  "partnerDni": "{{partnerDni}}"
+}
+
+### ============================================================================
+### READ - Get Monthly Reviews
+### ============================================================================
+
+### Get all monthly reviews (paginated)
+GET {{baseUrl}}/monthly-reviews?page=1&limit=10
+
+### Get a specific review by ID
+GET {{baseUrl}}/monthly-reviews/{{reviewId}}
+
+### Search reviews by year
+GET {{baseUrl}}/monthly-reviews/search?year=2025
+
+### Search reviews by year and month
+GET {{baseUrl}}/monthly-reviews/search?year=2025&month=1
+
+### Search reviews by status
+GET {{baseUrl}}/monthly-reviews/search?status=IN_REVIEW
+
+### Search reviews by partner
+GET {{baseUrl}}/monthly-reviews/search?partnerDni={{partnerDni}}
+
+### Complex search: Year + Month + Status
+GET {{baseUrl}}/monthly-reviews/search?year=2025&month=1&status=COMPLETED
+
+### ============================================================================
+### UPDATE - Modify Monthly Review
+### ============================================================================
+
+### Update review status to IN_REVIEW
+PATCH {{baseUrl}}/monthly-reviews/{{reviewId}}
+Content-Type: {{contentType}}
+
+{
+  "status": "IN_REVIEW"
+}
+
+### Complete review with observations
+PATCH {{baseUrl}}/monthly-reviews/{{reviewId}}
+Content-Type: {{contentType}}
+
+{
+  "status": "COMPLETED",
+  "observations": "Revisión completada. Ventas dentro de los objetivos esperados.",
+  "recommendations": "Mantener nivel de inventario actual. Incrementar marketing en zona sur."
+}
+
+### Approve review
+PATCH {{baseUrl}}/monthly-reviews/{{reviewId}}
+Content-Type: {{contentType}}
+
+{
+  "status": "APPROVED"
+}
+
+### Reject review with recommendations
+PATCH {{baseUrl}}/monthly-reviews/{{reviewId}}
+Content-Type: {{contentType}}
+
+{
+  "status": "REJECTED",
+  "recommendations": "Revisar discrepancias en ventas de zona oeste. Requiere auditoría adicional."
+}
+
+### ============================================================================
+### DELETE - Remove Monthly Review
+### ============================================================================
+
+### Delete a monthly review (Admin only)
+DELETE {{baseUrl}}/monthly-reviews/{{reviewId}}
+
+### ============================================================================
+### STATISTICS - Sales Analytics for Dashboard
+### ============================================================================
+
+### Get monthly statistics (January 2025)
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&month=10
+
+### Get yearly statistics (2025)
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025
+
+### Get monthly statistics grouped by distributor
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&month=10&groupBy=distributor
+
+### Get monthly statistics grouped by product
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&month=1&groupBy=product
+
+### Get monthly statistics grouped by client
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&month=1&groupBy=client
+
+### Get monthly statistics grouped by zone
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&month=1&groupBy=zone
+
+### Get daily sales breakdown for a month
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&month=1&groupBy=day
+
+### Get yearly statistics grouped by distributor
+GET {{baseUrl}}/monthly-reviews/statistics?year=2025&groupBy=distributor
+
+### ============================================================================
+### EXAMPLE RESPONSES
+### ============================================================================
+
+###
+### CREATE Response Example:
+###
+# {
+#   "success": true,
+#   "message": "Monthly review created successfully",
+#   "data": {
+#     "id": 1,
+#     "year": 2025,
+#     "month": 1,
+#     "period": "January 2025",
+#     "reviewDate": "2025-02-01T10:00:00.000Z",
+#     "status": "PENDING",
+#     "observations": "Revisión de ventas de enero 2025...",
+#     "totalSalesAmount": 125430.50,
+#     "totalSalesCount": 342,
+#     "recommendations": "Continuar con estrategia actual...",
+#     "reviewedBy": {
+#       "dni": "12345678",
+#       "name": "Thomas Shelby"
+#     },
+#     "createdAt": "2025-02-01T10:00:00.000Z",
+#     "updatedAt": "2025-02-01T10:00:00.000Z"
+#   }
+# }
+
+###
+### STATISTICS Response Example (grouped by distributor):
+###
+# {
+#   "success": true,
+#   "message": "Sales statistics retrieved successfully",
+#   "data": {
+#     "period": "January 2025",
+#     "dateRange": {
+#       "start": "2025-01-01T00:00:00.000Z",
+#       "end": "2025-01-31T23:59:59.999Z"
+#     },
+#     "summary": {
+#       "totalSales": 342,
+#       "totalAmount": 125430.50,
+#       "averageAmount": 366.76
+#     },
+#     "groupedData": [
+#       {
+#         "distributorDni": "11111111",
+#         "distributorName": "Juan Pérez",
+#         "totalSales": 89,
+#         "totalAmount": 32450.20
+#       },
+#       {
+#         "distributorDni": "22222222",
+#         "distributorName": "María López",
+#         "totalSales": 75,
+#         "totalAmount": 28960.30
+#       }
+#     ]
+#   }
+# }
+
+###
+### STATISTICS Response Example (grouped by day):
+###
+# {
+#   "success": true,
+#   "data": {
+#     "period": "January 2025",
+#     "summary": {
+#       "totalSales": 342,
+#       "totalAmount": 125430.50,
+#       "averageAmount": 366.76
+#     },
+#     "groupedData": [
+#       { "date": "2025-01-01", "totalSales": 12, "totalAmount": 4320.50 },
+#       { "date": "2025-01-02", "totalSales": 15, "totalAmount": 5890.20 },
+#       { "date": "2025-01-03", "totalSales": 8, "totalAmount": 2950.00 }
+#     ]
+#   }
+# }
