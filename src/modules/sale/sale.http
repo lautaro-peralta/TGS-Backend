@@ -1,12 +1,35 @@
-### List all sales
+# ============================================================================
+# AUTHENTICATION
+# ============================================================================
+# Las rutas de sales requieren autenticación con rol ADMIN
+#
+# PASO 1: Primero hacer login (esto establece la cookie automáticamente)
+
+### Login como ADMIN (establece cookie access_token)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev",
+  "password": "admin123"
+}
+
+# PASO 2: Después de hacer login, ejecutar las siguientes requests
+# La cookie se enviará automáticamente con cada request
+
+# ============================================================================
+# CRUD
+# ============================================================================
+
+### List all sales (requiere cookie de admin)
 GET http://localhost:3000/api/sales
 
-### Search sale by ID
+### Search sale by ID (requiere cookie de admin)
 GET http://localhost:3000/api/sales/9
 
-### ============================================================================
-### SEARCH BY DATE
-### ============================================================================
+# ============================================================================
+# SEARCH BY DATE
+# ============================================================================
 
 ### Search by date - exact (specific day)
 GET http://localhost:3000/api/sales/search?date=2025-10-07&type=exact
@@ -20,9 +43,9 @@ GET http://localhost:3000/api/sales/search?date=2025-10-10&type=before
 ### Search by date - between (range between two dates)
 GET http://localhost:3000/api/sales/search?date=2025-05-01&endDate=2025-10-31&type=between
 
-### ============================================================================
-### TEXT SEARCH (parameter 'by' is REQUIRED)
-### ============================================================================
+# ============================================================================
+# TEXT SEARCH (parameter 'by' is REQUIRED)
+# ============================================================================
 
 ### Search by client
 GET http://localhost:3000/api/sales/search?q=pedro&by=client
@@ -31,14 +54,14 @@ GET http://localhost:3000/api/sales/search?q=pedro&by=client
 GET http://localhost:3000/api/sales/search?q=delprato&by=distributor
 
 ### Search by zone
-GET http://localhost:3000/api/sales/search?q=Centro&by=zone
+GET http://localhost:3000/api/sales/search?q=Cntro&by=zone
 
 ### ❌ ERROR: Search without 'by' (not allowed)
 GET http://localhost:3000/api/sales/search?q=juan
 
-### ============================================================================
-### CRUD
-### ============================================================================
+# ============================================================================
+# CREATE & UPDATE
+# ============================================================================
 
 ### Create sale (requires distributorDni)
 POST http://localhost:3000/api/sales
@@ -53,7 +76,7 @@ Content-Type: application/json
   },
   "details": [
     {
-      "productId": 3,
+      "productId": 5,
       "quantity": 1
     }
   ]
@@ -92,9 +115,20 @@ Content-Type: application/json
   "authorityDni": null
 }
 
+# ============================================================================
+# DELETE
+# ============================================================================
+
 ### Delete a sale by ID (only if it has no associated bribes)
 DELETE http://localhost:3000/api/sales/1
 
 ### ❌ If you try to delete a sale with associated bribes
 ### Response: "Cannot delete sale #X because it has Y bribe(s) associated"
 DELETE http://localhost:3000/api/sales/9
+
+# ============================================================================
+# LOGOUT
+# ============================================================================
+
+### Logout (elimina la cookie)
+POST http://localhost:3000/api/auth/logout

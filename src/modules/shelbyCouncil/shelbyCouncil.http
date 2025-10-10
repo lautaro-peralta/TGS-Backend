@@ -1,0 +1,124 @@
+# ============================================================================
+# SHELBY COUNCIL API
+# ============================================================================
+#
+# Este archivo contiene ejemplos de solicitudes para probar la API de Shelby Council.
+#
+# Variables:
+# - {{host}}: El host del servidor (ej. http://localhost:3000)
+# - {{token}}: Token de autenticación JWT (obtenido del login)
+# - {{councilId}}: ID de un registro de Shelby Council creado
+
+# ============================================================================
+# VARIABLES
+# ============================================================================
+@host = http://localhost:3000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZXMiOlsiQURNSU4iXSwiaWF0IjoxNjE2MjYyMjIyLCJleHAiOjE2MTYyNjU4MjJ9
+@councilId = 1
+
+# ============================================================================
+# AUTHENTICATION - Obtener token (ejemplo)
+# ============================================================================
+
+### Login as Admin to get a valid token
+# @name loginAdmin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "adminpassword"
+}
+
+# ============================================================================
+# CRUD OPERATIONS
+# ============================================================================
+
+### ----------------------------------------------------------------------------
+### CREATE a new Shelby Council record
+# @name createShelbyCouncil
+POST {{host}}/api/shelby-council
+Content-Type: application/json
+
+{
+  "partnerDni": "12345678",
+  "decisionId": 1,
+  "joinDate": "2025-01-15T10:00:00Z",
+  "role": "Financial Advisor",
+  "notes": "Key member for financial decisions."
+}
+
+### ----------------------------------------------------------------------------
+### GET all Shelby Council records
+# @name getAllShelbyCouncils
+GET {{host}}/api/shelby-council
+Authorization: Bearer {{token}}
+
+### ----------------------------------------------------------------------------
+### SEARCH for Shelby Council records
+# @name searchShelbyCouncils
+GET {{host}}/api/shelby-council/search?partnerDni=12345678&limit=5
+Authorization: Bearer {{token}}
+
+### ----------------------------------------------------------------------------
+### GET a single Shelby Council record by ID
+# @name getShelbyCouncilById
+GET {{host}}/api/shelby-council/{{councilId}}
+Authorization: Bearer {{token}}
+
+### ----------------------------------------------------------------------------
+### UPDATE a Shelby Council record by ID
+# @name updateShelbyCouncil
+PUT {{host}}/api/shelby-council/{{councilId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "role": "Lead Financial Advisor",
+  "notes": "Updated notes: Key member for all major financial decisions."
+}
+
+### ----------------------------------------------------------------------------
+### DELETE a Shelby Council record by ID
+# @name deleteShelbyCouncil
+DELETE {{host}}/api/shelby-council/{{councilId}}
+Authorization: Bearer {{token}}
+
+# ============================================================================
+# ERROR HANDLING EXAMPLES
+# ============================================================================
+
+### ----------------------------------------------------------------------------
+### CREATE - Validation Error (missing required fields)
+POST {{host}}/api/shelby-council
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "role": "This will fail"
+}
+
+### ----------------------------------------------------------------------------
+### GET - Not Found
+GET {{host}}/api/shelby-council/99999
+Authorization: Bearer {{token}}
+
+### ----------------------------------------------------------------------------
+### UPDATE - Not Found
+PUT {{host}}/api/shelby-council/99999
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "role": "Updated role for non-existent record"
+}
+
+### ----------------------------------------------------------------------------
+### DELETE - Not Found
+DELETE {{host}}/api/shelby-council/99999
+Authorization: Bearer {{token}}
+
+### ----------------------------------------------------------------------------
+### ACCESS - Unauthorized (no token)
+GET {{host}}/api/shelby-council
+

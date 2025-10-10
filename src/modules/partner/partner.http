@@ -1,0 +1,62 @@
+@baseUrl = http://localhost:3000/api
+
+# ============================================================================
+# SEARCH
+# ============================================================================
+
+### Search partners by name, email or DNI
+GET {{baseUrl}}/partners/search?q=john
+
+### Search with pagination
+GET {{baseUrl}}/partners/search?q=john&page=1&limit=10
+
+### Search by name - minimum 2 characters
+GET {{baseUrl}}/partners/search?q=Jo
+
+### Search by email
+GET {{baseUrl}}/partners/search?q=example.com
+
+### Search by DNI
+GET {{baseUrl}}/partners/search?q=1234
+
+# ============================================================================
+# CRUD
+# ============================================================================
+
+### Get all partners with pagination
+GET {{baseUrl}}/partners
+
+### Get all partners - page 2
+GET {{baseUrl}}/partners?page=2&limit=5
+
+### Get one partner by DNI
+GET {{baseUrl}}/partners/12345678
+
+
+### Create new partner
+POST {{baseUrl}}/partners
+Content-Type: application/json
+
+{
+  "dni": "12345678",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "address": "1234 Main St, Rosario, Santa Fe",
+  "phone": "3416007788"
+}
+
+
+### Update partner (PATCH — partial updates; all fields optional)
+PATCH {{baseUrl}}/partners/12345678
+Content-Type: application/json
+
+{
+  "name": "John A. Doe",
+  "email": "john.updated@example.com",
+  "address": "Cochabamba 230, Rosario, Santa Fe",
+  "phone": "3416555555"
+}
+
+
+### Delete partner
+DELETE {{baseUrl}}/partners/12345678

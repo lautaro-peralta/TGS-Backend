@@ -7,7 +7,7 @@ import argon2 from 'argon2';
 // IMPORTS - Internal modules
 // ============================================================================
 import { orm } from './db/orm.js';
-import { User, Role } from '../modules/auth/user.entity.js';
+import { User, Role } from '../modules/auth/user/user.entity.js';
 import { BasePersonEntity } from './base.person.entity.js';
 import { Zone } from '../modules/zone/zone.entity.js';
 
@@ -75,13 +75,15 @@ export async function createAdminDev() {
   });
 
   // Create user entity linked to person with admin role
-  const adminUser = em.create(User, {
-    username: 'theAdmin123',
-    email: adminEmail,
-    roles: [Role.ADMIN],
-    password: hashedPassword,
-    person: newAdmin,
-  });
+  const adminUser = new User(
+    'theAdmin123',
+    adminEmail,
+    hashedPassword,
+    [Role.ADMIN]
+  );
+  adminUser.person = newAdmin as any;
+  adminUser.emailVerified = true;
+  adminUser.profileCompleteness = 100;
 
   // ──────────────────────────────────────────────────────────────────────
   // Persist to database

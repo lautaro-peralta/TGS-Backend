@@ -8,20 +8,13 @@ import jwt from 'jsonwebtoken';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { User, Role } from '../auth/user.entity.js';
+import { User, Role } from './user/user.entity.js';
+import { RefreshToken } from './refreshToken.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { registerSchema } from './auth.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
-/**
- * JWT secret key for token signing and verification
- * Should be set via environment variable in production
- */
-const JWT_SECRET = process.env.JWT_SECRET || 'ultra-secure-secret';
+import { env } from '../../config/env.js';
+import crypto from 'crypto';
 
 // ============================================================================
 // AUTHENTICATION CONTROLLER
@@ -102,12 +95,12 @@ export class AuthController {
       // ────────────────────────────────────────────────────────────────────
       // Create user entity with default CLIENT role
       // ────────────────────────────────────────────────────────────────────
-      const newUser = em.create(User, {
+      const newUser = new User(
         username,
-        roles: [Role.CLIENT], // Default role for new registrations
-        password: hashedPassword,
         email,
-      });
+        hashedPassword,
+        [Role.CLIENT]
+      );
 
       // ────────────────────────────────────────────────────────────────────
       // Persist to database
@@ -170,21 +163,54 @@ export class AuthController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Generate JWT access token
+      // Update last login timestamp
       // ────────────────────────────────────────────────────────────────────
-      const token = jwt.sign({ id: user.id, roles: user.roles }, JWT_SECRET, {
-        expiresIn: '1h',
-      });
+      user.lastLoginAt = new Date();
+      await em.flush();
 
       // ────────────────────────────────────────────────────────────────────
-      // Set secure HTTP-only cookie and return user data
+      // Generate JWT access token (short-lived)
+      // ────────────────────────────────────────────────────────────────────
+      const accessToken = jwt.sign(
+        { id: user.id, roles: user.roles },
+        env.JWT_SECRET,
+        { expiresIn: '15m' } // 15 minutes
+      );
+
+      // ────────────────────────────────────────────────────────────────────
+      // Generate refresh token (long-lived)
+      // ────────────────────────────────────────────────────────────────────
+      const refreshTokenString = crypto.randomBytes(64).toString('hex');
+      const hashedRefreshToken = await argon2.hash(refreshTokenString);
+
+      // Store refresh token in database
+      const refreshToken = em.create(RefreshToken, {
+        token: hashedRefreshToken,
+        user: user as any,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        createdAt: new Date(),
+        isRevoked: false,
+      });
+
+      await em.persistAndFlush(refreshToken);
+
+      // ────────────────────────────────────────────────────────────────────
+      // Set secure HTTP-only cookies and return user data
       // ────────────────────────────────────────────────────────────────────
       res
-        .cookie('access_token', token, {
-          httpOnly: true, // Prevents JavaScript access (XSS protection)
-          secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-          sameSite: 'strict', // CSRF protection
-          maxAge: 1000 * 60 * 60, // 1 hour
+        .cookie('access_token', accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 1000 * 60 * 15, // 15 minutes
+        })
+        .cookie('refresh_token', refreshTokenString, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
         })
         .json({
           success: true,
@@ -195,25 +221,6 @@ export class AuthController {
             statusCode: 200,
           },
         });
-
-      // ────────────────────────────────────────────────────────────────────
-      // REFRESH TOKEN IMPLEMENTATION (commented out)
-      // Uncomment below to enable refresh token functionality
-      // ────────────────────────────────────────────────────────────────────
-      /*
-      const refreshToken = jwt.sign(
-        { id: user.id, roles: user.roles },
-        JWT_SECRET,
-        { expiresIn: '15d' }
-      );
-      
-      res.cookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 1000 * 60 * 60 * 24 * 15, // 15 days
-      });
-      */
     } catch (err) {
       next(err);
     }
@@ -224,13 +231,12 @@ export class AuthController {
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Logs out user by clearing authentication cookie
+   * Logs out user by clearing authentication cookies and revoking refresh token
    *
    * Process:
-   * 1. Clears access_token cookie
-   * 2. Returns success confirmation
-   *
-   * Note: Client should also clear any stored user data
+   * 1. Revokes refresh token in database
+   * 2. Clears access_token and refresh_token cookies
+   * 3. Returns success confirmation
    *
    * @param req - Express request
    * @param res - Express response
@@ -240,13 +246,147 @@ export class AuthController {
    * POST /api/auth/logout
    */
   async logout(req: Request, res: Response) {
-    res.clearCookie('access_token').json({
-      success: true,
-      message: 'Logout successful',
-      meta: {
-        timestamp: new Date().toISOString(),
-        statusCode: 200,
-      },
-    });
+    const em = orm.em.fork();
+
+    try {
+      const refreshTokenString = req.cookies.refresh_token;
+
+      if (refreshTokenString) {
+        // Find and revoke all matching refresh tokens
+        const tokens = await em.find(RefreshToken, {});
+        for (const token of tokens) {
+          if (await argon2.verify(token.token, refreshTokenString)) {
+            token.revoke();
+          }
+        }
+        await em.flush();
+      }
+
+      res
+        .clearCookie('access_token')
+        .clearCookie('refresh_token')
+        .json({
+          success: true,
+          message: 'Logout successful',
+          meta: {
+            timestamp: new Date().toISOString(),
+            statusCode: 200,
+          },
+        });
+    } catch (err) {
+      res.clearCookie('access_token').clearCookie('refresh_token').json({
+        success: true,
+        message: 'Logout successful',
+        meta: {
+          timestamp: new Date().toISOString(),
+          statusCode: 200,
+        },
+      });
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // REFRESH TOKEN
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Refreshes access token using refresh token
+   *
+   * Process:
+   * 1. Validates refresh token from cookie
+   * 2. Checks if token exists and is active in database
+   * 3. Generates new access token
+   * 4. Optionally rotates refresh token for security
+   * 5. Returns new tokens
+   *
+   * @param req - Express request with refresh_token cookie
+   * @param res - Express response
+   * @returns 200 with new access token
+   *
+   * @example
+   * POST /api/auth/refresh
+   */
+  async refresh(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      const refreshTokenString = req.cookies.refresh_token;
+
+      if (!refreshTokenString) {
+        return ResponseUtil.unauthorized(res, 'Refresh token not found');
+      }
+
+      // Find matching refresh token in database
+      const tokens = await em.find(RefreshToken, {}, { populate: ['user'] });
+      let validToken: RefreshToken | null = null;
+
+      for (const token of tokens) {
+        if (await argon2.verify(token.token, refreshTokenString)) {
+          validToken = token;
+          break;
+        }
+      }
+
+      if (!validToken || !validToken.isActive()) {
+        return ResponseUtil.unauthorized(res, 'Invalid or expired refresh token');
+      }
+
+      // Access the user - with populate it's already loaded
+      const user = validToken.user as any;
+
+      // Generate new access token
+      const accessToken = jwt.sign(
+        { id: user.id, roles: user.roles },
+        env.JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      // Optional: Rotate refresh token for added security
+      const newRefreshTokenString = crypto.randomBytes(64).toString('hex');
+      const hashedNewRefreshToken = await argon2.hash(newRefreshTokenString);
+
+      // Revoke old token
+      validToken.revoke();
+
+      // Create new refresh token
+      const newRefreshToken = em.create(RefreshToken, {
+        token: hashedNewRefreshToken,
+        user: user as any,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        createdAt: new Date(),
+        isRevoked: false,
+      });
+
+      await em.persistAndFlush(newRefreshToken);
+
+      // Set new cookies
+      res
+        .cookie('access_token', accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 1000 * 60 * 15, // 15 minutes
+        })
+        .cookie('refresh_token', newRefreshTokenString, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        })
+        .json({
+          success: true,
+          message: 'Token refreshed successfully',
+          data: user.toDTO(),
+          meta: {
+            timestamp: new Date().toISOString(),
+            statusCode: 200,
+          },
+        });
+    } catch (err) {
+      console.error('Error refreshing token:', err);
+      return ResponseUtil.internalError(res, 'Failed to refresh token', err);
+    }
   }
 }

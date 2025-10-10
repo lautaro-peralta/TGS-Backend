@@ -76,7 +76,7 @@ export class DistributorController {
       entityName: 'distributor',
       em,
       buildFilters: () => ({}),
-      populate: ['products', 'sales'] as any,
+      populate: ['products', 'sales', 'zone'] as any,
       orderBy: { name: 'ASC' } as any,
     });
   }
@@ -103,7 +103,7 @@ export class DistributorController {
       const distributor = await em.findOne(
         Distributor,
         { dni },
-        { populate: ['products', 'sales'] }
+        { populate: ['products', 'sales', 'zone'] }
       );
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', dni);
@@ -208,7 +208,7 @@ export class DistributorController {
       const distributor = await em.findOne(
         Distributor,
         { dni },
-        { populate: ['products'] }
+        { populate: ['products', 'zone'] }
       );
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', dni);
@@ -268,7 +268,7 @@ export class DistributorController {
       const distributor = await em.findOne(
         Distributor,
         { dni },
-        { populate: ['sales', 'products'] }
+        { populate: ['sales', 'products', 'zone'] }
       );
       if (!distributor) {
         return ResponseUtil.error(res, `Distributor with DNI ${dni} not found`, 404);

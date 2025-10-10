@@ -16,8 +16,8 @@ import {
  * Schema for searching products with multiple criteria.
  */
 export const searchProductsSchema = paginationSchema
-  .merge(textSearchSchema)
-  .merge(numericRangeSchema)
+  .extend(textSearchSchema.shape)
+  .extend(numericRangeSchema.shape)
   .extend({
     by: z.enum(['description', 'legal']).optional().default('description'),
   })
@@ -61,13 +61,15 @@ export const createProductSchema = z.object({
     .string()
     .trim()
     .min(3, 'The description must be at least 3 characters long')
-    .max(200, 'The description cannot exceed 200 characters')
+    .max(50, 'The description cannot exceed 50 characters')
     .refine((v) => /\S/.test(v), 'The description cannot be empty'),
+
+  detail: z.string().trim().min(3, 'The detail must be at least 3 characters long')
+    .max(200, 'The detail cannot exceed 200 characters'),
   /**
    * Indicates if the product is illegal.
-   * Defaults to false.
    */
-  isIllegal: z.boolean().optional().default(false),
+  isIllegal: z.boolean(),
 });
 
 /**

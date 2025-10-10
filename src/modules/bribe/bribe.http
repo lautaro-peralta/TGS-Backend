@@ -6,10 +6,10 @@ GET http://localhost:3000/api/bribes
 # ============================================================================
 
 ### Search by status - paid bribes (paid=true)
-GET http://localhost:3000/api/bribes/search?q=true
+GET http://localhost:3000/api/bribes/search?paid=true
 
 ### Search by status - pending bribes (paid=false)
-GET http://localhost:3000/api/bribes/search?q=false
+GET http://localhost:3000/api/bribes/search?paid=false
 
 ### Search by creation date - exact (specific day)
 GET http://localhost:3000/api/bribes/search?date=2025-10-06&type=exact
@@ -28,14 +28,14 @@ GET http://localhost:3000/api/bribes/search?date=2025-09-01&endDate=2025-11-30&t
 # ============================================================================
 
 ### Get a bribe by ID
-GET http://localhost:3000/api/bribes/1
+GET http://localhost:3000/api/bribes/5
 
 ### Pay bribe to a specific authority
 PATCH http://localhost:3000/api/bribes/10101013/pay
 Content-Type: application/json
 
 {
-  "ids":[1]
+  "ids":[5]
 }
 
 ### Pay multiple bribes (without filtering by authority)
@@ -47,4 +47,4 @@ Content-Type: application/json
 }
 
 ### Delete a bribe by ID
-DELETE http://localhost:3000/api/bribes/1
+DELETE http://localhost:3000/api/bribes/4

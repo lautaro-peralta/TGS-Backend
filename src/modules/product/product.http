@@ -65,5 +65,13 @@ Content-Type: application/json
   "stock": 120
 }
 
+### Mark product as illegal
+PATCH http://localhost:3000/api/products/4
+Content-Type: application/json
+
+{
+  "isIllegal": true
+}
+
 ### Delete a product
 DELETE http://localhost:3000/api/products/4

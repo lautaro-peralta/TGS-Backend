@@ -40,6 +40,9 @@ export class Product extends BaseObjectEntity {
   @Property()
   description!: string;
 
+  @Property()
+  detail?: string;
+
   /**
    * The price of the product.
    *
@@ -62,7 +65,7 @@ export class Product extends BaseObjectEntity {
    * @type {boolean}
    */
   @Property({ default: false })
-  isIllegal!: boolean;
+  isIllegal: boolean = false;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships

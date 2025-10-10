@@ -7,7 +7,8 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { Role } from './user.entity.js';
+import { Role } from './user/user.entity.js';
+import { env } from '../../config/env.js';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -20,16 +21,6 @@ interface TokenPayload extends JwtPayload {
   id: number;
   roles: string[];
 }
-
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
-/**
- * JWT secret key for token verification
- * Should be set via environment variable in production
- */
-const JWT_SECRET = process.env.JWT_SECRET || 'ultra-secure-secret';
 
 // ============================================================================
 // AUTHENTICATION MIDDLEWARE
@@ -81,7 +72,7 @@ export function authMiddleware(
   // Verify token and extract payload
   // ──────────────────────────────────────────────────────────────────────────
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const payload = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
 
     console.log('✅ [authMiddleware] Valid token, payload:', payload);
 
@@ -169,3 +160,17 @@ export function rolesMiddleware(allowedRoles: Role[]) {
     next();
   };
 }
+
+// ============================================================================
+// RE-EXPORTS - Profile Completeness Middlewares
+// ============================================================================
+
+/**
+ * Re-export profile completeness middlewares for convenience
+ * See profile-completeness.middleware.ts for full documentation
+ */
+export {
+  requireProfileCompleteness,
+  requireActionPermission,
+  requireClientCanPurchase,
+} from '../../shared/middleware/profile-completeness.middleware.js';

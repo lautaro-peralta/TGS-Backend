@@ -9,7 +9,7 @@ import argon2 from 'argon2';
 // ============================================================================
 import { orm } from '../../shared/db/orm.js';
 import { Client } from './client.entity.js';
-import { User, Role } from '../auth/user.entity.js';
+import { User, Role } from '../auth/user/user.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
@@ -134,13 +134,13 @@ export class ClientController {
 
         if (!user) {
           const hashedPassword = await argon2.hash(password);
-          user = em.create(User, {
-            email,
+          const user = new User(
             username,
-            password: hashedPassword,
-            roles: [Role.CLIENT],
-            person,
-          });
+            email,
+            hashedPassword,
+            [Role.CLIENT]
+          );
+          user.person = person as any;
           await em.persistAndFlush(user);
 
           if (!user.id) {
@@ -173,9 +173,9 @@ export class ClientController {
         client: client.toDTO(),
         ...(user && {
           user: {
-            id: user.id,
-            username: user.username,
-            email: user.email,
+            id: (user as User).id,
+            username: (user as User).username,
+            email: (user as User).email,
           },
         }),
       };

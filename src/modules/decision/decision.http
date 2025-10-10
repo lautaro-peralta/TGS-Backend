@@ -37,7 +37,7 @@ GET http://localhost:3000/api/decisions/search?date=2026-03-01&type=after&dateFi
 # ============================================================================
 
 ### Get a decision by ID
-GET http://localhost:3000/api/decisions/2
+GET http://localhost:3000/api/decisions/4
 
 ### Create new strategic decision
 POST http://localhost:3000/api/decisions
@@ -47,11 +47,11 @@ Content-Type: application/json
   "description":"This is the first decision of all",
   "startDate":"2026-03-03",
   "endDate":"2026-04-05",
-  "topicId": 5
+  "topicId": 2
 }
 
 ###
-PATCH http://localhost:3000/api/decisions/2
+PATCH http://localhost:3000/api/decisions/4
 Content-Type: application/json
 
 {
@@ -59,4 +59,4 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:3000/api/decisions/2
+DELETE http://localhost:3000/api/decisions/4

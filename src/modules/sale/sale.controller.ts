@@ -2,7 +2,7 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
-import { FilterQuery, Populate } from '@mikro-orm/core';
+import { Populate } from '@mikro-orm/core';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -15,7 +15,6 @@ import { Product } from '../product/product.entity.js';
 import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from '../bribe/bribe.entity.js';
 import { Distributor } from '../distributor/distributor.entity.js';
-import { Zone } from '../zone/zone.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';

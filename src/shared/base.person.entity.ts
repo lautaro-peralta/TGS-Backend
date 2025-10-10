@@ -6,7 +6,7 @@ import {
   Ref,
   Entity,
 } from '@mikro-orm/core';
-import { User } from '../modules/auth/user.entity.js';
+import { User } from '../modules/auth/user/user.entity.js';
 import { v7 as uuidv7 } from 'uuid';
 
 @Entity({ tableName: 'persons' })
