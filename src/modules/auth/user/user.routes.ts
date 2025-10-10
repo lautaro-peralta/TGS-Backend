@@ -7,10 +7,10 @@ import { Router } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { UserController } from './user.controller.js';
-import { authMiddleware, rolesMiddleware } from './auth.middleware.js';
-import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
-import { changeRoleSchema } from './user.schema.js';
-import { Role } from '../auth/user.entity.js';
+import { authMiddleware, rolesMiddleware } from '../auth.middleware.js';
+import { validateWithSchema } from '../../../shared/middleware/validation.middleware.js';
+import { changeRoleSchema, completeProfileSchema, updateUserSchema } from './user.schema.js';
+import { Role } from './user.entity.js';
 
 // ============================================================================
 // ROUTER - User
@@ -28,6 +28,31 @@ const userController = new UserController();
  * @access  Private
  */
 userRouter.get('/me', authMiddleware, userController.getUserProfile);
+
+/**
+ * @route   PUT /api/users/me/complete-profile
+ * @desc    Complete user profile with personal information.
+ * @access  Private
+ */
+userRouter.put(
+  '/me/complete-profile',
+  authMiddleware,
+  validateWithSchema({ body: completeProfileSchema }),
+  userController.completeProfile
+);
+
+/**
+ * @route   PUT /api/users/:id
+ * @desc    Update user properties (emailVerified, isActive, roles, profileCompleteness).
+ * @access  Private (Admin only)
+ */
+userRouter.put(
+  '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  validateWithSchema(updateUserSchema),
+  userController.updateUser
+);
 
 /**
  * @route   PATCH /api/users/:id/role

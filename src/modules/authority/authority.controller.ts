@@ -9,7 +9,7 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Authority } from './authority.entity.js';
 import { Zone } from '../zone/zone.entity.js';
-import { Role, User } from '../auth/user.entity.js';
+import { Role, User } from '../auth/user/user.entity.js';
 import { Bribe } from '../../modules/bribe/bribe.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
@@ -263,7 +263,11 @@ export class AuthorityController {
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Retrieves all authorities.
+   * Retrieves all authorities with pagination.
+   *
+   * Query params:
+   * - page: number (default: 1) - Page number
+   * - limit: number (default: 10, max: 100) - Items per page
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
@@ -271,25 +275,15 @@ export class AuthorityController {
    */
   async getAllAuthorities(req: Request, res: Response) {
     const em = orm.em.fork();
-    try {
-      const authorities = await em.find(Authority, {}, {
-        populate: ['zone', 'bribes'],
-        orderBy: { name: 'ASC' }
-      });
-      const message = ResponseUtil.generateListMessage(authorities.length, 'authority');
-      return ResponseUtil.successList(
-        res,
-        message,
-        authorities.map((a) => a.toDTO())
-      );
-    } catch (error) {
-      console.error('Error listing authorities:', error);
-      return ResponseUtil.internalError(
-        res,
-        'Error getting the list of authorities',
-        error
-      );
-    }
+
+    // Use searchEntityWithPagination with empty filters
+    return searchEntityWithPagination(req, res, Authority, {
+      entityName: 'authority',
+      em,
+      buildFilters: () => ({}), // No filters, return all
+      populate: ['zone', 'bribes'] as any,
+      orderBy: { name: 'ASC' } as any,
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────────────

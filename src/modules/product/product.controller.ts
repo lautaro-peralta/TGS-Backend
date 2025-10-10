@@ -105,9 +105,10 @@ export class ProductController {
 
       const product = em.create(Product,{
         price: validatedData.price,
-        stock: validatedData.stock,
+        stock: validatedData.stock ?? 0,
         description: validatedData.description,
-        isIllegal: validatedData.isIllegal
+        detail: validatedData.detail ?? '',
+        isIllegal: validatedData.isIllegal ?? false
         });
 
       await em.persistAndFlush(product);

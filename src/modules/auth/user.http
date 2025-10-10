@@ -1,3 +1,4 @@
+### Login as admin
 POST http://localhost:3000/api/auth/login
 Content-Type: application/json
 
@@ -5,7 +6,8 @@ Content-Type: application/json
   "email": "admin@local.dev",
   "password": "admin123"
 }
-###
+
+### Login as regular user
 POST http://localhost:3000/api/auth/login
 Content-Type: application/json
 
@@ -14,7 +16,7 @@ Content-Type: application/json
   "password":"1234a@A1"
 }
 
-###
+### Register new user
 POST http://localhost:3000/api/auth/register
 Content-Type: application/json
 
@@ -24,8 +26,122 @@ Content-Type: application/json
   "password":"1234a@A1"
 }
 
-###
+### Get current user (requires access_token cookie)
 GET http://localhost:3000/api/users/me
 
-###
+### Refresh access token (requires refresh_token cookie)
+# Este endpoint genera un nuevo access_token usando el refresh_token
+# El refresh_token se obtiene automáticamente al hacer login (está en las cookies)
+POST http://localhost:3000/api/auth/refresh
+
+### Logout (revokes refresh token and clears cookies)
 POST http://localhost:3000/api/auth/logout
+
+###############################################################################
+# USER MANAGEMENT ENDPOINTS (ADMIN ONLY)
+###############################################################################
+
+### Get all users (Admin only)
+GET http://localhost:3000/api/users
+
+### Get user by ID (Admin only)
+# Reemplaza {user-id} con un UUID válido
+GET http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+
+### Get user by username (Admin only)
+GET http://localhost:3000/api/users/lauta
+
+### Update user - Verify email (Admin only)
+# Reemplaza {user-id} con un UUID válido
+PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+Content-Type: application/json
+
+{
+  "emailVerified": true
+}
+
+### Update user - Deactivate account (Admin only)
+# Reemplaza {user-id} con un UUID válido
+PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+### Update user - Multiple properties (Admin only)
+# Reemplaza {user-id} con un UUID válido
+PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+Content-Type: application/json
+
+{
+  "emailVerified": true,
+  "isActive": true
+}
+
+### Update user - Change roles (Admin only)
+# Reemplaza {user-id} con un UUID válido
+# Nota: Roles válidos (compatibles entre sí): CLIENT, PARTNER, DISTRIBUTOR
+# IMPORTANTE: ADMIN requiere que el usuario tenga datos personales completos
+# IMPORTANTE: PARTNER/DISTRIBUTOR/AUTHORITY requieren solicitud previa aprobada por admin
+PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+Content-Type: application/json
+
+{
+  "roles": ["CLIENT", "PARTNER"]
+}
+
+### Update user - Set AUTHORITY role (Admin only)
+# Reemplaza {user-id} con un UUID válido
+# Nota: AUTHORITY es incompatible con PARTNER, DISTRIBUTOR y ADMIN
+PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+Content-Type: application/json
+
+{
+  "roles": ["CLIENT", "AUTHORITY"]
+}
+
+### Update user - INVALID: Incompatible roles (will fail)
+# Reemplaza {user-id} con un UUID válido
+# Este request fallará porque AUTHORITY no puede combinarse con PARTNER
+PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
+Content-Type: application/json
+
+{
+  "roles": ["AUTHORITY", "PARTNER"]
+}
+
+### Promote user to ADMIN (Admin only)
+# Reemplaza {user-id} con un UUID válido
+# REQUIERE: Usuario debe tener datos personales completos (profileCompleteness = 100%)
+# Fallará si el usuario no completó su perfil (DNI, name, phone, address)
+PATCH http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b/role
+Content-Type: application/json
+
+{
+  "role": "ADMIN"
+}
+
+### Add CLIENT role (Admin only)
+# Reemplaza {user-id} con un UUID válido
+PATCH http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b/role
+Content-Type: application/json
+
+{
+  "role": "CLIENT"
+}
+
+###############################################################################
+# USER PROFILE ENDPOINTS (AUTHENTICATED USER)
+###############################################################################
+
+### Complete user profile (requires authentication)
+PUT http://localhost:3000/api/users/me/complete-profile
+Content-Type: application/json
+
+{
+  "dni": "12345680",
+  "name": "Juan Pérez",
+  "phone": "+54 9 11 1234-5678",
+  "address": "Av. Siempre Viva 123, Springfield"
+}

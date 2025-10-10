@@ -7,7 +7,7 @@ import { v7 as uuidv7 } from 'uuid';
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { BasePersonEntity } from '../../shared/base.person.entity.js';
+import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 
 // ============================================================================
 // ENUM - Role
@@ -89,72 +89,48 @@ export class User {
    *
    * @type {boolean}
    */
-  //@Property({ default: true })
-  //isActive: boolean = true;
+  @Property({ default: true })
+  isActive: boolean = true;
 
   /**
    * Indicates if the user's email has been verified.
    *
    * @type {boolean}
    */
-  //@Property({ default: false })
-  //emailVerified: boolean = false;
-
-  /**
-   * Token for email verification.
-   *
-   * @type {string | undefined}
-   */
-  //@Property({ nullable: true })
-  //emailVerificationToken?: string;
-
-  /**
-   * Token for password reset.
-   *
-   * @type {string | undefined}
-   */
-  //@Property({ nullable: true })
-  //passwordResetToken?: string;
-
-  /**
-   * Expiration date for the password reset token.
-   *
-   * @type {Date | undefined}
-   */
-  //@Property({ nullable: true })
-  //passwordResetExpiresAt?: Date;
+  @Property({ default: false })
+  emailVerified: boolean = false;
 
   /**
    * The timestamp of the user's last login.
    *
    * @type {Date | undefined}
    */
-  //@Property({ nullable: true })
-  //lastLoginAt?: Date;
+  @Property({ nullable: true })
+  lastLoginAt?: Date;
 
   /**
    * The completeness percentage of the user's profile.
    *
    * @type {number}
    */
-  //@Property({ default: 25 })
-  //profileCompleteness: number = 25;
+  @Property({ default: 25 })
+  profileCompleteness: number = 25;
 
   /**
    * The timestamp when the user was created.
    *
    * @type {Date}
    */
-  //@Property()
-  //createdAt: Date = new Date();
+  @Property({ defaultRaw: 'CURRENT_TIMESTAMP' })
+  createdAt: Date = new Date();
 
   /**
    * The timestamp when the user was last updated.
    *
    * @type {Date}
    */
-  //@Property({ onUpdate: () => new Date() })
-  //updatedAt: Date = new Date();
+  @Property({ defaultRaw: 'CURRENT_TIMESTAMP', onUpdate: () => new Date() })
+  updatedAt: Date = new Date();
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
@@ -208,98 +184,147 @@ export class User {
       username: this.username,
       email: this.email,
       roles: this.roles,
+      isActive: this.isActive,
+      emailVerified: this.emailVerified,
+      profileCompleteness: this.profileCompleteness,
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+      lastLoginAt: this.lastLoginAt?.toISOString(),
+      hasPersonalInfo: this.hasPersonalInfo,
     };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
   // Getters and Methods
   // ──────────────────────────────────────────────────────────────────────────
-  /*
+
   /**
-   * Checks if the user has personal information.
+   * Checks if the user has complete personal information.
+   * Verifies that all required fields in BasePersonEntity are filled.
    *
-//   * @readonly
-//   * @type {boolean}
-//   */
-  //  get hasPersonalInfo(): boolean {
-  //    return !!this.person;
-  //  }
-  //
-  //  /**
-  //   * Gets the display name for the user.
-  //   *
-  //   * @readonly
-  //   * @type {string}
-  //   */
-  //  get displayName(): string {
-  //    return this.person?.getEntity().name || this.username;
-  //  }
-  //
-  //  /**
-  //   * Determines if the user can perform a specific action.
-  //   *
-  //   * @param {('purchase' | 'withdrawal' | 'verification')} action - The action to perform.
-  //   * @returns {boolean} True if the user can perform the action, false otherwise.
-  //   */
-  //  canPerformAction(
-  //    action: 'purchase' | 'withdrawal' | 'verification'
-  //  ): boolean {
-  //    switch (action) {
-  //      case 'purchase':
-  //        return this.emailVerified; // Requires verified email
-  //      case 'withdrawal':
-  //      case 'verification':
-  //        return this.hasPersonalInfo && this.emailVerified; // Requires personal data
-  //      default:
-  //        return true;
-  //    }
-  //  }
-  //
-  //  /**
-  //   * Calculates the completeness of the user's profile.
-  //   *
-  //   * @returns {number} The profile completeness percentage.
-  //   */
-  //  calculateProfileCompleteness(): number {
-  //    let completeness = 25; // Base for having an account
-  //
-  //    if (this.emailVerified) completeness += 25; // +25% for verified email
-  //    if (this.person) {
-  //      completeness += 35; // +35% for basic personal data
-  //
-  //      // Bonus for additional verifications
-  //      // if (this.person.documentVerified) completeness += 10;
-  //      // if (this.person.phoneVerified) completeness += 5;
-  //    }
-  //
-  //    return Math.min(completeness, 100);
-  //  }
-  //
-  //  /**
-  //   * Gets suggestions for improving the user's profile.
-  //   *
-  //   * @returns {string[]} An array of profile suggestions.
-  //   */
-  //  getProfileSuggestions(): string[] {
-  //    const suggestions: string[] = [];
-  //
-  //    if (!this.emailVerified) {
-  //      suggestions.push('Verify your email for better security');
-  //    }
-  //
-  //    if (!this.person) {
-  //      suggestions.push(
-  //        'Complete your personal profile to access more features'
-  //      );
-  //    } else {
-  //      // if (!this.person.documentVerified) {
-  //      //   suggestions.push('Verify your identity document');
-  //      // }
-  //      // if (!this.person.phoneVerified && this.person.phoneNumber) {
-  //      //   suggestions.push('Verify your phone number');
-  //      // }
-  //    }
-  //
-  //    return suggestions;
-  //  }
+   * @readonly
+   * @type {boolean}
+   */
+  get hasPersonalInfo(): boolean {
+    if (!this.person) return false;
+
+    const person = this.person as any;
+    // Check all required fields from BasePersonEntity
+    return !!(
+      person.dni &&
+      person.name &&
+      person.email &&
+      person.phone &&
+      person.address
+    );
+  }
+
+  /**
+   * Gets the display name for the user.
+   *
+   * @readonly
+   * @type {string}
+   */
+  get displayName(): string {
+    return this.person?.getEntity().name || this.username;
+  }
+
+  /**
+   * Determines if the user can perform a specific action.
+   *
+   * @param {('purchase' | 'admin')} action - The action to perform.
+   * @returns {boolean} True if the user can perform the action, false otherwise.
+   */
+  canPerformAction(action: 'purchase' | 'admin'): boolean {
+    switch (action) {
+      case 'purchase':
+        // Clients can only purchase if email is verified AND personal info is complete
+        return this.emailVerified && this.hasPersonalInfo && this.profileCompleteness === 100;
+      case 'admin':
+        return this.profileCompleteness === 100;
+      default:
+        return true;
+    }
+  }
+
+  /**
+   * Calculates the completeness of the user's profile.
+   *
+   * Profile completeness breakdown:
+   * - 25% for having an account
+   * - 25% for verified email
+   * - 50% for complete personal data (all fields: DNI, name, email, phone, address)
+   *
+   * @returns {number} The profile completeness percentage (0-100).
+   */
+  calculateProfileCompleteness(): number {
+    let completeness = 25; // Base for having an account
+
+    if (this.emailVerified) {
+      completeness += 25; // +25% for verified email
+    }
+
+    if (this.hasPersonalInfo) {
+      completeness += 50; // +50% for complete personal data
+    }
+
+    return Math.min(completeness, 100);
+  }
+
+  /**
+   * Checks if the user (client) can make purchases.
+   * Requires both email verification and complete personal information.
+   *
+   * @returns {boolean} True if user can purchase, false otherwise.
+   */
+  canPurchase(): boolean {
+    return this.emailVerified && this.hasPersonalInfo;
+  }
+
+  /**
+   * Updates the profile completeness.
+   */
+  updateProfileCompleteness(): void {
+    this.profileCompleteness = this.calculateProfileCompleteness();
+  }
+
+  /**
+   * Gets suggestions for improving the user's profile.
+   *
+   * @returns {string[]} An array of profile suggestions.
+   */
+  getProfileSuggestions(): string[] {
+    const suggestions: string[] = [];
+
+    if (!this.emailVerified) {
+      suggestions.push('Verify your email to increase profile completeness and enable purchases');
+    }
+
+    if (!this.person) {
+      suggestions.push(
+        'Complete your personal information (DNI, name, phone, address) to enable purchases and access more features'
+      );
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Gets specific suggestions for purchase requirements.
+   *
+   * @returns {string[]} An array of suggestions to enable purchases.
+   */
+  getPurchaseRequirementSuggestions(): string[] {
+    const suggestions: string[] = [];
+
+    if (!this.emailVerified) {
+      suggestions.push('Verify your email address');
+    }
+
+    if (!this.person) {
+      suggestions.push('Complete your personal information (DNI, name, phone, address)');
+    }
+
+    return suggestions;
+  }
 }

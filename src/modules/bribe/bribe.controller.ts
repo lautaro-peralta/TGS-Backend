@@ -292,20 +292,39 @@ export class BribeController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
+      // Identify found and not found IDs
+      // ──────────────────────────────────────────────────────────────────────
+      const foundIds = selectedBribes.map((s) => s.id);
+      const notFoundIds = ids.filter((id: number) => !foundIds.includes(id));
+
+      // ──────────────────────────────────────────────────────────────────────
       // Mark bribes as paid and persist changes
       // ──────────────────────────────────────────────────────────────────────
       selectedBribes.forEach((s) => (s.paid = true));
       await em.persistAndFlush(selectedBribes);
 
       // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
+      // Prepare and send response with detailed information
       // ──────────────────────────────────────────────────────────────────────
-      const data = selectedBribes.map((s) => ({
+      const paidBribes = selectedBribes.map((s) => ({
         id: s.id,
         paid: s.paid,
       }));
 
-      return ResponseUtil.success(res, 'Bribes marked as paid', data);
+      const data: any = {
+        paid: paidBribes,
+        summary: {
+          totalRequested: ids.length,
+          successfullyPaid: paidBribes.length,
+          notFound: notFoundIds.length,
+        },
+      };
+
+      if (notFoundIds.length > 0) {
+        data.notFoundIds = notFoundIds;
+      }
+
+      return ResponseUtil.success(res, 'Bribes payment processed', data);
     } catch (err: any) {
       console.error('Error paying bribes:', err);
       return ResponseUtil.internalError(res, 'Error paying bribes', err);

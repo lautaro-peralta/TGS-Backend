@@ -18,7 +18,7 @@ import {
   updateAuthoritySchema,
   partialUpdateAuthoritySchema,
 } from './authority.schema.js';
-import { Role } from '../auth/user.entity.js';
+import { Role } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // ROUTER - Authority

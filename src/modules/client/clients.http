@@ -9,7 +9,7 @@ GET http://localhost:3000/api/clients
 GET http://localhost:3000/api/clients/search?q=pedro
 
 ### Search by name - minimum 2 characters
-GET http://localhost:3000/api/clients/search?q=He
+GET http://localhost:3000/api/clients/search?q=pe
 
 # ============================================================================
 # CRUD

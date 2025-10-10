@@ -9,6 +9,8 @@ import { Router } from 'express';
 import { AuthController } from './auth.controller.js';
 import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
 import { loginSchema, registerSchema } from './auth.schema.js';
+import { userRouter } from './user/user.routes.js';
+import { roleRequestRouter } from './roleRequest/roleRequest.routes.js';
 
 // ============================================================================
 // ROUTER - Auth
@@ -50,5 +52,16 @@ authRouter.post(
  * @access  Public
  */
 authRouter.post('/logout', authController.logout);
+
+/**
+ * @route   POST /api/auth/refresh
+ * @desc    Refresh access token using refresh token.
+ * @access  Public
+ */
+authRouter.post('/refresh', authController.refresh);
+
+// Mount sub-routers
+authRouter.use('/users', userRouter);
+authRouter.use('/role-requests', roleRequestRouter);
 
 export { authRouter };
