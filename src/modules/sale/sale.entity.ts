@@ -32,12 +32,12 @@ import { Distributor } from '../distributor/distributor.entity.js';
  * @param {(Ref<T> | Loaded<T>)} ref - The reference or loaded entity.
  * @returns {*} The DTO representation of the entity.
  */
-function callToDTO<T extends { toDTO?: () => any }>(
+function callToDTO<T extends { toDTO?: () => unknown }>(
   ref: Ref<T> | Loaded<T>
-): any {
+): unknown {
   const entity = wrap(ref).toObject() as T;
-  if (typeof (entity as any).toDTO === 'function') {
-    return (entity as any).toDTO();
+  if (typeof (entity as { toDTO?: () => unknown }).toDTO === 'function') {
+    return (entity as { toDTO: () => unknown }).toDTO();
   }
   return entity;
 }

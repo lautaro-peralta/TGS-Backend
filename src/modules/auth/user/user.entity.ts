@@ -21,6 +21,7 @@ export enum Role {
   PARTNER = 'PARTNER',
   DISTRIBUTOR = 'DISTRIBUTOR',
   CLIENT = 'CLIENT',
+  USER = 'USER',
   AUTHORITY = 'AUTHORITY',
 }
 
@@ -77,12 +78,12 @@ export class User {
 
   /**
    * The roles assigned to the user.
-   * Defaults to [Role.CLIENT].
+   * Defaults to [Role.USER].
    *
    * @type {Role[]}
    */
   @Property({ type: 'string[]' })
-  roles: Role[] = [Role.CLIENT];
+  roles: Role[] = [Role.USER];
 
   /**
    * Indicates if the user account is active.
@@ -93,12 +94,24 @@ export class User {
   isActive: boolean = true;
 
   /**
-   * Indicates if the user's email has been verified.
+   * Indicates if the user has been verified by admin.
+   * This includes verification of ALL personal data: DNI, name, email, phone, address.
+   * This is different from email validation (automatic).
    *
    * @type {boolean}
    */
   @Property({ default: false })
-  emailVerified: boolean = false;
+  isVerified: boolean = false;
+
+  /**
+   * Indicates if the user's email has been validated (automatic).
+   * This is a simple email ownership validation (click on link).
+   * Different from user verification (manual by admin).
+   *
+   * @type {boolean}
+   */
+  @Property({ default: false })
+  emailValidated: boolean = false;
 
   /**
    * The timestamp of the user's last login.
@@ -155,13 +168,13 @@ export class User {
    * @param {string} username - The username.
    * @param {string} email - The email address.
    * @param {string} password - The password.
-   * @param {Role[]} [roles=[Role.CLIENT]] - The roles of the user.
+   * @param {Role[]} [roles=[Role.USER]] - The roles of the user.
    */
   constructor(
     username: string,
     email: string,
     password: string,
-    roles: Role[] = [Role.CLIENT]
+    roles: Role[] = [Role.USER]
   ) {
     this.username = username;
     this.email = email;
@@ -185,7 +198,8 @@ export class User {
       email: this.email,
       roles: this.roles,
       isActive: this.isActive,
-      emailVerified: this.emailVerified,
+      isVerified: this.isVerified,
+      emailValidated: this.emailValidated,
       profileCompleteness: this.profileCompleteness,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
@@ -238,8 +252,8 @@ export class User {
   canPerformAction(action: 'purchase' | 'admin'): boolean {
     switch (action) {
       case 'purchase':
-        // Clients can only purchase if email is verified AND personal info is complete
-        return this.emailVerified && this.hasPersonalInfo && this.profileCompleteness === 100;
+        // Users can only purchase if user is verified (all data validated by admin)
+        return this.isVerified && this.hasPersonalInfo && this.profileCompleteness === 100;
       case 'admin':
         return this.profileCompleteness === 100;
       default:
@@ -252,16 +266,19 @@ export class User {
    *
    * Profile completeness breakdown:
    * - 25% for having an account
-   * - 25% for verified email
+   * - 25% for user verification (verified by admin)
    * - 50% for complete personal data (all fields: DNI, name, email, phone, address)
+   *
+   * Note: Email validation (automatic) doesn't affect profile completeness,
+   * only user verification (manual by admin) does.
    *
    * @returns {number} The profile completeness percentage (0-100).
    */
   calculateProfileCompleteness(): number {
     let completeness = 25; // Base for having an account
 
-    if (this.emailVerified) {
-      completeness += 25; // +25% for verified email
+    if (this.isVerified) {
+      completeness += 25; // +25% for user verification
     }
 
     if (this.hasPersonalInfo) {
@@ -272,13 +289,13 @@ export class User {
   }
 
   /**
-   * Checks if the user (client) can make purchases.
-   * Requires both email verification and complete personal information.
+   * Checks if the user can make purchases.
+   * Requires user verification (by admin) and complete personal information.
    *
    * @returns {boolean} True if user can purchase, false otherwise.
    */
   canPurchase(): boolean {
-    return this.emailVerified && this.hasPersonalInfo;
+    return this.isVerified && this.hasPersonalInfo;
   }
 
   /**
@@ -296,13 +313,17 @@ export class User {
   getProfileSuggestions(): string[] {
     const suggestions: string[] = [];
 
-    if (!this.emailVerified) {
-      suggestions.push('Verify your email to increase profile completeness and enable purchases');
+    if (!this.emailValidated) {
+      suggestions.push('Validate your email address by clicking the link sent to your inbox');
+    }
+
+    if (!this.isVerified) {
+      suggestions.push('Request user verification to increase profile completeness and enable purchases');
     }
 
     if (!this.person) {
       suggestions.push(
-        'Complete your personal information (DNI, name, phone, address) to enable purchases and access more features'
+        'Complete your personal information (DNI, name, phone, address) to request user verification'
       );
     }
 
@@ -317,8 +338,8 @@ export class User {
   getPurchaseRequirementSuggestions(): string[] {
     const suggestions: string[] = [];
 
-    if (!this.emailVerified) {
-      suggestions.push('Verify your email address');
+    if (!this.isVerified) {
+      suggestions.push('Get your account verified by an administrator');
     }
 
     if (!this.person) {

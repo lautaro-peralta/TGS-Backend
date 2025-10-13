@@ -12,7 +12,9 @@ import { Topic } from '../topic/topic.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchDecisionsSchema } from './decision.schema.js';
+import { DateFilter, EntityFilters } from '../../shared/types/common.types.js';
 
 
 // ============================================================================
@@ -55,7 +57,7 @@ export class DecisionController {
       searchFields: (validated.by === 'topic') ? 'topic.description' : 'description',
       buildFilters: () => {
         const { date, type, endDate } = validated;
-        const filters: any = {};
+        const filters: EntityFilters = {};
 
         // Filter by date (already validated by Zod)
         if (date && type) {
@@ -157,7 +159,7 @@ export class DecisionController {
         newDecision.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating strategic decision:', err);
+      logger.error({ err }, 'Error creating strategic decision');
       return ResponseUtil.internalError(
         res,
         'Error creating strategic decision',
@@ -238,7 +240,7 @@ export class DecisionController {
         decision.toDTO()
       );
     } catch (err) {
-      console.error('Error searching for strategic decision:', err);
+      logger.error({ err }, 'Error searching for strategic decision');
       return ResponseUtil.internalError(
         res,
         'Error searching for strategic decision',
@@ -310,7 +312,7 @@ export class DecisionController {
         decision.toDTO()
       );
     } catch (err) {
-      console.error('Error updating strategic decision:', err);
+      logger.error({ err }, 'Error updating strategic decision');
       return ResponseUtil.internalError(
         res,
         'Error updating strategic decision',
@@ -364,7 +366,7 @@ export class DecisionController {
         'Strategic decision deleted successfully'
       );
     } catch (err) {
-      console.error('Error deleting strategic decision:', err);
+      logger.error({ err }, 'Error deleting strategic decision');
       return ResponseUtil.internalError(
         res,
         'Error deleting strategic decision',

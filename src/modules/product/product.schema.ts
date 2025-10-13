@@ -6,6 +6,10 @@ import {
   paginationSchema,
   textSearchSchema,
   numericRangeSchema,
+  descriptionSchema,
+  detailSchema,
+  moneySchema,
+  quantitySchema,
 } from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
@@ -41,33 +45,36 @@ export const searchProductsSchema = paginationSchema
 
 /**
  * Zod schema for creating a new product.
+ * Uses professional validation schemas for consistency.
  */
 export const createProductSchema = z.object({
   /**
    * The price of the product.
-   * Must be a positive number.
+   * Must be a valid monetary amount.
    */
-  price: z.number().positive('The price must be a positive number'),
+  price: moneySchema,
+
   /**
    * The stock quantity of the product.
-   * Must be a non-negative integer.
+   * Must be a valid quantity.
    */
-  stock: z.number().int().nonnegative('The stock cannot be negative'),
+  stock: quantitySchema,
+
   /**
    * The description of the product.
-   * Must be between 3 and 200 characters long.
+   * Professional description validation.
    */
-  description: z
-    .string()
-    .trim()
-    .min(3, 'The description must be at least 3 characters long')
-    .max(50, 'The description cannot exceed 50 characters')
-    .refine((v) => /\S/.test(v), 'The description cannot be empty'),
+  description: descriptionSchema,
 
-  detail: z.string().trim().min(3, 'The detail must be at least 3 characters long')
-    .max(200, 'The detail cannot exceed 200 characters'),
+  /**
+   * The detailed description of the product.
+   * Extended text with professional validation.
+   */
+  detail: detailSchema,
+
   /**
    * Indicates if the product is illegal.
+   * Boolean validation with flexible input formats.
    */
   isIllegal: z.boolean(),
 });

@@ -13,6 +13,7 @@ import { RefreshToken } from './refreshToken.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { registerSchema } from './auth.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import logger from '../../shared/utils/logger.js';
 import { env } from '../../config/env.js';
 import crypto from 'crypto';
 
@@ -99,7 +100,7 @@ export class AuthController {
         username,
         email,
         hashedPassword,
-        [Role.CLIENT]
+        [Role.USER]
       );
 
       // ────────────────────────────────────────────────────────────────────
@@ -385,7 +386,7 @@ export class AuthController {
           },
         });
     } catch (err) {
-      console.error('Error refreshing token:', err);
+      logger.error({ err }, 'Error refreshing token');
       return ResponseUtil.internalError(res, 'Failed to refresh token', err);
     }
   }

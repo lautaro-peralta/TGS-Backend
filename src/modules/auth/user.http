@@ -23,7 +23,7 @@ Content-Type: application/json
 {
   "username": "lauta",
   "email": "lautaa@email.com",
-  "password":"1234a@A1"
+  "password":"1234a@A1abcd"
 }
 
 ### Get current user (requires access_token cookie)

@@ -121,9 +121,13 @@ export const updateUserSchema = {
    */
   body: z.object({
     /**
-     * Whether the user's email is verified.
+     * Whether the user is verified (by admin).
      */
-    emailVerified: z.boolean().optional(),
+    isVerified: z.boolean().optional(),
+    /**
+     * Whether the user's email has been validated (automatic).
+     */
+    emailValidated: z.boolean().optional(),
     /**
      * Whether the user account is active.
      */

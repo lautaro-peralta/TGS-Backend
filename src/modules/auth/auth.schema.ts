@@ -2,6 +2,7 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
+import { emailSchema, passwordSchema, nameSchema } from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
 // SCHEMAS - Auth
@@ -9,52 +10,45 @@ import { z } from 'zod';
 
 /**
  * Zod schema for user registration.
- * Defines the validation rules for the registration payload.
+ * Uses professional validation schemas for enterprise-grade security.
  */
 export const registerSchema = z.object({
   /**
    * User's email address.
-   * Must be a valid email format.
+   * Professional email validation with format and security checks.
    */
-  email: z.email('The email must be valid'),
+  email: emailSchema,
 
   /**
    * User's password.
-   * Must be at least 8 characters long and contain at least one uppercase letter,
-   * one lowercase letter, one number, and one special character.
+   * Enterprise-grade password requirements with professional security standards.
    */
-  password: z
-    .string()
-    .min(8, 'The password must be at least 8 characters long')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-      'The password must contain at least: one uppercase letter, one lowercase letter, one number, and one special character'
-    ),
+  password: passwordSchema,
 
   /**
-   * User's username.
-   * Must be between 2 and 100 characters long.
+   * User's username (display name).
+   * Professional name validation with proper character set.
    */
-  username: z
-    .string()
-    .min(2, 'The name must be at least 2 characters long')
-    .max(100),
+  username: nameSchema,
 });
 
 /**
  * Zod schema for user login.
- * Defines the validation rules for the login payload.
+ * Uses professional validation schemas for consistent data handling.
  */
 export const loginSchema = z.object({
   /**
    * User's email address.
-   * Must be a valid email format.
+   * Professional email validation for login security.
    */
-  email: z.email('Invalid email'),
+  email: emailSchema,
 
   /**
    * User's password.
-   * Cannot be empty.
+   * Must be provided and will be validated during authentication.
    */
-  password: z.string().min(1, 'Password is required'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .max(128, 'Password cannot exceed 128 characters'),
 });

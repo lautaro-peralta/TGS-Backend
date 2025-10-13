@@ -11,7 +11,9 @@ import { orm } from '../../shared/db/orm.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchTopicsSchema } from './topic.schema.js';
+import { EntityFilters } from '../../shared/types/common.types.js';
 
 
 // ============================================================================
@@ -102,7 +104,7 @@ export class TopicController {
         newTopic.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating topic:', err);
+      logger.error({ err }, 'Error creating topic');
       return ResponseUtil.internalError(res, 'Error creating topic', err);
     }
   }
@@ -179,7 +181,7 @@ export class TopicController {
         topic.toDetailedDTO()
       );
     } catch (err) {
-      console.error('Error searching for topic:', err);
+      logger.error({ err }, 'Error searching for topic');
       return ResponseUtil.internalError(res, 'Error searching for topic', err);
     }
   }
@@ -232,7 +234,7 @@ export class TopicController {
         topic.toDTO()
       );
     } catch (err) {
-      console.error('Error updating topic:', err);
+      logger.error({ err }, 'Error updating topic');
       return ResponseUtil.internalError(res, 'Error updating topic', err);
     }
   }
@@ -290,7 +292,7 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(res, 'Topic deleted successfully');
     } catch (err) {
-      console.error('Error deleting topic:', err);
+      logger.error({ err }, 'Error deleting topic');
       return ResponseUtil.internalError(res, 'Error deleting topic', err);
     }
   }

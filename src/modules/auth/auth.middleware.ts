@@ -8,6 +8,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 // IMPORTS - Internal modules
 // ============================================================================
 import { Role } from './user/user.entity.js';
+import logger from '../../shared/utils/logger.js';
 import { env } from '../../config/env.js';
 
 // ============================================================================
@@ -58,13 +59,13 @@ export function authMiddleware(
   // ──────────────────────────────────────────────────────────────────────────
   const token = req.cookies?.access_token;
 
-  console.log('🛡️ [authMiddleware] Token from cookies:', token);
+  logger.info({ token }, '🛡️ [authMiddleware] Token from cookies');
 
   // ──────────────────────────────────────────────────────────────────────────
   // Validate token presence
   // ──────────────────────────────────────────────────────────────────────────
   if (!token) {
-    console.warn("⚠️ [authMiddleware] Cookie 'access_token' not found");
+    logger.warn('⚠️ [authMiddleware] Cookie \'access_token\' not found');
     return res.status(401).json({ message: 'Not authenticated' });
   }
 
@@ -74,7 +75,7 @@ export function authMiddleware(
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
 
-    console.log('✅ [authMiddleware] Valid token, payload:', payload);
+    logger.info({ payload }, '✅ [authMiddleware] Valid token, payload');
 
     // ────────────────────────────────────────────────────────────────────────
     // Attach user data to request for downstream middleware/controllers
@@ -89,7 +90,7 @@ export function authMiddleware(
     // ────────────────────────────────────────────────────────────────────────
     // Handle invalid or expired tokens
     // ────────────────────────────────────────────────────────────────────────
-    console.error('❌ [authMiddleware] Invalid or expired token:', error);
+    logger.error({ err: error }, '❌ [authMiddleware] Invalid or expired token');
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 }

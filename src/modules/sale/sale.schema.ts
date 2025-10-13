@@ -6,6 +6,11 @@ import {
   paginationSchema,
   textSearchSchema,
   dateSearchSchema,
+  dniSchema,
+  descriptionSchema,
+  detailSchema,
+  moneySchema,
+  quantitySchema,
 } from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
@@ -41,42 +46,74 @@ export const searchSalesSchema = paginationSchema
 
 /**
  * Zod schema for creating a new sale.
+ * Uses professional validation schemas for enterprise-grade data integrity.
  */
 export const createSaleSchema = z.object({
   /**
    * The DNI of the client making the purchase.
+   * Must follow official Argentine DNI format.
+   * If not provided, uses the authenticated user's DNI.
    */
-  clientDni: z.string().min(1, "The client's DNI is required"),
+  clientDni: dniSchema.optional(),
+
   /**
-   * The DNI of the distributor handling the sale (required).
+   * The DNI of the distributor handling the sale.
+   * Must follow official Argentine DNI format.
    */
-  distributorDni: z.string().min(1, "The distributor's DNI is required"),
+  distributorDni: dniSchema,
+
   /**
-   * An array of sale details.
+   * An array of sale details with professional validation.
    */
   details: z
     .array(
       z.object({
         /**
          * The ID of the product being purchased.
+         * Must be a positive integer.
          */
-        productId: z.number().int().positive(),
+        productId: z
+          .number()
+          .int('Product ID must be a whole number')
+          .positive('Product ID must be greater than 0'),
+
         /**
          * The quantity of the product being purchased.
+         * Must be a valid quantity with professional limits.
          */
-        quantity: z.number().positive('The quantity must be greater than 0'),
+        quantity: quantitySchema
+          .min(1, 'Quantity must be at least 1')
+          .refine((val) => val <= 1000, {
+            message: 'Quantity cannot exceed 1000 units per product'
+          }),
       })
     )
-    .min(1, 'There must be at least one product in the sale'),
+    .min(1, 'There must be at least one product in the sale')
+    .max(50, 'Cannot purchase more than 50 different products in one sale'),
+
   /**
    * Optional personal information for creating a new client if they don't exist.
+   * Uses professional validation schemas when provided.
    */
   person: z
     .object({
-      name: z.string().min(1),
-      email: z.email(),
+      name: z.string().min(1, 'Name is required'),
+      email: z.email('Invalid email format'),
       phone: z.string().optional(),
       address: z.string().optional(),
     })
-    .optional(),
+    .optional()
+    .refine(
+      (data) => {
+        // If person data is provided, validate required fields
+        if (data) {
+          return data.name && data.email;
+        }
+        return true;
+      },
+      {
+        message: 'Name and email are required when providing person data',
+        path: ['name'],
+      }
+    ),
 });
