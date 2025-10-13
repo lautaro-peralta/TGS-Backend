@@ -12,8 +12,10 @@ import { Client } from './client.entity.js';
 import { User, Role } from '../auth/user/user.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination, searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
+import { CACHE_TTL } from '../../shared/services/cache.service.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchClientsSchema } from './client.schema.js';
 
 
@@ -45,12 +47,14 @@ export class ClientController {
     const validated = validateQueryParams(req, res, searchClientsSchema);
     if (!validated) return; // Validation failed, response already sent
 
-    return searchEntityWithPagination(req, res, Client, {
+    return searchEntityWithPaginationCached(req, res, Client, {
       entityName: 'client',
       em,
       searchFields: 'name',
       buildFilters: () => ({}),
       orderBy: { name: 'ASC' } as any,
+      useCache: true,
+      cacheTtl: CACHE_TTL.CLIENT_LIST,
     });
   }
 
@@ -138,7 +142,7 @@ export class ClientController {
             username,
             email,
             hashedPassword,
-            [Role.CLIENT]
+            [Role.USER]
           );
           user.person = person as any;
           await em.persistAndFlush(user);
@@ -182,7 +186,7 @@ export class ClientController {
 
       return ResponseUtil.created(res, message, responseData);
     } catch (error) {
-      console.error('Error creating client:', error);
+      logger.error({ err: error }, 'Error creating client');
       return ResponseUtil.internalError(res, 'Error creating client', error);
     }
   }
@@ -251,7 +255,7 @@ export class ClientController {
         client.toDetailedDTO()
       );
     } catch (err) {
-      console.error('Error searching for client:', err);
+      logger.error({ err }, 'Error searching for client');
       return ResponseUtil.internalError(res, 'Error searching for client', err);
     }
   }
@@ -296,7 +300,7 @@ export class ClientController {
         client.toDTO()
       );
     } catch (err) {
-      console.error('Error in PATCH client:', err);
+      logger.error({ err }, 'Error in PATCH client');
       return ResponseUtil.internalError(res, 'Error updating client', err);
     }
   }
@@ -339,7 +343,7 @@ export class ClientController {
         `${name}, DNI ${dni} successfully removed from the list of clients`
       );
     } catch (err) {
-      console.error('Error deleting client:', err);
+      logger.error({ err }, 'Error deleting client');
       return ResponseUtil.internalError(res, 'Error deleting client', err);
     }
   }

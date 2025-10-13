@@ -1,0 +1,378 @@
+###############################################################################
+# EMAIL VERIFICATION ENDPOINTS
+###############################################################################
+# Este archivo contiene las pruebas HTTP para los endpoints de verificación
+# AUTOMÁTICA de email del sistema TGS.
+#
+# Este es el sistema clásico de "click en el link del email" para verificar
+# que el usuario tiene acceso al email proporcionado.
+#
+# IMPORTANTE: El usuario debe tener información personal COMPLETA
+# (BasePersonEntity) antes de solicitar verificación.
+#
+# Flujo de verificación automática de email:
+# 1. Usuario solicita verificación (POST /request)
+# 2. Sistema envía email con link de verificación
+# 3. Usuario hace click en el link (GET /verify/:token)
+# 4. Sistema verifica el token y marca email como verificado
+#
+# DIFERENCIA: Este sistema NO requiere aprobación manual del admin
+# Para verificación manual completa ver: /api/user-verification
+###############################################################################
+
+@baseUrl = http://localhost:3000
+@apiPrefix = /api/email-verification
+
+###############################################################################
+# PUBLIC ENDPOINTS - No requieren autenticación
+###############################################################################
+
+### 1. Solicitar verificación automática de email
+# Envía un email con link de verificación al usuario
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "juan.perez@example.com"
+}
+
+### 2. Solicitar verificación - Email inválido (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "not-an-email"
+}
+
+### 3. Solicitar verificación - Sin información personal (debe fallar)
+# Este email no tiene BasePersonEntity asociado
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "noexiste@example.com"
+}
+
+### 4. Verificar email con token
+# Reemplaza {token} con el token UUID recibido por email
+# El token expira en 48 horas
+GET {{baseUrl}}{{apiPrefix}}/verify/01938f1a-2b3c-7890-a123-456789abcdef
+
+### 5. Verificar usuario - Token inválido (debe fallar)
+# Token con formato UUID inválido
+GET {{baseUrl}}{{apiPrefix}}/verify/invalid-token-format
+
+### 6. Verificar usuario - Token no encontrado (debe fallar)
+# Token UUID válido pero no existe en la base de datos
+GET {{baseUrl}}{{apiPrefix}}/verify/01938f1a-0000-0000-0000-000000000000
+
+### 7. Reenviar solicitud de verificación
+# Requiere: Solicitud previa de verificación
+# Cooldown: 15 minutos entre reenvíos
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "juan.perez@example.com"
+}
+
+### 8. Reenviar verificación - Durante cooldown (debe fallar)
+# Debe esperar 15 minutos desde el último envío
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "juan.perez@example.com"
+}
+
+### 9. Obtener estado de verificación de email
+# Muestra el estado actual de la verificación automática del email
+GET {{baseUrl}}{{apiPrefix}}/status/juan.perez@example.com
+
+### 10. Obtener estado - Usuario sin verificación (debe fallar)
+GET {{baseUrl}}{{apiPrefix}}/status/noexiste@example.com
+
+### 11. Obtener estado - Email con formato inválido (debe fallar)
+GET {{baseUrl}}{{apiPrefix}}/status/not-an-email
+
+###############################################################################
+# ADMIN ENDPOINTS - Requieren autenticación y rol ADMIN
+###############################################################################
+# NOTA: Debes iniciar sesión como admin primero para obtener las cookies
+# Ver archivo: src/modules/auth/user.http -> "Login as admin"
+###############################################################################
+
+### 12. Listar todas las solicitudes de verificación de email (Admin)
+# Muestra todas las verificaciones automáticas de email con paginación
+GET {{baseUrl}}{{apiPrefix}}/admin/all
+
+### 13. Listar verificaciones de email - Con paginación (Admin)
+GET {{baseUrl}}{{apiPrefix}}/admin/all?page=1&limit=10
+
+### 14. Listar verificaciones - Filtrar por estado PENDING (Admin)
+GET {{baseUrl}}{{apiPrefix}}/admin/all?status=pending
+
+### 15. Listar verificaciones - Filtrar por estado VERIFIED (Admin)
+GET {{baseUrl}}{{apiPrefix}}/admin/all?status=verified
+
+### 16. Listar verificaciones - Filtrar por estado EXPIRED (Admin)
+GET {{baseUrl}}{{apiPrefix}}/admin/all?status=expired
+
+### 17. Listar verificaciones - Múltiples filtros (Admin)
+GET {{baseUrl}}{{apiPrefix}}/admin/all?status=pending&page=1&limit=5
+
+### 18. Listar verificaciones - Sin autenticación (debe fallar)
+# Debe fallar porque requiere autenticación
+GET {{baseUrl}}{{apiPrefix}}/admin/all
+# Cookie: (sin access_token)
+
+### 19. Cancelar solicitud de verificación (Admin)
+# Cancela una verificación pendiente para el email especificado
+DELETE {{baseUrl}}{{apiPrefix}}/admin/cancel/juan.perez@example.com
+
+### 20. Cancelar verificación - Email no encontrado (debe fallar)
+DELETE {{baseUrl}}{{apiPrefix}}/admin/cancel/noexiste@example.com
+
+### 21. Cancelar verificación - Email inválido (debe fallar)
+DELETE {{baseUrl}}{{apiPrefix}}/admin/cancel/not-an-email
+
+### 22. Aprobar verificación de EMAIL manualmente (Admin)
+# Permite al admin aprobar manualmente una verificación de email
+# sin que el usuario tenga que hacer click en el link
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/juan.perez@example.com
+
+### 23. Aprobar verificación - Email ya verificado (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/already-verified@example.com
+
+### 24. Aprobar verificación - Sin datos personales (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/no-person-data@example.com
+
+### 25. Rechazar verificación de EMAIL (Admin)
+# Permite rechazar una solicitud de verificación automática
+POST {{baseUrl}}{{apiPrefix}}/admin/reject/juan.perez@example.com
+Content-Type: application/json
+
+{
+  "reason": "DNI no coincide con el nombre proporcionado. Por favor, verifica tus datos."
+}
+
+### 26. Rechazar verificación - Sin body (válido)
+POST {{baseUrl}}{{apiPrefix}}/admin/reject/juan.perez@example.com
+
+###############################################################################
+# ESCENARIOS DE PRUEBA COMPLETOS
+###############################################################################
+
+### ESCENARIO 1: Flujo completo exitoso ⭐ ACTUALIZADO
+# ------------------------------------------------------------------------------
+# 1. Usuario completa sus datos personales (DNI, nombre, etc.)
+# 2. Usuario solicita verificación
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 3. Verifica el estado (debe estar PENDING)
+###
+GET {{baseUrl}}{{apiPrefix}}/status/test@example.com
+
+# 4. Admin revisa la solicitud en la bandeja
+###
+GET {{baseUrl}}{{apiPrefix}}/admin/all?status=pending
+
+# 5. Admin APRUEBA la verificación (validaciones automáticas)
+###
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/test@example.com
+
+# 6. Verifica el estado nuevamente (debe estar VERIFIED)
+###
+GET {{baseUrl}}{{apiPrefix}}/status/test@example.com
+
+# 7. Usuario ahora puede realizar compras (si tiene datos completos)
+###
+GET {{baseUrl}}/api/users/me
+
+
+### ESCENARIO 2: Intento de verificación duplicada
+# ------------------------------------------------------------------------------
+# 1. Solicita verificación por primera vez
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 2. Intenta solicitar otra vez (debe fallar con conflicto)
+###
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+
+### ESCENARIO 3: Token expirado
+# ------------------------------------------------------------------------------
+# 1. Solicita verificación
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 2. Espera 24+ horas (o modifica expiresAt en la BD para testing)
+# 3. Intenta verificar con token expirado (debe fallar)
+###
+GET {{baseUrl}}{{apiPrefix}}/verify/TOKEN_EXPIRADO
+
+
+### ESCENARIO 4: Admin rechaza verificación con motivo
+# ------------------------------------------------------------------------------
+# 1. Usuario solicita verificación
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 2. Admin verifica que existe
+###
+GET {{baseUrl}}{{apiPrefix}}/admin/all?status=pending
+
+# 3. Admin RECHAZA la solicitud con motivo
+###
+POST {{baseUrl}}{{apiPrefix}}/admin/reject/test@example.com
+Content-Type: application/json
+
+{
+  "reason": "DNI no coincide con el nombre proporcionado"
+}
+
+# 4. Usuario puede solicitar nuevamente (cooldown eliminado)
+###
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+
+### ESCENARIO 5: Validación de DNI duplicado ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# Este escenario prueba la validación crítica de DNI duplicado
+
+# 1. Usuario A solicita verificación (DNI: 12345678)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "usuario-a@example.com"
+}
+
+# 2. Admin aprueba Usuario A
+###
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/usuario-a@example.com
+
+# 3. Usuario B intenta registrarse con el MISMO DNI (12345678)
+# (Este paso ocurre en el frontend/registro)
+
+# 4. Usuario B solicita verificación
+###
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "usuario-b@example.com"
+}
+
+# 5. Admin intenta aprobar Usuario B (debe FALLAR por DNI duplicado)
+###
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/usuario-b@example.com
+# Respuesta esperada: 409 Conflict
+# "A user with DNI 12345678 already exists (email: usuario-a@example.com)"
+
+
+### ESCENARIO 6: Validación de email ya verificado ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Usuario con email ya verificado intenta verificar de nuevo
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "already-verified@example.com"
+}
+
+# 2. Admin intenta aprobar (debe FALLAR porque ya está verificado)
+###
+POST {{baseUrl}}{{apiPrefix}}/admin/approve/already-verified@example.com
+# Respuesta esperada: 409 Conflict
+# "This email is already verified"
+
+
+###############################################################################
+# NOTAS IMPORTANTES
+###############################################################################
+# 
+# 1. REQUISITOS PREVIOS:
+#    - El email debe estar asociado a un BasePersonEntity
+#    - El BasePersonEntity debe tener TODOS los campos completos:
+#      * DNI (7-8 dígitos)
+#      * name (nombre completo)
+#      * email (válido y único)
+#      * phone (número de teléfono)
+#      * address (dirección completa)
+#
+# 2. LIMITACIONES:
+#    - Cooldown de 15 minutos entre solicitudes para el mismo email
+#    - Token expira en 24 horas
+#    - Máximo 3 intentos de verificación
+#
+# 3. ESTADOS DE VERIFICACIÓN:
+#    - PENDING: Solicitud creada, esperando aprobación del admin
+#    - VERIFIED: Usuario verificado exitosamente por admin
+#    - EXPIRED: Token expirado o intentos excedidos (si se usa token)
+#    - CANCELLED: Cancelada/rechazada por administrador
+#
+# 4. FLUJO DE APROBACIÓN (ADMIN):
+#    - Admin revisa solicitudes pendientes en /admin/all?status=pending
+#    - Admin aprueba con POST /admin/approve/:email
+#    - Admin rechaza con POST /admin/reject/:email (con reason opcional)
+#    - Al aprobar, se hacen validaciones automáticas:
+#      * Email no debe estar ya verificado
+#      * DNI no debe estar duplicado en BasePersonEntity
+#
+# 5. INTEGRACIÓN CON USER (AL APROBAR):
+#    - Se actualiza User.emailVerified = true
+#    - Se recalcula el profileCompleteness del usuario
+#    - Se envía email de bienvenida automáticamente
+#    - ProfileCompleteness: 25% (cuenta) + 25% (email) + 50% (datos) = 100%
+#
+# 6. VALIDACIONES CRÍTICAS (AL APROBAR):
+#    - DNI duplicado: Previene múltiples usuarios con el mismo DNI
+#    - Email ya verificado: Previene verificaciones duplicadas del mismo email
+#    - Datos personales completos: Usuario debe tener TODOS los campos en BasePersonEntity
+#    - Estas validaciones protegen la integridad de los datos del sistema
+#
+# 7. CACHE Y REDIS:
+#    - El cooldown usa Redis/cache para evitar spam
+#    - La clave es: verification_request:{email}
+#    - TTL: 15 minutos (900 segundos)
+#    - Al rechazar, se limpia el cooldown para permitir reintento
+#
+# 8. GUARDS RECOMENDADOS PARA FRONTEND:
+#    - Verificar User.emailVerified antes de mostrar botón "Solicitar verificación"
+#    - Verificar profileCompleteness >= 75% (datos personales completos)
+#    - Verificar que BasePersonEntity esté completo (DNI, name, email, phone, address)
+#    - Mostrar mensaje si ya hay solicitud PENDING
+#    - Deshabilitar botón durante cooldown de 15 minutos
+#    - Mostrar estado actual: "Pendiente de aprobación", "Verificado", "Rechazado"
+#
+###############################################################################
+

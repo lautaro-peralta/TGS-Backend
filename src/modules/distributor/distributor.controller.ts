@@ -13,6 +13,7 @@ import { Zone } from '../zone/zone.entity.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchDistributorsSchema } from './distributor.schema.js';
 // ============================================================================
 // CONTROLLER - Distributor
@@ -110,7 +111,7 @@ export class DistributorController {
       }
       return ResponseUtil.success(res, 'Distributor found', distributor.toDetailedDTO());
     } catch (err) {
-      console.error('Error searching for distributor:', err);
+      logger.error({ err }, 'Error searching for distributor');
       return res.status(400).json({ error: 'Error searching for distributor' });
     }
   }
@@ -181,7 +182,7 @@ export class DistributorController {
       await em.persistAndFlush(distributor);
       return ResponseUtil.created(res, 'Distributor created successfully', distributor.toDTO());
     } catch (error) {
-      console.error('Error creating distributor:', error);
+      logger.error({ err: error }, 'Error creating distributor');
       return ResponseUtil.internalError(res, 'Error creating distributor', error);
     }
   }
@@ -241,7 +242,7 @@ export class DistributorController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(res, 'Distributor updated successfully', distributor.toDTO());
     } catch (err) {
-      console.error('Error in PATCH distributor:', err);
+      logger.error({ err }, 'Error in PATCH distributor');
       return ResponseUtil.internalError(res, 'Error updating distributor', err);
     }
   }
@@ -304,7 +305,7 @@ export class DistributorController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(res, `${name}, DNI ${dni} successfully removed from the list of distributors`);
     } catch (err) {
-      console.error('Error deleting distributor:', err);
+      logger.error({ err }, 'Error deleting distributor');
       return ResponseUtil.internalError(res, 'Error deleting distributor', err);
     }
   }

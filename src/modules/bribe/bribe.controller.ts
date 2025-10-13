@@ -13,7 +13,9 @@ import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchBribesSchema } from './bribe.schema.js';
+import { BribeFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - Bribe
@@ -52,7 +54,7 @@ export class BribeController {
       em,
       buildFilters: () => {
         const { paid, date, type, endDate } = validated;
-        const filters: any = {};
+        const filters: BribeFilters = {};
 
         // Filter by payment status
         if (paid !== undefined) {
@@ -154,7 +156,7 @@ export class BribeController {
         createdBribe!.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating bribe:', err);
+      logger.error({ err }, 'Error creating bribe');
       return ResponseUtil.internalError(res, 'Error creating bribe', err);
     }
   }
@@ -233,7 +235,7 @@ export class BribeController {
         bribe.toDTO()
       );
     } catch (err: any) {
-      console.error('Error getting bribe:', err);
+      logger.error({ err }, 'Error getting bribe');
       return ResponseUtil.internalError(res, 'Error searching for bribe', err);
     }
   }
@@ -326,7 +328,7 @@ export class BribeController {
 
       return ResponseUtil.success(res, 'Bribes payment processed', data);
     } catch (err: any) {
-      console.error('Error paying bribes:', err);
+      logger.error({ err }, 'Error paying bribes');
       return ResponseUtil.internalError(res, 'Error paying bribes', err);
     }
   }
@@ -369,7 +371,7 @@ export class BribeController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(res, 'Bribe deleted successfully');
     } catch (err: any) {
-      console.error('Error deleting bribe:', err);
+      logger.error({ err }, 'Error deleting bribe');
       return ResponseUtil.internalError(res, 'Error deleting bribe', err);
     }
   }

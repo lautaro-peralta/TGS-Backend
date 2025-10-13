@@ -15,8 +15,10 @@ import {
   searchProductsSchema,
 } from './product.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
-import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { ProductFilters } from '../../shared/types/common.types.js';
+import { searchEntityWithPagination, searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
+import { CACHE_TTL } from '../../shared/services/cache.service.js';
+import { validateQueryParams, validateBusinessRules } from '../../shared/middleware/validation.middleware.js';
 
 // ============================================================================
 // CONTROLLER - Product
@@ -51,29 +53,46 @@ export class ProductController {
     const validated = validateQueryParams(req, res, searchProductsSchema);
     if (!validated) return; // Validation failed, response already sent
 
-    return searchEntityWithPagination(req, res, Product, {
+    // Additional business rule validation for product search
+    if (validated.by === 'legal' && validated.q) {
+      const allowedValues = ['true', 'false'];
+      if (!allowedValues.includes(validated.q)) {
+        return ResponseUtil.validationError(res, 'Invalid legal status value', [
+          { field: 'q', message: 'Legal status must be "true" or "false"' }
+        ]);
+      }
+    }
+
+    return searchEntityWithPaginationCached(req, res, Product, {
       entityName: 'product',
       em,
       searchFields: validated.by === 'legal' ? undefined : 'description',
       buildFilters: () => {
         const { by, min, max, q } = validated;
-        const filters: any = {};
+        const filters: ProductFilters = {};
 
         // Filter by legal status
         if (by === 'legal' && q) {
           filters.isIllegal = q === 'false';
         }
 
-        // Filter by price range (already validated by Zod)
+        // Filter by price range
         if (min !== undefined || max !== undefined) {
           filters.price = {};
           if (min !== undefined) filters.price.$gte = min;
           if (max !== undefined) filters.price.$lte = max;
         }
 
+        // Filter by description
+        if (by === 'description' && q) {
+          filters.description = `%${q}%`;
+        }
+
         return filters;
       },
       orderBy: { description: 'ASC' } as any,
+      useCache: true,
+      cacheTtl: CACHE_TTL.PRODUCT_LIST,
     });
   }
 

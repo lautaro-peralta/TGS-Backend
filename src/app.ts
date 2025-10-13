@@ -32,10 +32,30 @@ import { topicRouter } from './modules/topic/topic.routes.js';
 import { partnerRouter } from './modules/partner/partner.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { shelbyCouncilRouter } from './modules/shelbyCouncil/shelbyCouncil.routes.js';
-import { clandestineAgreementRouter } from './modules/clandestineAgreement/clandestineAgreement.routes.js'; 
+import { clandestineAgreementRouter } from './modules/clandestineAgreement/clandestineAgreement.routes.js';
 import { monthlyReviewRouter } from './modules/shelbyCouncil/monthlyReview.routes.js';
 import { roleRequestRouter } from './modules/auth/roleRequest/roleRequest.routes.js';
 import { userRouter } from './modules/auth/user/user.routes.js';
+import { emailVerificationRouter } from './modules/auth/emailVerification/emailVerification.routes.js';
+import { userVerificationRouter } from './modules/auth/userVerification/userVerification.routes.js';
+
+// Import health check routes
+import { healthRouter } from './shared/routes/health.routes.js';
+
+// Import Redis management routes
+import { redisRouter } from './shared/routes/redis.routes.js';
+
+// Import services
+import { emailService } from './shared/services/email.service.js';
+
+// Import security middleware
+import {
+  securityMiddleware,
+  secureCors,
+  generalRateLimit,
+  authRateLimit,
+  sensitiveRateLimit
+} from './shared/middleware/security.middleware.js';
 
 // ============================================================================
 // APPLICATION SETUP
@@ -46,11 +66,21 @@ const app = express();
 // GLOBAL MIDDLEWARE
 // ============================================================================
 
-// CORS configuration
-app.use(cors());
 
-// Body parsing
-app.use(express.json());
+
+// CORS configuration - Enhanced security
+app.use(cors(secureCors));
+
+// Security headers and protection middleware
+app.use(securityMiddleware);
+
+// Rate limiting - Applied in order of restrictiveness
+app.use('/api/auth', authRateLimit);           // Stricter limits for auth
+app.use('/api/admin', sensitiveRateLimit);     // Sensitive operations
+app.use(generalRateLimit);                     // General API rate limiting
+
+// Body parsing (after security middleware for proper sanitization)
+app.use(express.json({ limit: '10mb' }));      // Limit payload size
 
 // Cookie parsing
 app.use(cookieParser());
@@ -109,10 +139,18 @@ app.use((req, res, next) => {
 // API ROUTES
 // ============================================================================
 
+// Health checks - Should be before other routes for proper monitoring
+app.use('/health', healthRouter);
+
+// Redis management - Admin only routes for Redis monitoring and management
+app.use('/admin/redis', redisRouter);
+
 // Authentication & User management
 app.use('/api/auth', authRouter);
 app.use('/api/role-requests', roleRequestRouter);
 app.use('/api/users', userRouter);
+app.use('/api/email-verification', emailVerificationRouter);
+app.use('/api/user-verification', userVerificationRouter);
 
 // Business entities
 app.use('/api/clients', clientRouter);
@@ -139,37 +177,14 @@ app.use('/api/monthly-reviews', monthlyReviewRouter);
 // ERROR HANDLERS
 // ============================================================================
 
+// Import error middleware
+import { errorHandler, notFoundHandler } from './shared/middleware/error.middleware.js';
+
 // 404 - Route not found handler
-app.use((req, res) => {
-  logger.warn(
-    {
-      req,
-    },
-    'Route not found'
-  );
-  res.status(404).json({ message: 'Route not found' });
-});
+app.use(notFoundHandler);
 
 // Global error handler
-app.use((error: any, req: Request, res: Response) => {
-  logger.error(
-    {
-      err: error,
-      req,
-      requestId: req.requestId,
-      stack: error.stack,
-    },
-    `Unhandled error: ${error.message}`
-  );
-
-  res.status(500).json({
-    message:
-      process.env.NODE_ENV === 'development'
-        ? error.message
-        : 'Internal server error',
-    requestId: req.requestId,
-  });
-});
+app.use(errorHandler);
 
 // ============================================================================
 // DEVELOPMENT INITIALIZATION
@@ -188,7 +203,23 @@ export const initDev = async () => {
     await createAdminDev();
     await createZoneDev();
 
-    console.log();
+    // Initialize email service
+    try {
+      await emailService.initialize();
+      
+      if (emailService.isAvailable()) {
+        logger.info('Email service ready and available');
+      } else {
+        logger.warn('Email service initialized but not available (missing SMTP credentials)');
+        logger.info('To enable emails, configure SMTP variables in .env.development:');
+        logger.info('   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
+      }
+    } catch (error) {
+      logger.warn('Email service initialization failed (continuing without email functionality)');
+      logger.info('This is normal in development if SMTP is not configured');
+    }
+
+    logger.info("Loading development routes...");
     logRoutes([
       '/api/clients',
       '/api/auth',
@@ -206,6 +237,9 @@ export const initDev = async () => {
       '/api/monthly-reviews',
       '/api/partners',
       '/api/role-requests',
+      '/api/email-verification',
+      '/api/user-verification',
+      '/health',
     ]);
   }
 };

@@ -9,6 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 import { User } from '../../modules/auth/user/user.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import logger from '../../shared/utils/logger.js';
 
 // ============================================================================
 // PROFILE COMPLETENESS MIDDLEWARE
@@ -97,7 +98,7 @@ export function requireProfileCompleteness(minCompleteness: number) {
       // ────────────────────────────────────────────────────────────────────
       next();
     } catch (error) {
-      console.error('Error checking profile completeness:', error);
+      logger.error({ err: error }, 'Error checking profile completeness');
       return ResponseUtil.internalError(
         res,
         'Error checking profile completeness',
@@ -122,7 +123,7 @@ export function requireProfileCompleteness(minCompleteness: number) {
  * @returns Express middleware function
  *
  * @example
- * // Check if user (client) can make purchases
+ * // Check if user can make purchases
  * router.post('/sales',
  *   authMiddleware,
  *   requireActionPermission('purchase'),
@@ -172,7 +173,7 @@ export function requireActionPermission(
             action,
             currentCompleteness: fullUser.profileCompleteness,
             requiredCompleteness,
-            emailVerified: fullUser.emailVerified,
+            isVerified: fullUser.isVerified,
             hasPersonalInfo: fullUser.hasPersonalInfo,
             suggestions,
           },
@@ -188,7 +189,7 @@ export function requireActionPermission(
       // ────────────────────────────────────────────────────────────────────
       next();
     } catch (error) {
-      console.error('Error checking action permission:', error);
+      logger.error({ err: error }, 'Error checking action permission');
       return ResponseUtil.internalError(
         res,
         'Error checking action permission',
@@ -199,7 +200,7 @@ export function requireActionPermission(
 }
 
 /**
- * Middleware specifically for checking if a client can make purchases
+ * Middleware specifically for checking if a user can make purchases
  *
  * Process:
  * 1. Extracts authenticated user ID from request
@@ -212,7 +213,7 @@ export function requireActionPermission(
  * @returns Express middleware function
  *
  * @example
- * // Protect purchase/sale endpoints for clients
+ * // Protect purchase/sale endpoints for authenticated users
  * router.post('/sales',
  *   authMiddleware,
  *   requireClientCanPurchase,
@@ -259,12 +260,12 @@ export async function requireClientCanPurchase(
         success: false,
         message: 'Cannot make purchases. Email verification and complete personal information are required.',
         data: {
-          emailVerified: fullUser.emailVerified,
+          isVerified: fullUser.isVerified,
           hasPersonalInfo: fullUser.hasPersonalInfo,
           profileCompleteness: fullUser.profileCompleteness,
           requirements: {
-            emailVerified: {
-              current: fullUser.emailVerified,
+            isVerified: {
+              current: fullUser.isVerified,
               required: true,
             },
             personalInfo: {
@@ -286,7 +287,7 @@ export async function requireClientCanPurchase(
     // ────────────────────────────────────────────────────────────────────
     next();
   } catch (error) {
-    console.error('Error checking purchase permission:', error);
+    logger.error({ err: error }, 'Error checking purchase permission');
     return ResponseUtil.internalError(
       res,
       'Error checking purchase permission',

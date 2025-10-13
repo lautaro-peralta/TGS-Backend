@@ -13,7 +13,9 @@ import { StrategicDecision } from '../decision/decision.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchShelbyCouncilSchema } from './shelbyCouncil.schema.js';
+import { EntityFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - ConsejoShelby
@@ -49,7 +51,7 @@ export class ShelbyCouncilController {
       em,
       buildFilters: () => {
         const { partnerDni, decisionId } = validated;
-        const filters: any = {};
+        const filters: EntityFilters = {};
 
         if (partnerDni) {
           filters.partner = { dni: partnerDni };
@@ -126,7 +128,7 @@ export class ShelbyCouncilController {
         result?.toDTO() || shelbyCouncil.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating consejo shelby:', err);
+      logger.error({ err }, 'Error creating consejo shelby');
       return ResponseUtil.internalError(res, 'Error creating consejo shelby', err);
     }
   }
@@ -182,7 +184,7 @@ export class ShelbyCouncilController {
         shelbyCouncil.toDTO()
       );
     } catch (err) {
-      console.error('Error searching for consejo shelby:', err);
+      logger.error({ err }, 'Error searching for consejo shelby');
       return ResponseUtil.internalError(res, 'Error searching for consejo shelby', err);
     }
   }
@@ -230,7 +232,7 @@ export class ShelbyCouncilController {
         shelbyCouncil.toDTO()
       );
     } catch (err) {
-      console.error('Error updating consejo shelby:', err);
+      logger.error({ err }, 'Error updating consejo shelby');
       return ResponseUtil.internalError(res, 'Error updating consejo shelby', err);
     }
   }
@@ -261,7 +263,7 @@ export class ShelbyCouncilController {
 
       return ResponseUtil.deleted(res, 'Consejo Shelby deleted successfully');
     } catch (err) {
-      console.error('Error deleting consejo shelby:', err);
+      logger.error({ err }, 'Error deleting consejo shelby');
       return ResponseUtil.internalError(res, 'Error deleting consejo shelby', err);
     }
   }

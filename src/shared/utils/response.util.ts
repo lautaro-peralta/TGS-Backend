@@ -2,6 +2,16 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Response } from 'express';
+import { ValidationErrorDetail } from '../types/common.types.js';
+import { ErrorFormatter } from './error-formatter.util.js';
+import {
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  ForbiddenError,
+  InternalServerError,
+  BadRequestError
+} from '../errors/custom-errors.js';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -18,17 +28,14 @@ export interface ApiResponse<T = any> {
   meta?: {
     timestamp: string;
     statusCode: number;
+    requestId?: string;
     total?: number;
     page?: number;
     limit?: number;
     hasNextPage?: boolean;
     hasPrevPage?: boolean;
   };
-  errors?: Array<{
-    field?: string;
-    message: string;
-    code?: string;
-  }>;
+  errors?: ValidationErrorDetail[];
 }
 
 /**
@@ -87,6 +94,7 @@ export class ResponseUtil {
       meta: {
         timestamp: new Date().toISOString(),
         statusCode,
+        requestId: res.req?.requestId,
         ...meta,
       },
     };
@@ -125,6 +133,7 @@ export class ResponseUtil {
       meta: {
         timestamp: new Date().toISOString(),
         statusCode,
+        requestId: res.req?.requestId,
         total,
         page,
         limit,
@@ -202,17 +211,8 @@ export class ResponseUtil {
     statusCode: number = 400,
     errors?: Array<{ field?: string; message: string; code?: string }>
   ): Response {
-    const response: ApiResponse = {
-      success: false,
-      message,
-      meta: {
-        timestamp: new Date().toISOString(),
-        statusCode,
-      },
-      errors,
-    };
-
-    return res.status(statusCode).json(response);
+    const appError = new BadRequestError(message, errors, res.req?.requestId);
+    return ErrorFormatter.formatErrorResponse(appError, res, res.req?.requestId);
   }
 
   /**
@@ -235,7 +235,8 @@ export class ResponseUtil {
     message: string = 'Validation error',
     errors: Array<{ field?: string; message: string; code?: string }>
   ): Response {
-    return this.error(res, message, 400, errors);
+    const validationError = new ValidationError(message, errors, res.req?.requestId);
+    return ErrorFormatter.formatErrorResponse(validationError, res, res.req?.requestId);
   }
 
   /**
@@ -255,11 +256,8 @@ export class ResponseUtil {
     resource: string = 'Resource',
     id?: string | number
   ): Response {
-    const message = id
-      ? `${resource} with ID ${id} not found`
-      : `${resource} not found`;
-
-    return this.error(res, message, 404);
+    const notFoundError = new NotFoundError(resource, id, res.req?.requestId);
+    return ErrorFormatter.formatErrorResponse(notFoundError, res, res.req?.requestId);
   }
 
   /**
@@ -274,8 +272,8 @@ export class ResponseUtil {
    * ResponseUtil.conflict(res, 'Email already registered', 'email');
    */
   static conflict(res: Response, message: string, field?: string): Response {
-    const errors = field ? [{ field, message, code: 'DUPLICATE' }] : undefined;
-    return this.error(res, message, 409, errors);
+    const conflictError = new ConflictError(message, field, res.req?.requestId);
+    return ErrorFormatter.formatErrorResponse(conflictError, res, res.req?.requestId);
   }
 
   /**
@@ -311,7 +309,8 @@ export class ResponseUtil {
     res: Response,
     message: string = 'Insufficient permissions'
   ): Response {
-    return this.error(res, message, 403);
+    const forbiddenError = new ForbiddenError(message, res.req?.requestId);
+    return ErrorFormatter.formatErrorResponse(forbiddenError, res, res.req?.requestId);
   }
 
   /**
@@ -329,20 +328,10 @@ export class ResponseUtil {
   static internalError(
     res: Response,
     message: string = 'Internal server error',
-    error?: any
+    error?: Error | unknown
   ): Response {
-    // Include error details only in development environment
-    const errors =
-      process.env.NODE_ENV === 'development' && error
-        ? [
-            {
-              message: error.message || 'Unknown error',
-              code: 'INTERNAL_ERROR',
-            },
-          ]
-        : undefined;
-
-    return this.error(res, message, 500, errors);
+    const internalError = new InternalServerError(message, error, res.req?.requestId);
+    return ErrorFormatter.formatErrorResponse(internalError, res, res.req?.requestId);
   }
 
   // ──────────────────────────────────────────────────────────────────────────

@@ -12,7 +12,9 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { Authority } from '../authority/authority.entity.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchZonesSchema } from './zone.schema.js';
+import { ZoneFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - Zone
@@ -49,12 +51,12 @@ export class ZoneController {
       searchFields: validated.by === 'headquarters' ? undefined : 'name',
       buildFilters: () => {
         const { by, q } = validated;
-        const filters: any = {};
+        const filters: ZoneFilters = {};
 
         // Filter by headquarters status
         if (by === 'headquarters') {
           if (q !== 'true' && q !== 'false') {
-            const error: any = new Error('Validation error');
+            const error = new Error('Validation error') as Error & { validationErrors?: any[] };
             error.validationErrors = [{
               field: 'q',
               message: 'Query parameter "q" must be "true" or "false" when searching by headquarters'
@@ -309,7 +311,7 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.updated(res, 'Zone updated successfully', zone);
     } catch (err) {
-      console.error(err);
+      logger.error({ err }, 'Error updating zone');
       return ResponseUtil.internalError(res, 'Error updating zone', err);
     }
   }
