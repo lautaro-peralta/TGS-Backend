@@ -36,3 +36,5 @@ dist/
 logs/
 
 estructura.sql
+
+sendgrid.env

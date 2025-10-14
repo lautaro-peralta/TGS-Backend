@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { EmailVerificationController } from './emailVerification.controller.js';
 import { validateWithSchema } from '../../../shared/middleware/validation.middleware.js';
+import { authMiddleware } from '../auth.middleware.js';
 import {
   requestEmailVerificationSchema,
   resendEmailVerificationSchema,
@@ -16,16 +17,17 @@ export const emailVerificationRouter = Router();
 const emailVerificationController = new EmailVerificationController();
 
 // ──────────────────────────────────────────────────────────────────────────
-// PUBLIC ROUTES
+// AUTHENTICATED ROUTES
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
  * @route   POST /api/email-verification/request
  * @desc    Request automatic email verification via link
- * @access  Public
+ * @access  Private (Authenticated users only)
  */
 emailVerificationRouter.post(
   '/request',
+  authMiddleware,
   validateWithSchema({ body: requestEmailVerificationSchema }),
   emailVerificationController.requestVerification
 );
@@ -33,13 +35,29 @@ emailVerificationRouter.post(
 /**
  * @route   POST /api/email-verification/resend
  * @desc    Resend email verification link
- * @access  Public
+ * @access  Private (Authenticated users only)
  */
 emailVerificationRouter.post(
   '/resend',
+  authMiddleware,
   validateWithSchema({ body: resendEmailVerificationSchema }),
   emailVerificationController.resendVerification
 );
+
+/**
+ * @route   POST /api/email-verification/resend-unverified
+ * @desc    Resend email verification for unverified users (no auth required)
+ * @access  Public (for users who haven't verified their email yet)
+ */
+emailVerificationRouter.post(
+  '/resend-unverified',
+  validateWithSchema({ body: resendEmailVerificationSchema }),
+  emailVerificationController.resendVerificationForUnverified
+);
+
+// ──────────────────────────────────────────────────────────────────────────
+// PUBLIC ROUTES
+// ──────────────────────────────────────────────────────────────────────────
 
 /**
  * @route   GET /api/email-verification/verify/:token

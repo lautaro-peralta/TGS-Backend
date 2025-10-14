@@ -44,13 +44,17 @@ const envSchema = z.object({
   // CORS Configuration
   CORS_MAX_AGE: z.coerce.number().default(86400), // 24 hours
 
-  // Email Service (SMTP) Configuration
+  // Email Service (SMTP) Configuration - Development with Mailtrap
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_SECURE: z.coerce.boolean().optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().email().optional(),
+
+  // SendGrid Configuration - Production
+  SENDGRID_API_KEY: z.string().optional(),
+  SENDGRID_FROM: z.string().email().optional(),
 
   // Frontend URL (for email links)
   FRONTEND_URL: z.string().url().optional(),

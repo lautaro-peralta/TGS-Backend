@@ -29,6 +29,11 @@ export class EmailVerificationController {
    * 
    * El usuario debe tener información personal completa (BasePersonEntity)
    * antes de poder solicitar la verificación.
+   * 
+   * VALIDACIONES DE SEGURIDAD:
+   * - Usuario debe estar autenticado
+   * - Solo puede solicitar verificación para su propio email
+   * - Solo usuarios con emailVerified: false pueden solicitar
    */
   async requestVerification(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -37,26 +42,156 @@ export class EmailVerificationController {
       // Email ya está validado por el schema de Zod
       const { email } = req.body;
 
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Usuario debe estar autenticado
+      // ────────────────────────────────────────────────────────────────────
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return ResponseUtil.error(
+          res,
+          'Authentication required to request email verification',
+          401,
+          [
+            {
+              field: 'authentication',
+              message: 'You must be logged in to request email verification',
+              code: 'AUTHENTICATION_REQUIRED'
+            }
+          ]
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Solo puede solicitar verificación para su propio email
+      // ────────────────────────────────────────────────────────────────────
+      const currentUser = await em.findOne(User, { id: user.id });
+      if (!currentUser) {
+        return ResponseUtil.error(
+          res,
+          'User not found',
+          404,
+          [
+            {
+              field: 'user',
+              message: 'User account not found',
+              code: 'USER_NOT_FOUND'
+            }
+          ]
+        );
+      }
+
+      if (currentUser.email !== email) {
+        logger.warn({ 
+          userId: user.id, 
+          userEmail: currentUser.email, 
+          requestedEmail: email 
+        }, 'User attempted to request verification for different email');
+        
+        return ResponseUtil.error(
+          res,
+          'You can only request verification for your own email address',
+          403,
+          [
+            {
+              field: 'email',
+              message: `You can only verify your own email: ${currentUser.email}`,
+              code: 'EMAIL_OWNERSHIP_VIOLATION'
+            }
+          ]
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Solo usuarios con emailVerified: false pueden solicitar
+      // ────────────────────────────────────────────────────────────────────
+      if (currentUser.emailVerified) {
+        return ResponseUtil.error(
+          res,
+          'Your email is already verified',
+          409,
+          [
+            {
+              field: 'email',
+              message: 'This email has already been verified',
+              code: 'EMAIL_ALREADY_VERIFIED'
+            }
+          ]
+        );
+      }
+
       // Verificar que existe información personal del usuario
       const person = await em.findOne('BasePersonEntity', { email });
       if (!person) {
         return ResponseUtil.notFound(res, 'Person', email);
       }
 
-      // Verificar si ya existe una solicitud pendiente reciente
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Usuarios con roles no-base ya deberían estar verificados
+      // ────────────────────────────────────────────────────────────────────
+        // Si el usuario tiene roles diferentes a USER, ya debería estar verificado
+      const hasNonBaseRoles = currentUser.roles.some(role => role !== 'USER');
+        if (hasNonBaseRoles) {
+          logger.warn({ 
+            email, 
+          userId: currentUser.id, 
+          roles: currentUser.roles 
+          }, 'User with non-base roles attempted email verification');
+          
+          return ResponseUtil.error(
+            res,
+            'Users with elevated roles are already verified and cannot request email verification',
+            409,
+            [
+              {
+                field: 'roles',
+              message: `User has roles: ${currentUser.roles.join(', ')}. Email verification is not needed.`,
+                code: 'ALREADY_VERIFIED_USER'
+              }
+            ]
+          );
+        }
+
+      // Verificar si ya existe una solicitud pendiente
       const existingVerification = await em.findOne(EmailVerification, {
         email,
         status: EmailVerificationStatus.PENDING,
       });
 
       if (existingVerification) {
-        // Si existe y no ha expirado, devolver error
+        // Si existe y no ha expirado, verificar si han pasado 2 minutos
         if (existingVerification.isValid()) {
-          return ResponseUtil.conflict(res, 'A verification request is already pending for this email');
+          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+          
+          if (existingVerification.createdAt > twoMinutesAgo) {
+            // Menos de 2 minutos, devolver error con tiempo restante
+            const timeRemaining = Math.ceil((existingVerification.createdAt.getTime() + 2 * 60 * 1000 - Date.now()) / 1000 / 60);
+            return ResponseUtil.error(
+              res,
+              `A verification request is already pending. Please wait ${timeRemaining} minutes before requesting another verification`,
+              409,
+              [
+                {
+                  field: 'cooldown',
+                  message: `Please wait ${timeRemaining} minutes before requesting another verification`,
+                  code: 'VERIFICATION_COOLDOWN_ACTIVE'
+                }
+              ]
+            );
+          } else {
+            // Han pasado 2 minutos, marcar la anterior como expirada
+            logger.info({ 
+              email, 
+              previousVerificationId: existingVerification.id,
+              createdAt: existingVerification.createdAt 
+            }, 'Previous verification request expired due to new request after 2 minutes');
+            
+            existingVerification.markAsExpired();
+            await em.flush();
+          }
+        } else {
+          // Si ya había expirado, eliminarla
+          await em.removeAndFlush(existingVerification);
         }
-
-        // Si ha expirado, eliminarla
-        await em.removeAndFlush(existingVerification);
       }
 
       // Crear nueva solicitud de verificación
@@ -76,11 +211,11 @@ export class EmailVerificationController {
         // No fallar la solicitud si el email no se puede enviar
       }
 
-      // Cachear la solicitud para evitar spam
+      // Cachear la solicitud para evitar spam (2 minutos de cooldown)
       await cacheService.set(
         `verification_request:${email}`,
         { requested: true, timestamp: Date.now() },
-        15 * 60 // 15 minutos de cooldown
+        2 * 60 // 2 minutos de cooldown
       );
 
       return ResponseUtil.created(res, 'User verification request submitted successfully', {
@@ -119,15 +254,69 @@ export class EmailVerificationController {
       // Verificar que sea válida
       if (!verification.isValid()) {
         if (verification.status === EmailVerificationStatus.EXPIRED) {
-          return ResponseUtil.error(res, 'Verification token has expired', 400);
+          logger.warn({ 
+            token, 
+            email: verification.email,
+            expiredAt: verification.expiresAt,
+            createdAt: verification.createdAt 
+          }, 'User attempted to verify with expired token');
+          
+          return ResponseUtil.error(
+            res, 
+            'This verification link has expired and is no longer valid. Please request a new verification email.',
+            400,
+            [
+              {
+                field: 'token',
+                message: 'Verification token has expired',
+                code: 'TOKEN_EXPIRED'
+              }
+            ]
+          );
         }
         if (verification.status === EmailVerificationStatus.VERIFIED) {
-          return ResponseUtil.error(res, 'Email has already been verified', 400);
+          logger.info({ 
+            token, 
+            email: verification.email,
+            verifiedAt: verification.verifiedAt 
+          }, 'User attempted to verify already verified email');
+          
+          return ResponseUtil.error(
+            res, 
+            'This email has already been verified',
+            400,
+            [
+              {
+                field: 'email',
+                message: 'Email has already been verified',
+                code: 'EMAIL_ALREADY_VERIFIED'
+              }
+            ]
+          );
         }
       }
 
       // Marcar como verificada
       verification.markAsVerified();
+
+      // ────────────────────────────────────────────────────────────────────
+      // Actualizar User.emailVerified = true
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { email: verification.email });
+      if (user) {
+        user.emailVerified = true;
+        user.updateProfileCompleteness();
+        
+        logger.info({ 
+          userId: user.id, 
+          email: verification.email 
+        }, 'User email verified successfully');
+      } else {
+        logger.warn({ 
+          email: verification.email 
+        }, 'Email verified but no associated user found');
+      }
+
       await em.flush();
 
       // Buscar la información personal del usuario para enviar email de bienvenida
@@ -154,6 +343,10 @@ export class EmailVerificationController {
 
   /**
    * Reenvía notificación de solicitud de verificación
+   * 
+   * VALIDACIONES DE SEGURIDAD:
+   * - Usuario debe estar autenticado
+   * - Solo puede reenviar verificación para su propio email
    */
   async resendVerification(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -162,12 +355,71 @@ export class EmailVerificationController {
       // Email ya está validado por el schema de Zod
       const { email } = req.body;
 
-      // Verificar cooldown de reenvío
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Usuario debe estar autenticado
+      // ────────────────────────────────────────────────────────────────────
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return ResponseUtil.error(
+          res,
+          'Authentication required to resend email verification',
+          401,
+          [
+            {
+              field: 'authentication',
+              message: 'You must be logged in to resend email verification',
+              code: 'AUTHENTICATION_REQUIRED'
+            }
+          ]
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Solo puede reenviar verificación para su propio email
+      // ────────────────────────────────────────────────────────────────────
+      const currentUser = await em.findOne(User, { id: user.id });
+      if (!currentUser) {
+        return ResponseUtil.error(
+          res,
+          'User not found',
+          404,
+          [
+            {
+              field: 'user',
+              message: 'User account not found',
+              code: 'USER_NOT_FOUND'
+            }
+          ]
+        );
+      }
+
+      if (currentUser.email !== email) {
+        logger.warn({ 
+          userId: user.id, 
+          userEmail: currentUser.email, 
+          requestedEmail: email 
+        }, 'User attempted to resend verification for different email');
+        
+        return ResponseUtil.error(
+          res,
+          'You can only resend verification for your own email address',
+          403,
+          [
+            {
+              field: 'email',
+              message: `You can only resend verification for your own email: ${currentUser.email}`,
+              code: 'EMAIL_OWNERSHIP_VIOLATION'
+            }
+          ]
+        );
+      }
+
+      // Verificar cooldown de reenvío (2 minutos)
       const cooldownKey = `verification_request:${email}`;
       const cooldownData = await cacheService.get(cooldownKey);
 
       if (cooldownData) {
-        return ResponseUtil.error(res, 'Please wait 15 minutes before requesting another verification', 429);
+        return ResponseUtil.error(res, 'Please wait 2 minutes before requesting another verification', 429);
       }
 
       // Buscar información personal del usuario
@@ -191,8 +443,8 @@ export class EmailVerificationController {
         );
 
         if (emailSent) {
-          // Actualizar cooldown
-          await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 15 * 60);
+          // Actualizar cooldown (2 minutos)
+          await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 2 * 60);
 
           return ResponseUtil.success(res, 'Verification request resent successfully');
         } else {
@@ -205,6 +457,113 @@ export class EmailVerificationController {
 
     } catch (error) {
       logger.error({ err: error }, 'Error resending verification request');
+      return ResponseUtil.internalError(res, 'Error resending verification request', error);
+    }
+  }
+
+  /**
+   * Reenvía verificación de email para usuarios no verificados (sin autenticación)
+   * 
+   * Este endpoint permite a usuarios que se registraron pero no han verificado su email
+   * solicitar un nuevo email de verificación usando solo su email.
+   * 
+   * VALIDACIONES:
+   * - Email debe existir en la base de datos
+   * - Usuario no debe tener email verificado
+   * - Cooldown de 2 minutos entre reenvíos
+   */
+  async resendVerificationForUnverified(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // Email ya está validado por el schema de Zod
+      const { email } = req.body;
+
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Usuario debe existir en la base de datos
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { email });
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User', email);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Usuario no debe tener email verificado
+      // ────────────────────────────────────────────────────────────────────
+      if (user.emailVerified) {
+        return ResponseUtil.error(
+          res,
+          'Your email is already verified. You can log in normally.',
+          409,
+          [
+            {
+              field: 'email',
+              message: 'Email is already verified',
+              code: 'EMAIL_ALREADY_VERIFIED'
+            }
+          ]
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // VALIDACIÓN: Verificar cooldown de reenvío (2 minutos)
+      // ────────────────────────────────────────────────────────────────────
+      const cooldownKey = `verification_request:${email}`;
+      const cooldownData = await cacheService.get(cooldownKey);
+
+      if (cooldownData) {
+        return ResponseUtil.error(res, 'Please wait 2 minutes before requesting another verification', 429);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Buscar verificación existente
+      // ────────────────────────────────────────────────────────────────────
+      const existingVerification = await em.findOne(EmailVerification, {
+        email,
+        status: EmailVerificationStatus.PENDING,
+      });
+
+      if (existingVerification && existingVerification.isValid()) {
+        // Reenviar notificación existente
+        const emailSent = await emailService.sendVerificationEmail(
+          email,
+          existingVerification.token,
+          user.username // Usar username como nombre temporal
+        );
+
+        if (emailSent) {
+          // Actualizar cooldown (2 minutos)
+          await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 2 * 60);
+
+          return ResponseUtil.success(res, 'Verification email resent successfully');
+        } else {
+          return ResponseUtil.internalError(res, 'Failed to send verification notification');
+        }
+      } else {
+        // Crear nueva verificación
+        const verification = new EmailVerification(email);
+        em.persist(verification);
+        await em.flush();
+
+        // Enviar email de verificación
+        const emailSent = await emailService.sendVerificationEmail(
+          email,
+          verification.token,
+          user.username
+        );
+
+        if (emailSent) {
+          // Cachear la solicitud para evitar spam (2 minutos de cooldown)
+          await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 2 * 60);
+
+          return ResponseUtil.success(res, 'New verification email sent successfully');
+        } else {
+          return ResponseUtil.internalError(res, 'Failed to send verification notification');
+        }
+      }
+
+    } catch (error) {
+      logger.error({ err: error }, 'Error resending verification for unverified user');
       return ResponseUtil.internalError(res, 'Error resending verification request', error);
     }
   }
