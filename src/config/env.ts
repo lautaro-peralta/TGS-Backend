@@ -58,7 +58,7 @@ const envSchema = z.object({
   SENDGRID_FROM: z.string().email().optional(),
 
   // Frontend URL (for email links)
-  FRONTEND_URL: z.string().url().optional(),
+  FRONTEND_URL: z.url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

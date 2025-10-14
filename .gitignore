@@ -38,3 +38,5 @@ logs/
 estructura.sql
 
 sendgrid.env
+
+.claude/
