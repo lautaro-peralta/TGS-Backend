@@ -20,7 +20,8 @@ const envSchema = z.object({
   DB_PASSWORD: z.string().default('dsw'),
   DB_NAME: z.string().default('tpdesarrollo'),
 
-  JWT_SECRET: z.string(),
+  // JWT Secret - Must be at least 32 characters
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('15m'),
 
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wsl:*)",
+      "Bash(cat:*)",
+      "Read(//c/Lautaro/Facultad/Materias/Tercero-ISI/Desarrollo software/**)",
+      "Bash(sed:*)",
+      "Bash(rm:*)",
+      "Bash(cp:*)",
+      "Bash(pnpm run type-check)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker compose:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

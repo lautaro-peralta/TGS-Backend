@@ -59,7 +59,8 @@ export function authMiddleware(
   // ──────────────────────────────────────────────────────────────────────────
   const token = req.cookies?.access_token;
 
-  logger.info({ token }, '🛡️ [authMiddleware] Token from cookies');
+  // Security: Never log tokens - only log presence for debugging
+  logger.debug("🛡️ [authMiddleware] Checking for authentication token");
 
   // ──────────────────────────────────────────────────────────────────────────
   // Validate token presence
@@ -75,7 +76,7 @@ export function authMiddleware(
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
 
-    logger.info({ payload }, '✅ [authMiddleware] Valid token, payload');
+    logger.debug('✅ [authMiddleware] Token validated successfully');
 
     // ────────────────────────────────────────────────────────────────────────
     // Attach user data to request for downstream middleware/controllers
