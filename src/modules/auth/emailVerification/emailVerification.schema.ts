@@ -25,7 +25,6 @@ export const resendEmailVerificationSchema = z.object({
  */
 export const verifyEmailTokenParamSchema = z.object({
   token: z
-    .string()
     .uuid({ message: 'Invalid token format' })
     .trim(),
 });

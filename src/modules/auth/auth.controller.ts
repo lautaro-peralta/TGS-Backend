@@ -16,6 +16,8 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
 import logger from '../../shared/utils/logger.js';
 import { env } from '../../config/env.js';
 import crypto from 'crypto';
+import { EmailVerification } from './emailVerification/emailVerification.entity.js';
+import { emailService } from '../../shared/services/email.service.js';
 
 // ============================================================================
 // AUTHENTICATION CONTROLLER
@@ -109,14 +111,64 @@ export class AuthController {
       await em.persistAndFlush(newUser);
 
       // ────────────────────────────────────────────────────────────────────
-      // Return sanitized user data (exclude password)
+      // Crear solicitud automática de verificación de email
       // ────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(res, 'User created successfully', {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        roles: newUser.roles,
-      });
+      try {
+        const emailVerification = new EmailVerification(email);
+        await em.persistAndFlush(emailVerification);
+
+        // Enviar email de verificación
+        const emailSent = await emailService.sendVerificationEmail(
+          email,
+          emailVerification.token,
+          username // Usar username como nombre temporal
+        );
+
+        if (emailSent) {
+          logger.info({ 
+            userId: newUser.id, 
+            email 
+          }, 'Email verification sent automatically after registration');
+        } else {
+          logger.warn({ 
+            userId: newUser.id, 
+            email 
+          }, 'Failed to send verification email after registration');
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        // Return sanitized user data with verification info
+        // ────────────────────────────────────────────────────────────────────
+        return ResponseUtil.created(res, 'User created successfully. Please check your email to verify your account.', {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          roles: newUser.roles,
+          emailVerified: newUser.emailVerified,
+          verificationRequired: true,
+          verificationEmailSent: emailSent,
+          expiresAt: emailVerification.expiresAt.toISOString(),
+        });
+
+      } catch (verificationError) {
+        logger.error({ 
+          err: verificationError, 
+          userId: newUser.id, 
+          email 
+        }, 'Failed to create email verification after registration');
+
+        // Si falla la verificación, aún devolver éxito pero indicar que debe solicitar manualmente
+        return ResponseUtil.created(res, 'User created successfully. Please request email verification manually.', {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          roles: newUser.roles,
+          emailVerified: newUser.emailVerified,
+          verificationRequired: true,
+          verificationEmailSent: false,
+          message: 'Please request email verification manually from your profile',
+        });
+      }
     } catch (error) {
       next(error);
     }
@@ -161,6 +213,29 @@ export class AuthController {
 
       if (!user || !(await argon2.verify(user.password, password))) {
         return ResponseUtil.unauthorized(res, 'Invalid credentials');
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Verificar que el email esté verificado (OBLIGATORIO)
+      // ────────────────────────────────────────────────────────────────────
+      if (!user.emailVerified) {
+        logger.warn({ 
+          userId: user.id, 
+          email: user.email 
+        }, 'User attempted login without email verification');
+
+        return ResponseUtil.error(
+          res,
+          'Email verification required. Please check your email and verify your account before logging in.',
+          403,
+          [
+            {
+              field: 'emailVerified',
+              message: 'Email verification is required to access your account',
+              code: 'EMAIL_VERIFICATION_REQUIRED'
+            }
+          ]
+        );
       }
 
       // ────────────────────────────────────────────────────────────────────

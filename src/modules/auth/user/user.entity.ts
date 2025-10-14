@@ -111,7 +111,7 @@ export class User {
    * @type {boolean}
    */
   @Property({ default: false })
-  emailValidated: boolean = false;
+  emailVerified: boolean = false;
 
   /**
    * The timestamp of the user's last login.
@@ -199,7 +199,7 @@ export class User {
       roles: this.roles,
       isActive: this.isActive,
       isVerified: this.isVerified,
-      emailValidated: this.emailValidated,
+      emailVerified: this.emailVerified,
       profileCompleteness: this.profileCompleteness,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
@@ -313,7 +313,7 @@ export class User {
   getProfileSuggestions(): string[] {
     const suggestions: string[] = [];
 
-    if (!this.emailValidated) {
+    if (!this.emailVerified) {
       suggestions.push('Validate your email address by clicking the link sent to your inbox');
     }
 

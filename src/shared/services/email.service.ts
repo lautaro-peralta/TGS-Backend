@@ -6,10 +6,14 @@ import nodemailer, { Transporter } from 'nodemailer';
 import { z } from 'zod';
 import logger from '../utils/logger.js';
 
+// SendGrid para producción - Usamos Web API (más eficiente que SMTP)
+import sgMail from '@sendgrid/mail';
+
 /**
  * Configuración de envío de emails
  */
 const emailConfigSchema = z.object({
+  // Configuración SMTP (para desarrollo con Mailtrap)
   host: z.string().default('smtp.gmail.com'),
   port: z.coerce.number().default(587),
   secure: z.coerce.boolean().default(false),
@@ -17,7 +21,11 @@ const emailConfigSchema = z.object({
     user: z.string(),
     pass: z.string(),
   }),
-  from: z.string().email().default('noreply@tgs-system.com'),
+  from: z.email().default('noreply@tgs-system.com'),
+
+  // Configuración SendGrid (para producción)
+  sendgridApiKey: z.string().optional(),
+  sendgridFrom: z.email().optional(),
 });
 
 type EmailConfig = z.infer<typeof emailConfigSchema>;
@@ -39,6 +47,7 @@ export class EmailService {
   private transporter: Transporter | null = null;
   private config: EmailConfig | null = null;
   private isEnabled: boolean = false;
+  private useSendGrid: boolean = false;
 
   /**
    * Inicializa el servicio de email
@@ -55,13 +64,28 @@ export class EmailService {
           pass: config?.auth?.pass || process.env.SMTP_PASS || '',
         },
         from: config?.from || process.env.SMTP_FROM || 'noreply@tgs-system.com',
+        sendgridApiKey: config?.sendgridApiKey || process.env.SENDGRID_API_KEY,
+        sendgridFrom: config?.sendgridFrom || process.env.SENDGRID_FROM,
       };
 
       // Validar configuración
       this.config = emailConfigSchema.parse(emailConfig);
 
-      // Crear transporter solo si tenemos credenciales válidas
-      if (this.config.auth.user && this.config.auth.pass) {
+      // Determinar si usar SendGrid (producción con API key) o SMTP (desarrollo)
+      this.useSendGrid = !!(
+        process.env.NODE_ENV === 'production' &&
+        this.config.sendgridApiKey &&
+        this.config.sendgridFrom
+      );
+
+      // Inicializar el proveedor de email adecuado
+      if (this.useSendGrid) {
+        // Configurar SendGrid para producción
+        sgMail.setApiKey(this.config.sendgridApiKey!);
+        this.isEnabled = true;
+        logger.info('SendGrid email service initialized for production');
+      } else if (this.config.auth.user && this.config.auth.pass) {
+        // Configurar SMTP (Mailtrap para desarrollo)
         this.transporter = nodemailer.createTransport({
           host: this.config.host,
           port: this.config.port,
@@ -76,7 +100,7 @@ export class EmailService {
         try {
           await this.transporter.verify();
           this.isEnabled = true;
-          logger.info('Email service initialized and verified successfully');
+          logger.info('SMTP email service initialized and verified successfully');
         } catch (verifyError) {
           // En desarrollo, continuar sin fallar si la verificación falla
           if (process.env.NODE_ENV === 'development') {
@@ -89,7 +113,7 @@ export class EmailService {
           }
         }
       } else {
-        logger.warn('Email service disabled - missing SMTP credentials (this is normal in development)');
+        logger.warn('Email service disabled - missing credentials (this is normal in development)');
         this.isEnabled = false;
       }
 
@@ -116,7 +140,7 @@ export class EmailService {
       from?: string;
     }
   ): Promise<boolean> {
-    if (!this.isEnabled || !this.transporter) {
+    if (!this.isEnabled) {
       logger.warn({ to, template }, 'Email service not available');
       return false;
     }
@@ -124,25 +148,55 @@ export class EmailService {
     try {
       const templateData = await this.getTemplateData(template, data);
       const subject = options?.subject || templateData.subject;
+      const from = options?.from || (this.useSendGrid ? this.config!.sendgridFrom! : this.config!.from);
 
-      const mailOptions = {
-        from: options?.from || this.config!.from,
-        to,
-        subject,
-        html: templateData.html,
-        text: templateData.text, // Versión de texto plano
-      };
+      if (this.useSendGrid) {
+        // Usar SendGrid para producción
+        const msg = {
+          to,
+          from,
+          subject,
+          html: templateData.html,
+          text: templateData.text,
+        };
 
-      const result = await this.transporter!.sendMail(mailOptions);
+        await sgMail.send(msg);
 
-      logger.info({
-        to,
-        template,
-        subject,
-        messageId: result.messageId,
-      }, 'Email sent successfully');
+        logger.info({
+          to,
+          template,
+          subject,
+          provider: 'SendGrid',
+        }, 'Email sent successfully via SendGrid');
 
-      return true;
+        return true;
+
+      } else if (this.transporter) {
+        // Usar SMTP para desarrollo
+        const mailOptions = {
+          from,
+          to,
+          subject,
+          html: templateData.html,
+          text: templateData.text, // Versión de texto plano
+        };
+
+        const result = await this.transporter.sendMail(mailOptions);
+
+        logger.info({
+          to,
+          template,
+          subject,
+          messageId: result.messageId,
+          provider: 'SMTP',
+        }, 'Email sent successfully via SMTP');
+
+        return true;
+
+      } else {
+        logger.error({ to, template }, 'No email provider available');
+        return false;
+      }
 
     } catch (error) {
       logger.error({
@@ -163,13 +217,13 @@ export class EmailService {
     verificationToken: string,
     userName?: string
   ): Promise<boolean> {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
 
     return this.sendEmail(email, EmailTemplate.VERIFICATION, {
       userName: userName || 'Usuario',
       verificationUrl,
       token: verificationToken,
-      expiresIn: '24 horas',
+      expiresIn: '15 minutos', // Actualizado de 24 horas
     });
   }
 
@@ -252,6 +306,9 @@ export class EmailService {
             margin: 20px 0;
           }
           .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+          .academic-info { margin-top: 15px; }
+          .academic-info hr { margin: 15px 0; }
+          .academic-info p { margin: 5px 0; }
         </style>
       </head>
       <body>
@@ -289,7 +346,14 @@ export class EmailService {
 
           <div class="footer">
             <p>Este email fue enviado automáticamente. Por favor, no respondas a este mensaje.</p>
-            <p>&copy; ${new Date().getFullYear()} TGS System. Todos los derechos reservados.</p>
+            <div class="academic-info">
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+              <p style="font-size: 12px; color: #666; line-height: 1.4;">
+                <strong>The Garrison System</strong><br>
+                Proyecto académico desarrollado en UTN – Facultad Regional Rosario<br>
+                Zeballos 1341, Rosario, Santa Fe, Argentina
+              </p>
+            </div>
           </div>
         </div>
       </body>
@@ -309,6 +373,11 @@ export class EmailService {
       Si no solicitaste esta verificación, puedes ignorar este email.
 
       ¡Gracias por elegir TGS System!
+
+      ---
+      The Garrison System
+      Proyecto académico desarrollado en UTN – Facultad Regional Rosario
+      Zeballos 1341, Rosario, Santa Fe, Argentina
     `;
 
     return { subject, html, text };
@@ -341,6 +410,9 @@ export class EmailService {
             margin: 20px 0;
           }
           .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+          .academic-info { margin-top: 15px; }
+          .academic-info hr { margin: 15px 0; }
+          .academic-info p { margin: 5px 0; }
         </style>
       </head>
       <body>
@@ -370,7 +442,14 @@ export class EmailService {
           </div>
 
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} TGS System. Todos los derechos reservados.</p>
+            <div class="academic-info">
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+              <p style="font-size: 12px; color: #666; line-height: 1.4;">
+                <strong>The Garrison System</strong><br>
+                Proyecto académico desarrollado en UTN – Facultad Regional Rosario<br>
+                Zeballos 1341, Rosario, Santa Fe, Argentina
+              </p>
+            </div>
           </div>
         </div>
       </body>
@@ -392,6 +471,11 @@ export class EmailService {
       Inicia sesión en: ${data.loginUrl}
 
       ¡Disfruta de tu experiencia en TGS System!
+
+      ---
+      The Garrison System
+      Proyecto académico desarrollado en UTN – Facultad Regional Rosario
+      Zeballos 1341, Rosario, Santa Fe, Argentina
     `;
 
     return { subject, html, text };
@@ -430,6 +514,9 @@ export class EmailService {
             margin: 20px 0;
           }
           .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+          .academic-info { margin-top: 15px; }
+          .academic-info hr { margin: 15px 0; }
+          .academic-info p { margin: 5px 0; }
         </style>
       </head>
       <body>
@@ -465,7 +552,14 @@ export class EmailService {
           </div>
 
           <div class="footer">
-            <p>Sistema de Notificaciones TGS - ${new Date().toLocaleDateString()}</p>
+            <div class="academic-info">
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+              <p style="font-size: 12px; color: #666; line-height: 1.4;">
+                <strong>The Garrison System</strong><br>
+                Proyecto académico desarrollado en UTN – Facultad Regional Rosario<br>
+                Zeballos 1341, Rosario, Santa Fe, Argentina
+              </p>
+            </div>
           </div>
         </div>
       </body>
@@ -489,6 +583,11 @@ export class EmailService {
       - Máximo 3 intentos permitidos
 
       Esta notificación se envió automáticamente.
+
+      ---
+      The Garrison System
+      Proyecto académico desarrollado en UTN – Facultad Regional Rosario
+      Zeballos 1341, Rosario, Santa Fe, Argentina
     `;
 
     return { subject, html, text };
@@ -508,7 +607,9 @@ export class EmailService {
     return {
       enabled: this.isEnabled,
       configured: this.config !== null,
+      provider: this.useSendGrid ? 'SendGrid' : 'SMTP',
       hasCredentials: !!(this.config?.auth.user && this.config?.auth.pass),
+      hasSendGridCredentials: !!(this.config?.sendgridApiKey && this.config?.sendgridFrom),
     };
   }
 }

@@ -37,7 +37,7 @@ export class EmailVerification {
   @Property()
   expiresAt: Date;
 
-  @Property()
+  @Property({ nullable: true })
   verifiedAt?: Date;
 
   @Property()
@@ -46,10 +46,10 @@ export class EmailVerification {
   /**
    * Crea una nueva verificación de email
    */
-  constructor(email: string, expiresInHours: number = 48) {
+  constructor(email: string, expiresInMinutes: number = 15) {
     this.token = this.generateSecureToken();
     this.email = email.toLowerCase().trim();
-    this.expiresAt = new Date(Date.now() + (expiresInHours * 60 * 60 * 1000));
+    this.expiresAt = new Date(Date.now() + (expiresInMinutes * 60 * 1000));
   }
 
   /**

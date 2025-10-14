@@ -404,7 +404,7 @@ export class UserController {
    * Process:
    * 1. Validates user exists
    * 2. Validates role compatibility if roles are being updated
-   * 3. Updates allowed properties: isVerified, emailValidated, isActive, roles
+   * 3. Updates allowed properties: isVerified, emailVerified, isActive, roles
    * 4. Persists changes to database
    * 5. Returns updated user data
    *
@@ -469,8 +469,8 @@ export class UserController {
       if (updates.isVerified !== undefined) {
         user.isVerified = updates.isVerified;
       }
-      if (updates.emailValidated !== undefined) {
-        user.emailValidated = updates.emailValidated;
+      if (updates.emailVerified !== undefined) {
+        user.emailVerified = updates.emailVerified;
       }
       if (updates.isActive !== undefined) {
         user.isActive = updates.isActive;
