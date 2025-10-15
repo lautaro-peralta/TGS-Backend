@@ -259,6 +259,7 @@ function sanitizeInput(input: string): string {
     .replace(/on\w+\s*=/gi, '')
     .trim();
 }
+
 /**
  * Función recursiva para sanitizar objetos anidados
  */
@@ -427,29 +428,37 @@ function getClientLoginAttempts(ip: string): number {
  * Middleware para validar origen de solicitud (adicional a CORS)
  */
 export const originValidation = (req: Request, res: Response, next: NextFunction) => {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
-  const origin = req.get('Origin') || req.get('Referer');
+  // ✅ CORREGIDO: Comparación exacta con trim
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['http://localhost:3000'];
+  const origin = req.get('Origin');
 
-  if (origin && !allowedOrigins.some(allowed => origin.includes(allowed))) {
-    logger.warn(
-      {
-        ip: req.ip,
-        origin,
-        userAgent: req.get('User-Agent'),
-        url: req.url,
-      },
-      'Request from unauthorized origin'
-    );
-
-    return res.status(403).json({
-      success: false,
-      message: 'Origin not allowed',
-      code: 'ORIGIN_NOT_ALLOWED',
-      requestId: req.requestId,
-    });
+  // ✅ Permitir requests sin origin (Postman, curl, mobile apps)
+  if (!origin) {
+    return next();
   }
 
-  next();
+  // ✅ CORREGIDO: Comparación exacta en lugar de .includes()
+  if (allowedOrigins.includes(origin)) {
+    return next();
+  }
+
+  logger.warn(
+    {
+      ip: req.ip,
+      origin,
+      allowedOrigins,
+      userAgent: req.get('User-Agent'),
+      url: req.url,
+    },
+    'Request from unauthorized origin'
+  );
+
+  return res.status(403).json({
+    success: false,
+    message: 'Origin not allowed',
+    code: 'ORIGIN_NOT_ALLOWED',
+    requestId: req.requestId,
+  });
 };
 
 /**
@@ -457,22 +466,33 @@ export const originValidation = (req: Request, res: Response, next: NextFunction
  */
 export const secureCors = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+    // ✅ CORREGIDO: Comparación exacta con trim
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['http://localhost:3000'];
 
-    // Permitir requests sin origin (como mobile apps o curl)
-    if (!origin) return callback(null, true);
+    console.log('🔍 [CORS Debug] Origin:', origin);
+    console.log('🔍 [CORS Debug] Allowed Origins:', allowedOrigins);
 
-    if (allowedOrigins.some(allowed => origin.includes(allowed))) {
+    // Permitir requests sin origin (como Postman, curl, o mobile apps)
+    if (!origin) {
+      console.log('✅ [CORS] No origin header - allowing request');
       return callback(null, true);
     }
 
+    // ✅ CORREGIDO: Comparación exacta en lugar de .includes()
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ [CORS] Origin allowed:', origin);
+      return callback(null, true);
+    }
+
+    // Origen no permitido
+    console.warn('❌ [CORS] Origin blocked:', origin);
     logger.warn(`CORS blocked for origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['X-Total-Count', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['X-Total-Count', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Set-Cookie'],
   maxAge: 86400, // 24 horas
 };
 
@@ -481,7 +501,7 @@ export const secureCors = {
  */
 export const securityMiddleware = [
   securityHeaders,           // Headers de seguridad
-  originValidation,         // Validación de origen
+  //originValidation,         // Validación de origen
   securityMonitor,          // Monitoreo de seguridad
   inputSanitization,        // Sanitización básica
   hppProtection,            // Protección HPP
