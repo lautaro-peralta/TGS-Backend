@@ -36,13 +36,46 @@ export class UserVerificationController {
       // Email ya está validado por el schema de Zod
       const { email } = req.body;
 
-      // Verificar que existe información personal del usuario
+      // ────────────────────────────────────────────────────────────────────
+      // 1. Verificar que el usuario tenga su email verificado
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { email });
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User', email);
+      }
+
+      if (!user.emailVerified) {
+        logger.warn({
+          email,
+          userId: user.id,
+          emailVerified: user.emailVerified
+        }, 'Attempt to request user verification without verified email');
+
+        return ResponseUtil.error(
+          res,
+          'You must verify your email address before requesting account verification',
+          403,
+          [
+            {
+              field: 'emailVerified',
+              message: 'Email verification is required before requesting user verification',
+              code: 'EMAIL_NOT_VERIFIED'
+            }
+          ]
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // 2. Verificar que existe información personal del usuario
+      // ────────────────────────────────────────────────────────────────────
       const person = await em.findOne('BasePersonEntity', { email });
       if (!person) {
         return ResponseUtil.notFound(res, 'Person', email);
       }
 
-      // Verificar si ya existe una solicitud pendiente reciente
+      // ────────────────────────────────────────────────────────────────────
+      // 3. Verificar si ya existe una solicitud pendiente reciente
+      // ────────────────────────────────────────────────────────────────────
       const existingVerification = await em.findOne(UserVerification, {
         email,
         status: UserVerificationStatus.PENDING,
