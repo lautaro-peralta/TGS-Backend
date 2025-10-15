@@ -13,6 +13,7 @@ import { emailService } from '../../../shared/services/email.service.js';
 import { cacheService } from '../../../shared/services/cache.service.js';
 import { User } from '../user/user.entity.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
+import { env } from '../../../config/env.js';
 
 /**
  * Controlador para manejar solicitudes de verificación de usuario
@@ -387,6 +388,39 @@ export class UserVerificationController {
           'This user is already verified',
           409
         );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // 3.5. VALIDACIÓN: Verificar que el email esté verificado (si requerido)
+      // ────────────────────────────────────────────────────────────────────
+      if (env.EMAIL_VERIFICATION_REQUIRED && !user.emailVerified) {
+        logger.warn({
+          email,
+          userId: user.id,
+          emailVerified: user.emailVerified
+        }, 'Attempt to verify user without verified email');
+
+        return ResponseUtil.error(
+          res,
+          'User must verify their email address before account verification can be approved',
+          403,
+          [
+            {
+              field: 'emailVerified',
+              message: 'Email verification is required before user verification',
+              code: 'EMAIL_NOT_VERIFIED'
+            }
+          ]
+        );
+      }
+
+      // Log si estamos en modo demo
+      if (!env.EMAIL_VERIFICATION_REQUIRED && !user.emailVerified) {
+        logger.info({
+          email,
+          userId: user.id,
+          mode: 'demo'
+        }, 'Approving user verification without email verification (demo mode)');
       }
 
       // ────────────────────────────────────────────────────────────────────

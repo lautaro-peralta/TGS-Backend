@@ -14,6 +14,7 @@ import logger from './shared/utils/logger.js';
 import { logRoutes } from './shared/utils/pretty.log.js';
 import { orm, syncSchema } from './shared/db/orm.js';
 import { createAdminDev, createZoneDev } from './shared/initDev.js';
+import { env } from './config/env.js';
 
 // ============================================================================
 // IMPORTS - Route handlers
@@ -206,7 +207,7 @@ export const initDev = async () => {
     // Initialize email service
     try {
       await emailService.initialize();
-      
+
       if (emailService.isAvailable()) {
         logger.info('Email service ready and available');
       } else {
@@ -214,9 +215,22 @@ export const initDev = async () => {
         logger.info('To enable emails, configure SMTP variables in .env.development:');
         logger.info('   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
       }
+
+      // Log email verification requirement status
+      if (env.EMAIL_VERIFICATION_REQUIRED) {
+        logger.info('Email verification: REQUIRED (users must verify email before login)');
+      } else {
+        logger.warn('Email verification: DISABLED (demo mode - users can login without verification)');
+        logger.info('To enable email verification, set EMAIL_VERIFICATION_REQUIRED=true in .env');
+      }
     } catch (error) {
       logger.warn('Email service initialization failed (continuing without email functionality)');
       logger.info('This is normal in development if SMTP is not configured');
+
+      // Still log verification status even if email service failed
+      if (!env.EMAIL_VERIFICATION_REQUIRED) {
+        logger.warn('Email verification: DISABLED (demo mode)');
+      }
     }
 
     logger.info("Loading development routes...");

@@ -125,6 +125,34 @@ FRONTEND_URL=http://localhost:3000
 - Los tokens de verificación se generan pero los emails no se envían
 - Para producción, configura SMTP con credenciales reales
 
+### Modo Demo (Para Evaluación/Testing)
+
+Si necesitas ejecutar el sistema **sin verificación obligatoria de email** (útil para evaluaciones académicas o demos rápidas), tienes dos opciones:
+
+#### Opción 1: Usar el script de demo (Recomendado)
+
+```bash
+pnpm start:demo
+```
+
+Este comando inicia el servidor en modo desarrollo con la verificación de email desactivada.
+
+#### Opción 2: Configurar manualmente en .env
+
+Edita tu archivo `.env.development` y establece:
+
+```env
+EMAIL_VERIFICATION_REQUIRED=false
+```
+
+Luego ejecuta normalmente:
+
+```bash
+pnpm start:dev
+```
+
+**Importante:** En producción, `EMAIL_VERIFICATION_REQUIRED` siempre debe estar en `true` para garantizar la seguridad de las cuentas de usuario.
+
 ### Redis (Opcional)
 
 **Redis está deshabilitado por defecto**. La aplicación funciona perfectamente sin Redis utilizando un cache en memoria como respaldo.
