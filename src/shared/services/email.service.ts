@@ -100,7 +100,14 @@ export class EmailService {
         try {
           await this.transporter.verify();
           this.isEnabled = true;
-          logger.info('SMTP email service initialized and verified successfully');
+
+          // Log diferente si EMAIL_VERIFICATION_REQUIRED está deshabilitado
+          const verificationRequired = process.env.EMAIL_VERIFICATION_REQUIRED !== 'false';
+          if (verificationRequired) {
+            logger.info('SMTP email service initialized and verified successfully');
+          } else {
+            logger.info('SMTP email service initialized (demo mode - verification emails will be sent but not required)');
+          }
         } catch (verifyError) {
           // En desarrollo, continuar sin fallar si la verificación falla
           if (process.env.NODE_ENV === 'development') {

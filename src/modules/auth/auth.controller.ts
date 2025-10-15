@@ -216,12 +216,12 @@ export class AuthController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Verificar que el email esté verificado (OBLIGATORIO)
+      // Verificar que el email esté verificado (si está habilitado)
       // ────────────────────────────────────────────────────────────────────
-      if (!user.emailVerified) {
-        logger.warn({ 
-          userId: user.id, 
-          email: user.email 
+      if (env.EMAIL_VERIFICATION_REQUIRED && !user.emailVerified) {
+        logger.warn({
+          userId: user.id,
+          email: user.email
         }, 'User attempted login without email verification');
 
         return ResponseUtil.error(

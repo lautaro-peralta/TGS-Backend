@@ -7,6 +7,14 @@ config({ path: `.env.${process.env.NODE_ENV ?? 'development'}` });
 // Detect if running in Docker container
 const isDocker = process.env.DOCKER_CONTAINER === 'true';
 
+// Helper function to parse boolean strings correctly
+// z.coerce.boolean() converts ANY non-empty string to true, even 'false'
+// This function correctly handles 'true', 'false', '1', '0', etc.
+const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (value === undefined || value === '') return defaultValue;
+  return value.toLowerCase() === 'true' || value === '1';
+};
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
@@ -28,9 +36,9 @@ const envSchema = z.object({
 
   // Security Configuration
   ALLOWED_ORIGINS: z.string().default(isDocker ? 'http://localhost:3000,http://frontend:3000' : 'http://localhost:3000'),
-  TRUST_PROXY: z.coerce.boolean().default(isDocker ? true : false),
-  ENABLE_SECURITY_HEADERS: z.coerce.boolean().default(true),
-  ENABLE_RATE_LIMITING: z.coerce.boolean().default(true),
+  TRUST_PROXY: z.preprocess((val) => parseBoolean(val as string, isDocker), z.boolean()),
+  ENABLE_SECURITY_HEADERS: z.preprocess((val) => parseBoolean(val as string, true), z.boolean()),
+  ENABLE_RATE_LIMITING: z.preprocess((val) => parseBoolean(val as string, true), z.boolean()),
   SECURITY_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('warn'),
 
   // Redis Configuration (Docker-aware)
@@ -40,7 +48,7 @@ const envSchema = z.object({
   REDIS_DB: z.coerce.number().default(0).optional(),
 
   // Redis availability flag
-  REDIS_ENABLED: z.coerce.boolean().default(false), // Disabled by default, enable explicitly
+  REDIS_ENABLED: z.preprocess((val) => parseBoolean(val as string, false), z.boolean()), // Disabled by default, enable explicitly
 
   // CORS Configuration
   CORS_MAX_AGE: z.coerce.number().default(86400), // 24 hours
@@ -48,7 +56,7 @@ const envSchema = z.object({
   // Email Service (SMTP) Configuration - Development with Mailtrap
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
-  SMTP_SECURE: z.coerce.boolean().optional(),
+  SMTP_SECURE: z.preprocess((val) => val !== undefined ? parseBoolean(val as string, false) : undefined, z.boolean().optional()),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().email().optional(),
@@ -59,6 +67,13 @@ const envSchema = z.object({
 
   // Frontend URL (for email links)
   FRONTEND_URL: z.url().optional(),
+
+  // Email verification requirement (can be disabled for development/demo)
+  // Note: Using z.boolean() instead of z.coerce.boolean() because coerce converts 'false' string to true
+  EMAIL_VERIFICATION_REQUIRED: z.preprocess(
+    (val) => parseBoolean(val as string, true),
+    z.boolean()
+  ),
 });
 
 export const env = envSchema.parse(process.env);

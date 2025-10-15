@@ -6,6 +6,7 @@
   "main": "app.js",
   "scripts": {
     "start:dev": "cross-env NODE_ENV=development tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/server.js\"",
+    "start:demo": "cross-env NODE_ENV=development EMAIL_VERIFICATION_REQUIRED=false tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/server.js\"",
     "build": "tsc -p ./tsconfig.json",
     "start:prod": "cross-env NODE_ENV=production node ./dist/server.js",
     "clean": "pnpm exec rimraf dist",
