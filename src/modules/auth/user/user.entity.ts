@@ -57,7 +57,7 @@ export class User {
    *
    * @type {string}
    */
-  @Property({ unique: true })
+  @Property({ type: String, unique: true })
   username!: string;
 
   /**
@@ -65,7 +65,7 @@ export class User {
    *
    * @type {string}
    */
-  @Property({ unique: true })
+  @Property({ type: String, unique: true })
   email!: string;
 
   /**
@@ -73,7 +73,7 @@ export class User {
    *
    * @type {string}
    */
-  @Property()
+  @Property({ type: String })
   password!: string;
 
   /**
@@ -90,7 +90,7 @@ export class User {
    *
    * @type {boolean}
    */
-  @Property({ default: true })
+  @Property({ type: Boolean, default: true })
   isActive: boolean = true;
 
   /**
@@ -100,7 +100,7 @@ export class User {
    *
    * @type {boolean}
    */
-  @Property({ default: false })
+  @Property({ type: Boolean, default: false })
   isVerified: boolean = false;
 
   /**
@@ -110,7 +110,7 @@ export class User {
    *
    * @type {boolean}
    */
-  @Property({ default: false })
+  @Property({ type: Boolean, default: false })
   emailVerified: boolean = false;
 
   /**
@@ -118,7 +118,7 @@ export class User {
    *
    * @type {Date | undefined}
    */
-  @Property({ nullable: true })
+  @Property({ type: Date, nullable: true })
   lastLoginAt?: Date;
 
   /**
@@ -126,7 +126,7 @@ export class User {
    *
    * @type {number}
    */
-  @Property({ default: 25 })
+  @Property({ type: Number, default: 25 })
   profileCompleteness: number = 25;
 
   /**
@@ -134,7 +134,7 @@ export class User {
    *
    * @type {Date}
    */
-  @Property({ defaultRaw: 'CURRENT_TIMESTAMP' })
+  @Property({ type: Date, defaultRaw: 'CURRENT_TIMESTAMP' })
   createdAt: Date = new Date();
 
   /**
@@ -142,7 +142,7 @@ export class User {
    *
    * @type {Date}
    */
-  @Property({ defaultRaw: 'CURRENT_TIMESTAMP', onUpdate: () => new Date() })
+  @Property({ type: Date, defaultRaw: 'CURRENT_TIMESTAMP', onUpdate: () => new Date() })
   updatedAt: Date = new Date();
 
   // ──────────────────────────────────────────────────────────────────────────

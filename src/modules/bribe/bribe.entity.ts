@@ -31,7 +31,7 @@ export class Bribe extends BaseObjectEntity {
    *
    * @type {number}
    */
-  @Property()
+  @Property({ type: Number })
   amount!: number;
 
   /**
@@ -39,7 +39,7 @@ export class Bribe extends BaseObjectEntity {
    *
    * @type {boolean}
    */
-  @Property()
+  @Property({ type: Boolean })
   paid: boolean = false;
 
   /**
@@ -47,7 +47,7 @@ export class Bribe extends BaseObjectEntity {
    *
    * @type {Date}
    */
-  @Property()
+  @Property({ type: Date })
   creationDate: Date = new Date();
 
   // ──────────────────────────────────────────────────────────────────────────

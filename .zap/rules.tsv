@@ -1,0 +1,6 @@
+# ruleId	threshold	ignoreReason
+10054	IGNORE	Accept missing X-Content-Type-Options in test env
+10055	IGNORE	Accept missing X-Frame-Options in test env
+10021	WARN	Mixed content check warn only
+
+

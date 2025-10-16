@@ -1,0 +1,193 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop", "final-testing"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+  tests:
+    name: Tests (${{ matrix.target }})
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [unit, integration, e2e, coverage]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Run unit tests
+        if: matrix.target == 'unit'
+        run: pnpm run test:unit
+      - name: Run integration tests
+        if: matrix.target == 'integration'
+        run: pnpm run test:integration
+      - name: Run e2e tests
+        if: matrix.target == 'e2e'
+        env:
+          NODE_ENV: test
+        run: pnpm run test:e2e
+      - name: Run coverage (gated)
+        if: matrix.target == 'coverage'
+        env:
+          NODE_ENV: test
+        run: pnpm run test:ci
+      - name: Upload coverage lcov
+        if: matrix.target == 'coverage'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+      - name: Upload debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-job-logs-${{ matrix.target }}
+          path: |
+            .pnpm-debug.log
+            coverage
+
+  performance:
+    name: Performance smoke
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Start test server
+        env:
+          PORT: 3000
+          NODE_ENV: test
+        run: pnpm tsx scripts/start-test-server.ts & sleep 4
+      - name: Run perf smoke
+        run: pnpm run test:perf
+      - name: Upload perf logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-smoke-logs
+          path: .
+
+  security:
+    name: Security (SAST/DAST)
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: SAST - pnpm audit (non-blocking on moderate)
+        run: pnpm run security:sast
+      - name: Build
+        run: pnpm build
+      - name: Start test server
+        env:
+          PORT: 3000
+          NODE_ENV: test
+        run: pnpm tsx scripts/start-test-server.ts & sleep 5
+      - name: DAST - OWASP ZAP Baseline
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:3000/health'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-m 1'
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report.html
+
+  notify:
+    name: Notify
+    needs: [tests, performance, security]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Set status emoji
+        id: set-status
+        run: |
+          if [ "${{ needs.tests.result }}" = "success" ] && [ "${{ needs.performance.result }}" = "success" ] && [ "${{ needs.security.result }}" = "success" ]; then
+            echo "STATUS_EMOJI=✅" >> $GITHUB_OUTPUT
+            echo "STATUS_TEXT=All checks passed" >> $GITHUB_OUTPUT
+          else
+            echo "STATUS_EMOJI=❌" >> $GITHUB_OUTPUT
+            echo "STATUS_TEXT=Some checks failed" >> $GITHUB_OUTPUT
+          fi
+      - name: Create job summary
+        run: |
+          {
+            echo "${{ steps.set-status.outputs.STATUS_EMOJI }} ${{ steps.set-status.outputs.STATUS_TEXT }}";
+            echo "";
+            echo "Tests: ${{ needs.tests.result }}";
+            echo "Performance: ${{ needs.performance.result }}";
+            echo "Security: ${{ needs.security.result }}";
+            echo "";
+            echo "Artifacts (if uploaded) include coverage lcov and ZAP report.";
+          } >> $GITHUB_STEP_SUMMARY
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { context, github } = require('@actions/github');
+            const body = `${process.env.STATUS_EMOJI} ${process.env.STATUS_TEXT}\n\n` +
+              `Tests: ${'${{ needs.tests.result }}'}\n` +
+              `Performance: ${'${{ needs.performance.result }}'}\n` +
+              `Security: ${'${{ needs.security.result }}'}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+

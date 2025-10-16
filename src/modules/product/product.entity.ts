@@ -37,10 +37,10 @@ export class Product extends BaseObjectEntity {
    *
    * @type {string}
    */
-  @Property()
+  @Property({ type: String })
   description!: string;
 
-  @Property()
+  @Property({ type: String, nullable: true })
   detail?: string;
 
   /**
@@ -48,7 +48,7 @@ export class Product extends BaseObjectEntity {
    *
    * @type {number}
    */
-  @Property()
+  @Property({ type: Number })
   price!: number;
 
   /**
@@ -56,7 +56,7 @@ export class Product extends BaseObjectEntity {
    *
    * @type {number}
    */
-  @Property()
+  @Property({ type: Number })
   stock!: number;
 
   /**
@@ -64,7 +64,7 @@ export class Product extends BaseObjectEntity {
    *
    * @type {boolean}
    */
-  @Property({ default: false })
+  @Property({ type: Boolean, default: false })
   isIllegal: boolean = false;
 
   // ──────────────────────────────────────────────────────────────────────────

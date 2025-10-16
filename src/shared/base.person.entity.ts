@@ -17,19 +17,19 @@ export class BasePersonEntity {
   })
   id!: string;
 
-  @Property({ unique: true })
+  @Property({ type: String, unique: true })
   dni!: string;
 
-  @Property({ nullable: false })
+  @Property({ type: String, nullable: false })
   name!: string;
 
-  @Property({ nullable: false })
+  @Property({ type: String, nullable: false })
   email!: string;
 
-  @Property({ nullable: false })
+  @Property({ type: String, nullable: false })
   phone!: string;
 
-  @Property({ nullable: false })
+  @Property({ type: String, nullable: false })
   address!: string;
 
   //@Property({ nullable: true })

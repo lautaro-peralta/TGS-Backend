@@ -63,7 +63,7 @@ export class Sale extends BaseObjectEntity {
    *
    * @type {string | undefined}
    */
-  @Property({ nullable: true })
+  @Property({ type: String, nullable: true })
   description?: string;
 
   /**
@@ -79,7 +79,7 @@ export class Sale extends BaseObjectEntity {
    *
    * @type {number}
    */
-  @Property()
+  @Property({ type: Number })
   saleAmount!: number;
 
   // ──────────────────────────────────────────────────────────────────────────

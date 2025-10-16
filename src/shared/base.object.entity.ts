@@ -1,6 +1,6 @@
 import { PrimaryKey } from '@mikro-orm/core';
 
 export abstract class BaseObjectEntity {
-  @PrimaryKey()
+  @PrimaryKey({ type: Number })
   id!: number;
 }

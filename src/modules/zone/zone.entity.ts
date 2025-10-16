@@ -36,7 +36,7 @@ export class Zone extends BaseObjectEntity {
    *
    * @type {string}
    */
-  @Property()
+  @Property({ type: String })
   @Unique()
   name!: string;
 
@@ -45,7 +45,7 @@ export class Zone extends BaseObjectEntity {
    *
    * @type {boolean}
    */
-  @Property({ default: false })
+  @Property({ type: Boolean, default: false })
   isHeadquarters: boolean = false;
 
   // ──────────────────────────────────────────────────────────────────────────

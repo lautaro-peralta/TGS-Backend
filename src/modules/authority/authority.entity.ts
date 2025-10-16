@@ -40,7 +40,7 @@ export class Authority extends BasePersonEntity {
    *
    * @type {number}
    */
-  @Property()
+  @Property({ type: Number })
   rank!: number;
 
   // ──────────────────────────────────────────────────────────────────────────

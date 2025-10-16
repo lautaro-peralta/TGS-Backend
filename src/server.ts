@@ -71,9 +71,11 @@ const initDevelopment = async () => {
   }
 };
 
-// Initialize services and development environment
-await initServices();
-await initDevelopment();
+// En tests no inicializamos servicios pesados ni seeding
+if (process.env.NODE_ENV !== 'test') {
+  await initServices();
+  await initDevelopment();
+}
 
 // ============================================================================
 // SERVER STARTUP
@@ -83,8 +85,14 @@ await initDevelopment();
  * Start the Express server on the configured port
  * Logs server information including environment and access URL
  */
-app.listen(env.PORT, () => {
-  logger.info(
-    `Server running on http://localhost:${env.PORT}/ [${process.env.NODE_ENV}]`
-  );
-});
+let server: import('http').Server | undefined;
+
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(env.PORT, () => {
+    logger.info(
+      `Server running on http://localhost:${env.PORT}/ [${process.env.NODE_ENV}]`
+    );
+  });
+}
+
+export { server };

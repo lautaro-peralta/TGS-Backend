@@ -36,7 +36,7 @@ export class Detail extends BaseObjectEntity {
    *
    * @type {number}
    */
-  @Property()
+  @Property({ type: Number })
   quantity!: number;
 
   /**

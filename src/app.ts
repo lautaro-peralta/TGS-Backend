@@ -58,134 +58,148 @@ import {
   sensitiveRateLimit
 } from './shared/middleware/security.middleware.js';
 
-// ============================================================================
-// APPLICATION SETUP
-// ============================================================================
-const app = express();
-
-// ============================================================================
-// GLOBAL MIDDLEWARE
-// ============================================================================
-
-
-
-// CORS configuration - Enhanced security
-app.use(cors(secureCors));
-
-// Security headers and protection middleware
-app.use(securityMiddleware);
-
-// Rate limiting - Applied in order of restrictiveness
-app.use('/api/auth', authRateLimit);           // Stricter limits for auth
-app.use('/api/admin', sensitiveRateLimit);     // Sensitive operations
-app.use(generalRateLimit);                     // General API rate limiting
-
-// Body parsing (after security middleware for proper sanitization)
-app.use(express.json({ limit: '10mb' }));      // Limit payload size
-
-// Cookie parsing
-app.use(cookieParser());
-
-// Request logging and monitoring middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-
-  // Generate unique request ID
-  req.requestId = uuidv7();
-
-  // Log when response finishes
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    const statusClass = Math.floor(res.statusCode / 100);
-
-    // Determine log level based on status code
-    const logLevel =
-      statusClass >= 5 ? 'error' : statusClass >= 4 ? 'warn' : 'info';
-
-    res.responseTime = duration;
-
-    logger[logLevel](
-      {
-        requestId: req.requestId,
-        method: req.method,
-        url: req.url,
-        status: res.statusCode,
-        duration: `${duration}ms`,
-        userAgent: req.get('User-Agent'),
-      },
-      `${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`
-    );
-  });
-
-  // Log response errors
-  res.on('error', (error) => {
-    logger.error(
-      {
-        requestId: req.requestId,
-        error: error.message,
-      },
-      `Response error for ${req.method} ${req.url}`
-    );
-  });
-
-  next();
-});
-
-// Database context middleware (MikroORM)
-app.use((req, res, next) => {
-  RequestContext.create(orm.em, next);
-});
-
-// ============================================================================
-// API ROUTES
-// ============================================================================
-
-// Health checks - Should be before other routes for proper monitoring
-app.use('/health', healthRouter);
-
-// Redis management - Admin only routes for Redis monitoring and management
-app.use('/admin/redis', redisRouter);
-
-// Authentication & User management
-app.use('/api/auth', authRouter);
-app.use('/api/role-requests', roleRequestRouter);
-app.use('/api/users', userRouter);
-app.use('/api/email-verification', emailVerificationRouter);
-app.use('/api/user-verification', userVerificationRouter);
-
-// Business entities
-app.use('/api/clients', clientRouter);
-app.use('/api/sales', saleRouter);
-app.use('/api/products', productRouter);
-app.use('/api/distributors', distributorRouter);
-app.use('/api/partners', partnerRouter);
-
-// Geographic & Administrative
-app.use('/api/zones', zoneRouter);
-app.use('/api/authorities', authorityRouter);
-
-// Business operations
-app.use('/api/bribes', bribeRouter);
-app.use('/api/decisions', decisionRouter);
-app.use('/api/topics', topicRouter);
-
-// Administrative & Strategic
-app.use('/api/admin', adminRouter);
-app.use('/api/shelby-council', shelbyCouncilRouter);
-app.use('/api/clandestine-agreements', clandestineAgreementRouter);
-app.use('/api/monthly-reviews', monthlyReviewRouter);
-// ============================================================================
-// ERROR HANDLERS
-// ============================================================================
-
 // Import error middleware
 import { errorHandler, notFoundHandler } from './shared/middleware/error.middleware.js';
 
-// 404 - Route not found handler
-app.use(notFoundHandler);
+// ============================================================================
+// FACTORY: createApp (para tests y server)
+// ============================================================================
 
-// Global error handler
-app.use(errorHandler);
+export function createApp() {
+  // Flag de entorno test para relajar infraestructura en specs
+  const isTest = process.env.NODE_ENV === 'test';
+
+  // APPLICATION SETUP
+  const app = express();
+
+  // ==========================================================================
+  // GLOBAL MIDDLEWARE
+  // ==========================================================================
+
+  // CORS: en test lo dejamos "libre" para evitar fricciones con supertest;
+  // en otros entornos usamos la config endurecida.
+  app.use(cors(isTest ? {} : secureCors));
+
+  // En tests deshabilitamos headers de seguridad y rate limits
+  if (!isTest) {
+    // Security headers and protection middleware
+    app.use(securityMiddleware);
+
+    // Rate limiting - Applied in order of restrictiveness
+    app.use('/api/auth', authRateLimit);           // Stricter limits for auth
+    app.use('/api/admin', sensitiveRateLimit);     // Sensitive operations
+    app.use(generalRateLimit);                     // General API rate limiting
+  }
+
+  // Body parsing (after security middleware for proper sanitization)
+  app.use(express.json({ limit: '10mb' }));      // Limit payload size
+
+  // Cookie parsing
+  app.use(cookieParser());
+
+  // Request logging and monitoring middleware
+  app.use((req: any, res: any, next: NextFunction) => {
+    const start = Date.now();
+
+    // Generate unique request ID
+    req.requestId = uuidv7();
+
+    // Log when response finishes
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      const statusClass = Math.floor(res.statusCode / 100);
+
+      // Determine log level based on status code
+      const logLevel =
+        statusClass >= 5 ? 'error' : statusClass >= 4 ? 'warn' : 'info';
+
+      (res as any).responseTime = duration;
+
+      logger[logLevel](
+        {
+          requestId: req.requestId,
+          method: req.method,
+          url: req.url,
+          status: res.statusCode,
+          duration: `${duration}ms`,
+          userAgent: req.get('User-Agent'),
+        },
+        `${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`
+      );
+    });
+
+    // Log response errors
+    res.on('error', (error: any) => {
+      logger.error(
+        {
+          requestId: req.requestId,
+          error: error.message,
+        },
+        `Response error for ${req.method} ${req.url}`
+      );
+    });
+
+    next();
+  });
+
+  // Database context middleware (MikroORM)
+  app.use((req, res, next) => {
+    RequestContext.create(orm.em, next);
+  });
+
+  // ==========================================================================
+  // API ROUTES
+  // ==========================================================================
+
+  // Health checks - Should be before other routes for proper monitoring
+  app.use('/health', healthRouter);
+
+  // Redis management - desactivado en test para evitar dependencias externas
+  if (!isTest) {
+    app.use('/admin/redis', redisRouter);
+  }
+
+  // Authentication & User management
+  app.use('/api/auth', authRouter);
+  app.use('/api/role-requests', roleRequestRouter);
+  app.use('/api/users', userRouter);
+  app.use('/api/email-verification', emailVerificationRouter);
+  app.use('/api/user-verification', userVerificationRouter);
+
+  // Business entities
+  app.use('/api/clients', clientRouter);
+  app.use('/api/sales', saleRouter);
+  app.use('/api/products', productRouter);
+  app.use('/api/distributors', distributorRouter);
+  app.use('/api/partners', partnerRouter);
+
+  // Geographic & Administrative
+  app.use('/api/zones', zoneRouter);
+  app.use('/api/authorities', authorityRouter);
+
+  // Business operations
+  app.use('/api/bribes', bribeRouter);
+  app.use('/api/decisions', decisionRouter);
+  app.use('/api/topics', topicRouter);
+
+  // Administrative & Strategic
+  app.use('/api/admin', adminRouter);
+  app.use('/api/shelby-council', shelbyCouncilRouter);
+  app.use('/api/clandestine-agreements', clandestineAgreementRouter);
+  app.use('/api/monthly-reviews', monthlyReviewRouter);
+
+  // ==========================================================================
+  // ERROR HANDLERS
+  // ==========================================================================
+
+  // 404 - Route not found handler (antes del error global)
+  app.use(notFoundHandler);
+
+  // Global error handler (siempre lo último)
+  app.use(errorHandler);
+
+  return app;
+}
 
 // ============================================================================
 // DEVELOPMENT INITIALIZATION
@@ -283,5 +297,8 @@ process.on('unhandledRejection', (reason) => {
 // ============================================================================
 // EXPORTS
 // ============================================================================
+
+// Instancia para desarrollo/producción (server.ts puede usar esta)
+const app = createApp();
 
 export { app };
