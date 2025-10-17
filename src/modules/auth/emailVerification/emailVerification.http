@@ -1,0 +1,542 @@
+###############################################################################
+# EMAIL VERIFICATION ENDPOINTS
+###############################################################################
+# Este archivo contiene las pruebas HTTP para los endpoints de verificación
+# AUTOMÁTICA de email del sistema TGS.
+#
+# Este es el sistema clásico de "click en el link del email" para verificar
+# que el usuario tiene acceso al email proporcionado.
+#
+# IMPORTANTE: El usuario debe tener información personal COMPLETA
+# (BasePersonEntity) antes de solicitar verificación.
+#
+# NUEVAS VALIDACIONES DE SEGURIDAD:
+# - Usuario debe estar autenticado para solicitar verificación
+# - Solo puede solicitar verificación para su propio email
+# - Solo usuarios con emailVerified: false pueden solicitar
+# - Prevención de solicitudes para emails de otros usuarios
+# - Cooldown de 2 minutos entre solicitudes
+# - Token expira en 15 minutos
+# - VERIFICACIÓN OBLIGATORIA: Usuarios deben verificar email después del registro
+# - BLOQUEO DE LOGIN: Usuarios no verificados no pueden hacer login
+#
+# Flujo de verificación automática de email:
+# 1. Usuario se registra (POST /api/auth/register) - Email se envía automáticamente
+# 2. Usuario hace click en el link del email (GET /verify/:token)
+# 3. Sistema verifica el token y marca email como verificado
+# 4. Usuario puede hacer login normalmente
+#
+# DIFERENCIA: Este sistema NO requiere aprobación manual del admin
+# Para verificación manual completa ver: /api/user-verification
+###############################################################################
+
+@baseUrl = http://localhost:3000
+@apiPrefix = /api/email-verification
+
+###############################################################################
+# AUTHENTICATED ENDPOINTS - Requieren autenticación
+###############################################################################
+
+### 1. Login como usuario para obtener token de autenticación
+# PRIMERO: Inicia sesión para obtener las cookies de autenticación
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev",
+  "password": "admin123"
+}
+
+### 2. Solicitar verificación automática de email (AUTENTICADO)
+# Envía un email con link de verificación al usuario
+# REQUIERE: Usuario autenticado y email debe ser el mismo del usuario logueado
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev"
+}
+
+### 3. Solicitar verificación - Email inválido (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "not-an-email"
+}
+
+### 4. Solicitar verificación - Sin información personal (debe fallar)
+# Este email no tiene BasePersonEntity asociado
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "noexiste@example.com"
+}
+
+### 5. Solicitar verificación - Email de OTRO usuario (debe fallar)
+# Intenta verificar email que no pertenece al usuario logueado
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "otro@example.com"
+}
+
+### 6. Solicitar verificación - Sin autenticación (debe fallar)
+# Debe fallar porque requiere autenticación
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "cualquier@email.com"
+}
+# Cookie: (sin access_token)
+
+### 7. Reenviar solicitud de verificación (AUTENTICADO)
+# Requiere: Solicitud previa de verificación y usuario autenticado
+# Cooldown: 5 minutos entre reenvíos
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev"
+}
+
+### 8. Reenviar verificación - Durante cooldown (debe fallar)
+# Debe esperar 5 minutos desde el último envío
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev"
+}
+
+### 9. Reenviar verificación - Email de OTRO usuario (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "otro@example.com"
+}
+
+### 10. Reenviar verificación - Sin autenticación (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "admin@local.dev"
+}
+# Cookie: (sin access_token)
+
+### 11. Reenviar verificación para usuario no verificado (SIN AUTENTICACIÓN) ⭐ NUEVO
+# Para usuarios que se registraron pero no han verificado su email
+POST {{baseUrl}}{{apiPrefix}}/resend-unverified
+Content-Type: application/json
+
+{
+  "email": "nuevo-usuario@example.com"
+}
+
+### 12. Reenviar verificación - Email ya verificado (debe fallar) ⭐ NUEVO
+POST {{baseUrl}}{{apiPrefix}}/resend-unverified
+Content-Type: application/json
+
+{
+  "email": "usuario-ya-verificado@example.com"
+}
+# Respuesta esperada: 409 Conflict
+# "Your email is already verified. You can log in normally."
+
+###############################################################################
+# PUBLIC ENDPOINTS - No requieren autenticación
+###############################################################################
+
+### 11. Verificar email con token
+# Reemplaza {token} con el token UUID recibido por email
+# El token expira en 15 minutos
+GET {{baseUrl}}{{apiPrefix}}/verify/01938f1a-2b3c-7890-a123-456789abcdef
+
+### 12. Verificar usuario - Token inválido (debe fallar)
+# Token con formato UUID inválido
+GET {{baseUrl}}{{apiPrefix}}/verify/invalid-token-format
+
+### 13. Verificar usuario - Token no encontrado (debe fallar)
+# Token UUID válido pero no existe en la base de datos
+GET {{baseUrl}}{{apiPrefix}}/verify/01938f1a-0000-0000-0000-000000000000
+
+### 14. Verificar usuario - Token expirado (debe fallar) ⭐ NUEVO
+# Token que existe pero está marcado como EXPIRED
+GET {{baseUrl}}{{apiPrefix}}/verify/TOKEN_EXPIRADO_MARCADO
+# Respuesta esperada: 400 Bad Request
+# "This verification link has expired and is no longer valid. Please request a new verification email."
+
+### 15. Verificar usuario - Token ya verificado (debe fallar) ⭐ NUEVO
+# Token que existe pero ya fue usado para verificar
+GET {{baseUrl}}{{apiPrefix}}/verify/TOKEN_YA_VERIFICADO
+# Respuesta esperada: 400 Bad Request
+# "This email has already been verified"
+
+### 16. Obtener estado de verificación de email
+# Muestra el estado actual de la verificación automática del email
+GET {{baseUrl}}{{apiPrefix}}/status/admin@local.dev
+
+### 17. Obtener estado - Usuario sin verificación (debe fallar)
+GET {{baseUrl}}{{apiPrefix}}/status/noexiste@example.com
+
+### 18. Obtener estado - Email con formato inválido (debe fallar)
+GET {{baseUrl}}{{apiPrefix}}/status/not-an-email
+
+###############################################################################
+# ESCENARIOS DE PRUEBA COMPLETOS
+###############################################################################
+
+###############################################################################
+# ESCENARIOS DE PRUEBA COMPLETOS CON AUTENTICACIÓN
+###############################################################################
+
+### ESCENARIO 1: Flujo completo exitoso con autenticación ⭐ ACTUALIZADO
+# ------------------------------------------------------------------------------
+# 1. Usuario se autentica
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+# 2. Usuario completa sus datos personales (DNI, nombre, etc.)
+# (Este paso ocurre en el frontend/registro)
+
+# 3. Usuario solicita verificación para SU PROPIO email
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 4. Verifica el estado (debe estar PENDING)
+GET {{baseUrl}}{{apiPrefix}}/status/test@example.com
+
+# 5. Usuario hace click en el link del email (simulado)
+# GET {{baseUrl}}{{apiPrefix}}/verify/{token-del-email}
+
+# 6. Verifica el estado nuevamente (debe estar VERIFIED)
+GET {{baseUrl}}{{apiPrefix}}/status/test@example.com
+
+# 7. Usuario ahora puede realizar compras (si tiene datos completos)
+GET {{baseUrl}}/api/users/me
+
+
+### ESCENARIO 2: Intento de verificación para email de otro usuario ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Usuario A se autentica
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "usuario-a@example.com",
+  "password": "password123"
+}
+
+# 2. Usuario A intenta solicitar verificación para email de Usuario B (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "usuario-b@example.com"
+}
+# Respuesta esperada: 403 Forbidden
+# "You can only request verification for your own email address"
+
+
+### ESCENARIO 3: Usuario ya verificado intenta verificar de nuevo ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Usuario con email ya verificado se autentica
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "already-verified@example.com",
+  "password": "password123"
+}
+
+# 2. Usuario intenta solicitar verificación (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "already-verified@example.com"
+}
+# Respuesta esperada: 409 Conflict
+# "Your email is already verified"
+
+
+### ESCENARIO 4: Intento sin autenticación ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Intenta solicitar verificación sin estar logueado (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "cualquier@email.com"
+}
+# Cookie: (sin access_token)
+# Respuesta esperada: 401 Unauthorized
+# "Authentication required to request email verification"
+
+
+### ESCENARIO 5: Nueva solicitud después de 2 minutos ⭐ ACTUALIZADO
+# ------------------------------------------------------------------------------
+# 1. Usuario se autentica
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+# 2. Usuario solicita verificación (primera vez)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 3. Usuario intenta solicitar otra vez inmediatamente (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+# Respuesta esperada: 409 Conflict
+# "A verification request is already pending. Please wait X minutes before requesting another verification"
+
+# 4. Esperar 2+ minutos (o modificar createdAt en la BD para testing)
+# 5. Usuario solicita nueva verificación después de 2 minutos (debe funcionar)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+# Respuesta esperada: 201 Created
+# La solicitud anterior se marca como EXPIRED automáticamente
+
+
+### ESCENARIO 6: Token expirado no permite verificación ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Usuario se autentica
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+# 2. Usuario solicita verificación
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 3. Esperar 2+ minutos y crear nueva solicitud (marca la anterior como EXPIRED)
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 4. Usuario intenta usar el token de la solicitud anterior EXPIRED (debe fallar)
+GET {{baseUrl}}{{apiPrefix}}/verify/TOKEN_DE_SOLICITUD_ANTERIOR_EXPIRADA
+# Respuesta esperada: 400 Bad Request
+# "This verification link has expired and is no longer valid. Please request a new verification email."
+
+# 5. Usuario debe usar el token de la nueva solicitud (debe funcionar)
+GET {{baseUrl}}{{apiPrefix}}/verify/TOKEN_DE_NUEVA_SOLICITUD
+
+
+### ESCENARIO 7: Reenvío de verificación con validaciones ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Usuario se autentica
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+# 2. Usuario solicita verificación
+POST {{baseUrl}}{{apiPrefix}}/request
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 3. Usuario reenvía verificación para SU PROPIO email (debe funcionar)
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+# 4. Usuario intenta reenviar para email de OTRO usuario (debe fallar)
+POST {{baseUrl}}{{apiPrefix}}/resend
+Content-Type: application/json
+
+{
+  "email": "otro@example.com"
+}
+# Respuesta esperada: 403 Forbidden
+# "You can only resend verification for your own email address"
+
+
+### ESCENARIO 9: Flujo completo de registro con verificación obligatoria ⭐ NUEVO
+# ------------------------------------------------------------------------------
+# 1. Usuario se registra (email se envía automáticamente)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "nuevo-usuario",
+  "email": "nuevo-usuario@example.com",
+  "password": "password123"
+}
+# Respuesta esperada: 201 Created
+# "User created successfully. Please check your email to verify your account."
+
+# 2. Usuario intenta hacer login sin verificar (debe fallar)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "nuevo-usuario@example.com",
+  "password": "password123"
+}
+# Respuesta esperada: 403 Forbidden
+# "Email verification required. Please check your email and verify your account before logging in."
+
+# 3. Usuario solicita reenvío de verificación (sin autenticación)
+POST {{baseUrl}}{{apiPrefix}}/resend-unverified
+Content-Type: application/json
+
+{
+  "email": "nuevo-usuario@example.com"
+}
+# Respuesta esperada: 200 OK
+# "Verification email resent successfully"
+
+# 4. Usuario hace click en el link del email (simulado)
+# GET {{baseUrl}}{{apiPrefix}}/verify/{token-del-email}
+
+# 5. Usuario ahora puede hacer login (debe funcionar)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "nuevo-usuario@example.com",
+  "password": "password123"
+}
+# Respuesta esperada: 200 OK
+# "Login successful"
+
+
+###############################################################################
+# NOTAS IMPORTANTES - ACTUALIZADAS CON NUEVAS VALIDACIONES
+###############################################################################
+# 
+# 1. REQUISITOS PREVIOS:
+#    - El usuario DEBE estar autenticado (login previo)
+#    - El email debe estar asociado a un BasePersonEntity
+#    - El BasePersonEntity debe tener TODOS los campos completos:
+#      * DNI (7-8 dígitos)
+#      * name (nombre completo)
+#      * email (válido y único)
+#      * phone (número de teléfono)
+#      * address (dirección completa)
+#
+# 2. NUEVAS VALIDACIONES DE SEGURIDAD:
+#    - Usuario debe estar autenticado para solicitar verificación
+#    - Solo puede solicitar verificación para su propio email
+#    - Solo usuarios con emailVerified: false pueden solicitar
+#    - Prevención de solicitudes para emails de otros usuarios
+#
+# 3. LIMITACIONES:
+#    - Cooldown de 2 minutos entre solicitudes para el mismo email
+#    - Si hay solicitud pendiente, se puede crear nueva después de 2 minutos
+#    - Al crear nueva solicitud después de 2 minutos, la anterior se marca como EXPIRED
+#    - Token expira en 15 minutos
+#    - Tokens de solicitudes EXPIRED no permiten verificación
+#
+# 4. ESTADOS DE VERIFICACIÓN:
+#    - PENDING: Solicitud creada, esperando click en link del email
+#    - VERIFIED: Usuario verificado exitosamente por click en link
+#    - EXPIRED: Token expirado o intentos excedidos
+#
+# 5. FLUJO DE VERIFICACIÓN AUTOMÁTICA:
+#    - Usuario se registra (POST /api/auth/register) - Email se envía automáticamente
+#    - Usuario hace click en el link (GET /verify/:token)
+#    - Sistema verifica el token y marca email como verificado
+#    - Usuario puede hacer login normalmente
+#
+# 6. VERIFICACIÓN OBLIGATORIA:
+#    - Todos los usuarios deben verificar su email después del registro
+#    - Usuarios no verificados NO pueden hacer login
+#    - Email de verificación se envía automáticamente al registrarse
+#    - Usuarios pueden reenviar verificación sin autenticación
+#
+# 7. INTEGRACIÓN CON USER (AL VERIFICAR):
+#    - Se actualiza User.emailVerified = true
+#    - Se recalcula el profileCompleteness del usuario
+#    - Se envía email de bienvenida automáticamente
+#    - ProfileCompleteness: 25% (cuenta) + 25% (email) + 50% (datos) = 100%
+#
+# 8. VALIDACIONES CRÍTICAS:
+#    - Autenticación requerida: Previene solicitudes anónimas
+#    - Propiedad del email: Previene verificación de emails de otros usuarios
+#    - Email no verificado: Previene verificaciones duplicadas del mismo email
+#    - Datos personales completos: Usuario debe tener TODOS los campos en BasePersonEntity
+#    - Verificación obligatoria: Usuarios no verificados no pueden hacer login
+#    - Estas validaciones protegen la integridad y seguridad del sistema
+#
+# 9. CACHE Y REDIS:
+#    - El cooldown usa Redis/cache para evitar spam
+#    - La clave es: verification_request:{email}
+#    - TTL: 2 minutos (120 segundos)
+#    - Al crear nueva solicitud después de 2 minutos, se limpia el cooldown automáticamente
+#
+# 10. GUARDS RECOMENDADOS PARA FRONTEND:
+#    - Verificar que el usuario esté autenticado antes de mostrar botón "Solicitar verificación"
+#    - Verificar User.emailVerified antes de mostrar botón "Solicitar verificación"
+#    - Verificar profileCompleteness >= 75% (datos personales completos)
+#    - Verificar que BasePersonEntity esté completo (DNI, name, email, phone, address)
+#    - Mostrar mensaje si ya hay solicitud PENDING
+#    - Deshabilitar botón durante cooldown de 2 minutos
+#    - Mostrar estado actual: "Pendiente de verificación", "Verificado", "Expirado"
+#    - Validar que el email del formulario coincida con el email del usuario logueado
+#    - BLOQUEAR LOGIN: Mostrar mensaje si usuario intenta login sin verificar
+#    - REDIRIGIR A VERIFICACIÓN: Después del registro, redirigir a página de verificación
+#
+# 11. CÓDIGOS DE ERROR ESPECÍFICOS:
+#     - AUTHENTICATION_REQUIRED: Usuario no autenticado
+#     - EMAIL_OWNERSHIP_VIOLATION: Intento de verificar email de otro usuario
+#     - EMAIL_ALREADY_VERIFIED: Email ya verificado
+#     - USER_NOT_FOUND: Usuario no encontrado en la base de datos
+#     - VERIFICATION_COOLDOWN_ACTIVE: Solicitud pendiente, esperar 2 minutos
+#     - TOKEN_EXPIRED: Token de solicitud expirada no permite verificación
+#     - EMAIL_VERIFICATION_REQUIRED: Usuario no verificado intenta hacer login
+#
+###############################################################################
+

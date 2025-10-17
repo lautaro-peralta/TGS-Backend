@@ -12,7 +12,9 @@ import { User, Role } from '../user/user.entity.js';
 import { ResponseUtil } from '../../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../../shared/middleware/validation.middleware.js';
+import logger from '../../../shared/utils/logger.js';
 import { searchRoleRequestsSchema } from './roleRequest.schema.js';
+import { RoleRequestFilters } from '../../../shared/types/common.types.js';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -218,7 +220,7 @@ export class RoleRequestController {
         roleRequest.toDTO()
       );
     } catch (err) {
-      console.error('Error creating role request:', err);
+      logger.error({ err }, 'Error creating role request');
       return ResponseUtil.internalError(res, 'Error creating role request', err);
     }
   }
@@ -255,7 +257,7 @@ export class RoleRequestController {
         requests.map((r) => r.toDTO())
       );
     } catch (err) {
-      console.error('Error getting user requests:', err);
+      logger.error({ err }, 'Error getting user requests');
       return ResponseUtil.internalError(res, 'Error getting requests', err);
     }
   }
@@ -290,11 +292,11 @@ export class RoleRequestController {
       em,
       buildFilters: () => {
         const { status, requestedRole, userId } = validated;
-        const filters: any = {};
+        const filters: RoleRequestFilters = {};
 
         if (status) filters.status = status;
         if (requestedRole) filters.requestedRole = requestedRole;
-        if (userId) filters.user = userId;
+        if (userId) filters.user = { id: userId };
 
         return filters;
       },
@@ -475,7 +477,7 @@ export class RoleRequestController {
         );
       }
     } catch (err) {
-      console.error('Error reviewing role request:', err);
+      logger.error({ err }, 'Error reviewing role request');
       return ResponseUtil.internalError(res, 'Error reviewing request', err);
     }
   }
@@ -511,7 +513,7 @@ export class RoleRequestController {
         pendingRequests.map((r) => r.toDTO())
       );
     } catch (err) {
-      console.error('Error getting pending requests:', err);
+      logger.error({ err }, 'Error getting pending requests');
       return ResponseUtil.internalError(res, 'Error getting pending requests', err);
     }
   }

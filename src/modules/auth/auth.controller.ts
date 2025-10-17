@@ -13,8 +13,11 @@ import { RefreshToken } from './refreshToken.entity.js';
 import { orm } from '../../shared/db/orm.js';
 import { registerSchema } from './auth.schema.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import logger from '../../shared/utils/logger.js';
 import { env } from '../../config/env.js';
 import crypto from 'crypto';
+import { EmailVerification } from './emailVerification/emailVerification.entity.js';
+import { emailService } from '../../shared/services/email.service.js';
 
 // ============================================================================
 // AUTHENTICATION CONTROLLER
@@ -99,7 +102,7 @@ export class AuthController {
         username,
         email,
         hashedPassword,
-        [Role.CLIENT]
+        [Role.USER]
       );
 
       // ────────────────────────────────────────────────────────────────────
@@ -108,14 +111,82 @@ export class AuthController {
       await em.persistAndFlush(newUser);
 
       // ────────────────────────────────────────────────────────────────────
-      // Return sanitized user data (exclude password)
+      // Verificación de email según modo (producción/desarrollo vs demo)
       // ────────────────────────────────────────────────────────────────────
-      return ResponseUtil.created(res, 'User created successfully', {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        roles: newUser.roles,
-      });
+      if (env.EMAIL_VERIFICATION_REQUIRED) {
+        // MODO PRODUCCIÓN/DESARROLLO: Verificación obligatoria automática
+        try {
+          const emailVerification = new EmailVerification(email);
+          await em.persistAndFlush(emailVerification);
+
+          // Enviar email de verificación
+          const emailSent = await emailService.sendVerificationEmail(
+            email,
+            emailVerification.token,
+            username // Usar username como nombre temporal
+          );
+
+          if (emailSent) {
+            logger.info({
+              userId: newUser.id,
+              email
+            }, 'Email verification sent automatically after registration');
+          } else {
+            logger.warn({
+              userId: newUser.id,
+              email
+            }, 'Failed to send verification email after registration');
+          }
+
+          return ResponseUtil.created(res, 'User created successfully. Please check your email to verify your account.', {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            roles: newUser.roles,
+            emailVerified: newUser.emailVerified,
+            verificationRequired: true,
+            verificationEmailSent: emailSent,
+            expiresAt: emailVerification.expiresAt.toISOString(),
+          });
+
+        } catch (verificationError) {
+          logger.error({
+            err: verificationError,
+            userId: newUser.id,
+            email
+          }, 'Failed to create email verification after registration');
+
+          // Si falla la verificación, aún devolver éxito pero indicar que debe solicitar manualmente
+          return ResponseUtil.created(res, 'User created successfully. Please request email verification manually.', {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            roles: newUser.roles,
+            emailVerified: newUser.emailVerified,
+            verificationRequired: true,
+            verificationEmailSent: false,
+            message: 'Please request email verification manually from your profile',
+          });
+        }
+      } else {
+        // MODO DEMO: Verificación opcional (el usuario puede verificar cuando quiera)
+        logger.info({
+          userId: newUser.id,
+          email,
+          mode: 'demo'
+        }, 'User created in demo mode - email verification is optional');
+
+        return ResponseUtil.created(res, 'User created successfully (demo mode - email verification optional)', {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          roles: newUser.roles,
+          emailVerified: newUser.emailVerified,
+          verificationRequired: false,
+          mode: 'demo',
+          message: 'You can verify your email later if needed',
+        });
+      }
     } catch (error) {
       next(error);
     }
@@ -160,6 +231,29 @@ export class AuthController {
 
       if (!user || !(await argon2.verify(user.password, password))) {
         return ResponseUtil.unauthorized(res, 'Invalid credentials');
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Verificar que el email esté verificado (si está habilitado)
+      // ────────────────────────────────────────────────────────────────────
+      if (env.EMAIL_VERIFICATION_REQUIRED && !user.emailVerified) {
+        logger.warn({
+          userId: user.id,
+          email: user.email
+        }, 'User attempted login without email verification');
+
+        return ResponseUtil.error(
+          res,
+          'Email verification required. Please check your email and verify your account before logging in.',
+          403,
+          [
+            {
+              field: 'emailVerified',
+              message: 'Email verification is required to access your account',
+              code: 'EMAIL_VERIFICATION_REQUIRED'
+            }
+          ]
+        );
       }
 
       // ────────────────────────────────────────────────────────────────────
@@ -385,7 +479,7 @@ export class AuthController {
           },
         });
     } catch (err) {
-      console.error('Error refreshing token:', err);
+      logger.error({ err }, 'Error refreshing token');
       return ResponseUtil.internalError(res, 'Failed to refresh token', err);
     }
   }

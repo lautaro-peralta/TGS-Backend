@@ -15,10 +15,9 @@ import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
-import {
-  searchAuthoritiesSchema,
-  authorityBribesQuerySchema,
-} from './authority.schema.js';
+import logger from '../../shared/utils/logger.js';
+import { searchAuthoritiesSchema, authorityBribesQuerySchema } from './authority.schema.js';
+import { AuthorityFilters, BribeFilters } from '../../shared/types/common.types.js';
 // ============================================================================
 // CONTROLLER - Authority
 // ============================================================================
@@ -58,10 +57,10 @@ export class AuthorityController {
       searchFields: 'name',
       buildFilters: () => {
         const { zone, rank } = validated;
-        const filters: any = {};
+        const filters: AuthorityFilters = {};
 
         if (zone) {
-          filters.zone = { name: { $like: `%${zone}%` } };
+          filters.zone = { name: { $like: `%${zone}%` } } as any;
         }
 
         if (rank !== undefined) {
@@ -136,9 +135,9 @@ export class AuthorityController {
         em,
         buildFilters: () => {
           const { paid, min, max } = validated;
-          const filters: any = {
-            authority: { dni: authorityDniFromParam },
-          };
+        const filters: BribeFilters = {
+          authority: { dni: authorityDniFromParam },
+        };
 
           // Filter by payment status
           if (paid !== undefined) {
@@ -158,7 +157,7 @@ export class AuthorityController {
         orderBy: { creationDate: 'DESC' } as any,
       });
     } catch (err: any) {
-      console.error('Error getting bribes:', err);
+      logger.error({ err }, 'Error getting bribes');
       return ResponseUtil.internalError(res, 'Error getting bribes', err);
     }
   }
@@ -181,7 +180,7 @@ export class AuthorityController {
       // ──────────────────────────────────────────────────────────────────────
       // Extract and validate data
       // ──────────────────────────────────────────────────────────────────────
-      console.log('🔍 Data received:', res.locals.validated?.body);
+      logger.info({ data: res.locals.validated?.body }, '🔍 Data received');
       const { dni, name, email, address, phone, rank, zoneId } =
         res.locals.validated.body;
 
@@ -210,7 +209,7 @@ export class AuthorityController {
       // ──────────────────────────────────────────────────────────────────────
       let basePerson = await em.findOne(BasePersonEntity, { dni });
       if (!basePerson) {
-        console.log('🏛️ Creating base person...');
+        logger.info('🏛️ Creating base person...');
         basePerson = em.create(BasePersonEntity, {
           dni,
           name,
@@ -219,7 +218,7 @@ export class AuthorityController {
           address: address ?? '-',
         });
         await em.persistAndFlush(basePerson);
-        console.log('✅ Base person created');
+        logger.info('✅ Base person created');
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -235,7 +234,7 @@ export class AuthorityController {
         zone: em.getReference(Zone, zoneId),
       });
       await em.persistAndFlush(authority);
-      console.log('✅ Authority created');
+      logger.info('✅ Authority created');
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -253,7 +252,7 @@ export class AuthorityController {
         authorityData
       );
     } catch (error: any) {
-      console.error('💥 Full error:', error);
+      logger.error({ err: error }, '💥 Full error');
       return ResponseUtil.internalError(res, 'Error creating authority', error);
     }
   }
@@ -324,7 +323,7 @@ export class AuthorityController {
         authority.toDTO()
       );
     } catch (error) {
-      console.error('Error getting authority:', error);
+      logger.error({ err: error }, 'Error getting authority');
       return ResponseUtil.internalError(
         res,
         'Error searching for authority',
@@ -405,7 +404,7 @@ export class AuthorityController {
         authority.toDTO()
       );
     } catch (error) {
-      console.error('Error updating authority:', error);
+      logger.error({ err: error }, 'Error updating authority');
       return ResponseUtil.internalError(res, 'Error updating authority', error);
     }
   }
@@ -463,7 +462,7 @@ export class AuthorityController {
         authority.toDTO()
       );
     } catch (error) {
-      console.error('Error in patchUpdate authority:', error);
+      logger.error({ err: error }, 'Error in patchUpdate authority');
       return ResponseUtil.internalError(res, 'Error updating authority', error);
     }
   }
@@ -519,7 +518,7 @@ export class AuthorityController {
         `${name}, DNI ${dni} successfully removed from the list of authorities`
       );
     } catch (error) {
-      console.error('Error deleting authority:', error);
+      logger.error({ err: error }, 'Error deleting authority');
       return ResponseUtil.internalError(res, 'Error deleting authority', error);
     }
   }

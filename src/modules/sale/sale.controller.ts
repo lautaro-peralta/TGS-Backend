@@ -2,24 +2,25 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
-import { Populate } from '@mikro-orm/core';
-
-// ============================================================================
-// IMPORTS - Internal modules
-// ============================================================================
+import { SqlEntityManager, Populate } from '@mikro-orm/mysql';
 import { orm } from '../../shared/db/orm.js';
+import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
+import { CACHE_TTL } from '../../shared/services/cache.service.js';
+import { validateQueryParams, validateBusinessRules } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { Sale } from './sale.entity.js';
-import { Detail } from './detail.entity.js';
 import { Client } from '../client/client.entity.js';
-import { Product } from '../product/product.entity.js';
-import { Authority } from '../authority/authority.entity.js';
-import { Bribe } from '../bribe/bribe.entity.js';
 import { Distributor } from '../distributor/distributor.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
-import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
-import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import { Product } from '../product/product.entity.js';
+import { Detail } from './detail.entity.js';
+import { Authority } from '../authority/authority.entity.js';
+import { Bribe } from '../bribe/bribe.entity.js';
 import { searchSalesSchema } from './sale.schema.js';
+import { User, Role } from '../auth/user/user.entity.js';
+import { SalesFilters, ChartData } from '../../shared/types/common.types';
+
 
 // ============================================================================
 // CONTROLLER - Sale
@@ -54,7 +55,7 @@ export class SaleController {
     const validated = validateQueryParams(req, res, searchSalesSchema);
     if (!validated) return; // Validation failed, response already sent
 
-    return searchEntityWithPagination(req, res, Sale, {
+    return searchEntityWithPaginationCached(req, res, Sale, {
       entityName: 'sale',
       em,
       searchFields: (() => {
@@ -68,7 +69,7 @@ export class SaleController {
       })(),
       buildFilters: () => {
         const { date, type, endDate } = validated;
-        const filters: any = {};
+        const filters: SalesFilters = {};
 
         // Filter by date (already validated by Zod)
         if (date && type) {
@@ -103,7 +104,48 @@ export class SaleController {
       },
       populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
       orderBy: { saleDate: 'desc' } as any,
+      useCache: true,
+      cacheTtl: CACHE_TTL.SEARCH_RESULTS,
     });
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SUMMARY & CHART METHODS
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Retrieves a summary of sales grouped by date for charting.
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response with labels and data.
+   */
+  async getSalesSummary(req: Request, res: Response) {
+    // Cast to SqlEntityManager to access Knex
+    const em = orm.em.fork() as SqlEntityManager;
+    try {
+      const knex = em.getKnex();
+
+      // Use Knex to build the query for MySQL
+      const salesSummary = await knex
+        .select(knex.raw('DATE(sale_date) as date'))
+        .sum('sale_amount as total')
+        .from('sale')
+        .groupBy(knex.raw('DATE(sale_date)'))
+        .orderBy('date', 'asc');
+
+      // Format data for Chart.js
+      const labels = salesSummary.map((s: { date: string; total: string }) => {
+        const date = new Date(s.date);
+        return date.toLocaleDateString('es-AR', { timeZone: 'UTC' });
+      });
+      const data = salesSummary.map((s: { date: string; total: string }) => parseFloat(s.total));
+
+      return ResponseUtil.success(res, 'Sales summary retrieved successfully', { labels, data });
+
+    } catch (err) {
+      logger.error({ err }, 'Error retrieving sales summary');
+      return ResponseUtil.internalError(res, 'Error retrieving sales summary', err);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -119,9 +161,51 @@ export class SaleController {
    */
   async createSale(req: Request, res: Response) {
     const em = orm.em.fork();
-    const { clientDni, distributorDni, details, person } = res.locals.validated.body;
+    const validatedData = res.locals.validated.body;
 
-    let client = await em.findOne(Client, { dni: clientDni });
+    // ──────────────────────────────────────────────────────────────────────
+    // Get authenticated user and verify purchase permissions
+    // ──────────────────────────────────────────────────────────────────────
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return ResponseUtil.unauthorized(res, 'Authentication required');
+    }
+
+    const user = await em.findOne(User, { id: userId }, { populate: ['person'] });
+    if (!user) {
+      return ResponseUtil.notFound(res, 'User', userId);
+    }
+
+    // Check if user can make purchases
+    if (!user.canPurchase()) {
+      const suggestions = user.getPurchaseRequirementSuggestions();
+      return ResponseUtil.error(
+        res,
+        'User cannot make purchases. Complete profile and verify email first.',
+        403,
+        suggestions.map(suggestion => ({ message: suggestion }))
+      );
+    }
+
+    // Validate business rules
+    const businessErrors = validateBusinessRules('sale', 'create', validatedData);
+    if (businessErrors.length > 0) {
+      return ResponseUtil.validationError(res, 'Business rule validation failed', businessErrors);
+    }
+
+    const { clientDni, distributorDni, details, person } = validatedData;
+
+    // Use authenticated user's DNI as client DNI if not provided
+    const personEntity = user.person?.isInitialized?.() ? user.person : await user.person?.load?.();
+    const effectiveClientDni = clientDni || (personEntity as any)?.dni;
+
+    if (!effectiveClientDni) {
+      return ResponseUtil.validationError(res, 'Client DNI is required', [
+        { field: 'clientDni', message: 'Client DNI is required for purchase' }
+      ]);
+    }
+
+    let client = await em.findOne(Client, { dni: effectiveClientDni });
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -137,23 +221,31 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       if (!client) {
         let basePerson = await em.findOne(BasePersonEntity, {
-          dni: clientDni,
+          dni: effectiveClientDni,
         });
 
         if (!basePerson) {
-          if (!person) {
+          if (!person && !user.person) {
             return res.status(400).json({
               message:
                 'The person does not exist, the data is required to create it',
             });
           }
 
+          // Use person data from request or from authenticated user
+          const personData = person || {
+            name: (personEntity as any)?.name,
+            email: user.email,
+            phone: (personEntity as any)?.phone,
+            address: (personEntity as any)?.address,
+          };
+
           basePerson = em.create(BasePersonEntity, {
-            dni: clientDni,
-            name: person.name,
-            email: person.email,
-            phone: person.phone ?? '-',
-            address: person.address ?? '-',
+            dni: effectiveClientDni,
+            name: personData.name,
+            email: personData.email,
+            phone: personData.phone ?? '-',
+            address: personData.address ?? '-',
           });
           await em.persistAndFlush(basePerson);
         }
@@ -233,13 +325,20 @@ export class SaleController {
 
           em.persist(bribe);
         } else {
-          console.warn(
-            'Illegal product detected, but no authority is available.'
-          );
+          logger.warn('Illegal product detected, but no authority is available.');
         }
       }
 
       await em.persistAndFlush(newSale);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Assign CLIENT role to user after successful purchase
+      // ──────────────────────────────────────────────────────────────────────
+      if (!user.roles.includes(Role.CLIENT)) {
+        user.roles.push(Role.CLIENT);
+        await em.persistAndFlush(user);
+        logger.info({ userId, email: user.email }, 'User promoted to CLIENT role after first purchase');
+      }
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -255,7 +354,7 @@ export class SaleController {
         data: sale ? sale.toDTO() : null,
       });
     } catch (err: any) {
-      console.error('Error registering sale:', err);
+      logger.error({ err }, 'Error registering sale');
       return res
         .status(500)
         .send({ message: err.message || 'Error registering the sale' });
@@ -280,12 +379,14 @@ export class SaleController {
   async getAllSales(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    return searchEntityWithPagination(req, res, Sale, {
+    return searchEntityWithPaginationCached(req, res, Sale, {
       entityName: 'sale',
       em,
       buildFilters: () => ({}),
       populate: ['client', 'details', 'authority'] as any,
       orderBy: { saleDate: 'DESC' } as any,
+      useCache: true,
+      cacheTtl: CACHE_TTL.SEARCH_RESULTS,
     });
   }
 
@@ -330,7 +431,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.success(res, 'Sale found successfully', sale.toDTO());
     } catch (err) {
-      console.error('Error searching for sale:', err);
+      logger.error({ err }, 'Error searching for sale');
       return ResponseUtil.internalError(
         res,
         'Error searching for the sale',
@@ -434,7 +535,7 @@ export class SaleController {
         sale.toDTO()
       );
     } catch (err) {
-      console.error('Error updating sale:', err);
+      logger.error({ err }, 'Error updating sale');
       return ResponseUtil.internalError(res, 'Error updating sale', err);
     }
   }
@@ -499,7 +600,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(res, 'Sale deleted successfully');
     } catch (err) {
-      console.error('Error deleting sale:', err);
+      logger.error({ err }, 'Error deleting sale');
       return ResponseUtil.internalError(res, 'Error deleting sale', err);
     }
   }

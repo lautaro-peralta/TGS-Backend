@@ -41,6 +41,19 @@ saleRouter.get(
  */
 saleRouter.get('/search', saleController.searchSales);
 
+/**
+ * @route   GET /api/sales/summary
+ * @desc    Get a summary of sales by date for charts.
+ * @access  Private (Admin only)
+ */
+saleRouter.get(
+  '/summary',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  saleController.getSalesSummary
+);
+
+
 
 /**
  * @route   GET /api/sales/:id
@@ -57,12 +70,11 @@ saleRouter.get(
 /**
  * @route   POST /api/sales
  * @desc    Create a new sale.
- * @access  Private (Admin only)
+ * @access  Private (Authenticated users with purchase permissions)
  */
 saleRouter.post(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
   validateWithSchema({ body: createSaleSchema }),
   saleController.createSale
 );
