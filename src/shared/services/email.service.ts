@@ -218,24 +218,26 @@ export class EmailService {
 
   /**
    * Envía email de verificación de cuenta
+   * ✅ CORREGIDO: Usa puerto 4200 para Angular
    */
   async sendVerificationEmail(
     email: string,
     verificationToken: string,
     userName?: string
   ): Promise<boolean> {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:4200'}/verify-email/${encodeURIComponent(verificationToken)}`;
 
     return this.sendEmail(email, EmailTemplate.VERIFICATION, {
       userName: userName || 'Usuario',
       verificationUrl,
       token: verificationToken,
-      expiresIn: '15 minutos', // Actualizado de 24 horas
+      expiresIn: '15 minutos',
     });
   }
 
   /**
    * Envía email de bienvenida después de verificación
+   * ✅ CORREGIDO: Usa puerto 4200 para Angular
    */
   async sendWelcomeEmail(
     email: string,
@@ -243,12 +245,13 @@ export class EmailService {
   ): Promise<boolean> {
     return this.sendEmail(email, EmailTemplate.WELCOME, {
       userName,
-      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`,
+      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:4200'}`,
     });
   }
 
   /**
    * Envía notificación a administradores sobre nueva verificación
+   * ✅ CORREGIDO: Usa puerto 4200 para Angular
    */
   async sendAdminNotification(
     adminEmail: string,
@@ -258,7 +261,7 @@ export class EmailService {
     return this.sendEmail(adminEmail, EmailTemplate.ADMIN_NOTIFICATION, {
       clientName,
       clientEmail,
-      adminPanelUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/verifications`,
+      adminPanelUrl: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/admin/verifications`,
     }, {
       subject: `Nueva solicitud de verificación de email - ${clientName}`,
     });
@@ -441,7 +444,7 @@ export class EmailService {
               <li>Participar en el sistema de decisiones estratégicas</li>
             </ul>
 
-            <a href="${data.loginUrl}" class="button">Iniciar Sesión</a>
+            <a href="${data.loginUrl}" class="button">Ir al inicio</a>
 
             <p>Si tienes alguna pregunta o necesitas ayuda, nuestro equipo de soporte está aquí para asistirte.</p>
 
@@ -475,7 +478,7 @@ export class EmailService {
       - Acceder a información detallada
       - Participar en decisiones estratégicas
 
-      Inicia sesión en: ${data.loginUrl}
+      Ve al inicio: ${data.loginUrl}
 
       ¡Disfruta de tu experiencia en TGS System!
 
@@ -529,7 +532,7 @@ export class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>📧 Nueva Solicitud de Verificación</h1>
+            <h1>🔧 Nueva Solicitud de Verificación</h1>
           </div>
 
           <div class="content">
@@ -551,7 +554,7 @@ export class EmailService {
             <ul>
               <li>El cliente ya tiene información personal registrada</li>
               <li>La solicitud incluye un token de verificación único</li>
-              <li>El token expira en 24 horas</li>
+              <li>El token expira en 15 minutos</li>
               <li>Se permiten máximo 3 intentos de verificación</li>
             </ul>
 
@@ -586,7 +589,7 @@ export class EmailService {
 
       Información importante:
       - Token único de verificación
-      - Expira en 24 horas
+      - Expira en 15 minutos
       - Máximo 3 intentos permitidos
 
       Esta notificación se envió automáticamente.
