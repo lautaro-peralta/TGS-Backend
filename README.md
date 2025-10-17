@@ -5,6 +5,23 @@ Este repositorio contiene el backend del sistema **The Garrison System**, desarr
 Repo general (repositorio padre):
 <https://github.com/Lau-prog/TP-Desarrollo-de-Software>
 
+---
+
+## 📚 Documentación Completa
+
+Para una documentación académica completa y detallada, consulta la carpeta [docs/](docs/):
+
+- **[Índice de Documentación](docs/INDEX.md)** - Punto de entrada a toda la documentación
+- **[Inicio Rápido](docs/01-QUICK-START.md)** - Guía paso a paso para iniciar la aplicación
+- **[Arquitectura](docs/02-ARCHITECTURE.md)** - Estructura del proyecto y patrones de diseño
+- **[Configuración de Entorno](docs/03-ENVIRONMENT-CONFIG.md)** - Variables de entorno explicadas
+- **[Base de Datos](docs/04-DATABASE.md)** - Modelo de datos y entidades
+- **[Autenticación](docs/05-AUTHENTICATION.md)** - Sistema de autenticación con JWT
+- **[API Endpoints](docs/06-API-ENDPOINTS.md)** - Documentación completa de endpoints
+- **[Seguridad](docs/07-SECURITY.md)** - Mejores prácticas de seguridad
+
+---
+
 ## Estructura del Repositorio
 
 La estructura del proyecto está organizada de la siguiente manera para mantener una separación clara de responsabilidades y facilitar el mantenimiento.

@@ -9,9 +9,6 @@ coverage
 # dependency directory
 node_modules
 
-# my docs
-docs/
-
 # OS metadata
 .DS_Store
 Thumbs.db
