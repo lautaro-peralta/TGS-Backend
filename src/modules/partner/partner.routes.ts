@@ -24,30 +24,119 @@ const partnerController = new PartnerController();
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @route   GET /api/partners/search
- * @desc    Search partners by name, email or dni.
- * @access  Public
+ * @swagger
+ * /api/partners/search:
+ *   get:
+ *     tags: [Partners]
+ *     summary: Search partners
+ *     description: Search for partners by name, email, or DNI
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search query
+ *     responses:
+ *       200:
+ *         description: Matching partners found
+ *       401:
+ *         description: Not authenticated
  */
 partnerRouter.get('/search', partnerController.searchPartners);
 
 /**
- * @route   GET /api/partners
- * @desc    Get all partners.
- * @access  Public
+ * @swagger
+ * /api/partners:
+ *   get:
+ *     tags: [Partners]
+ *     summary: Get all partners
+ *     description: Retrieves a list of all business partners
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of partners retrieved successfully
+ *       401:
+ *         description: Not authenticated
  */
 partnerRouter.get('/', partnerController.getAllPartners);
 
 /**
- * @route   GET /api/partners/:dni
- * @desc    Get a single partner by DNI.
- * @access  Public
+ * @swagger
+ * /api/partners/{dni}:
+ *   get:
+ *     tags: [Partners]
+ *     summary: Get partner by DNI
+ *     description: Retrieves a single partner by their DNI
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dni
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Partner's DNI
+ *         example: "87654321"
+ *     responses:
+ *       200:
+ *         description: Partner found
+ *       404:
+ *         description: Partner not found
+ *       401:
+ *         description: Not authenticated
  */
 partnerRouter.get('/:dni', partnerController.getPartnerByDni);
 
 /**
- * @route   POST /api/partners
- * @desc    Create a new partner.
- * @access  Public
+ * @swagger
+ * /api/partners:
+ *   post:
+ *     tags: [Partners]
+ *     summary: Create a new partner
+ *     description: Registers a new business partner in the system
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - dni
+ *               - name
+ *               - surname
+ *               - email
+ *             properties:
+ *               dni:
+ *                 type: string
+ *                 example: "87654321"
+ *               name:
+ *                 type: string
+ *                 example: "Alfie"
+ *               surname:
+ *                 type: string
+ *                 example: "Solomons"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "alfie@solomons.com"
+ *               phone:
+ *                 type: string
+ *                 example: "+44 20 7946 0958"
+ *               company:
+ *                 type: string
+ *                 example: "Solomons Bakery"
+ *     responses:
+ *       201:
+ *         description: Partner created successfully
+ *       409:
+ *         description: Partner already exists
+ *       401:
+ *         description: Not authenticated
  */
 partnerRouter.post(
   '/',
@@ -56,9 +145,45 @@ partnerRouter.post(
 );
 
 /**
- * @route   PATCH /api/partners/:dni
- * @desc    Partially update a partner by DNI.
- * @access  Public
+ * @swagger
+ * /api/partners/{dni}:
+ *   patch:
+ *     tags: [Partners]
+ *     summary: Update partner
+ *     description: Partially updates a partner's information
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dni
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Partner's DNI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               surname:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               company:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Partner updated successfully
+ *       404:
+ *         description: Partner not found
+ *       401:
+ *         description: Not authenticated
  */
 partnerRouter.patch(
   '/:dni',
@@ -67,8 +192,27 @@ partnerRouter.patch(
 );
 
 /**
- * @route   DELETE /api/partners/:dni
- * @desc    Delete a partner by DNI.
- * @access  Public
+ * @swagger
+ * /api/partners/{dni}:
+ *   delete:
+ *     tags: [Partners]
+ *     summary: Delete partner
+ *     description: Removes a partner from the system
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dni
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Partner's DNI
+ *     responses:
+ *       200:
+ *         description: Partner deleted successfully
+ *       404:
+ *         description: Partner not found
+ *       401:
+ *         description: Not authenticated
  */
 partnerRouter.delete('/:dni', partnerController.deletePartner);
