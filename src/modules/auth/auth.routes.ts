@@ -23,10 +23,40 @@ const authController = new AuthController();
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @route   POST /api/auth/register
- * @desc    Register a new user.
- *          This endpoint validates the request body against the registerSchema.
- * @access  Public
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register a new user
+ *     description: Creates a new user account. In production mode, sends verification email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "thomas_shelby"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "thomas@shelby.com"
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 6
+ *                 example: "SecurePass123"
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       409:
+ *         description: Username or email already exists
  */
 authRouter.post(
   '/register',
@@ -35,10 +65,61 @@ authRouter.post(
 );
 
 /**
- * @route   POST /api/auth/login
- * @desc    Authenticate a user and return a JWT.
- *          This endpoint validates the request body against the loginSchema.
- * @access  Public
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login to the system
+ *     description: Authenticates user and sets HTTP-only cookies with access and refresh tokens
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "thomas@shelby.com"
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "SecurePass123"
+ *     responses:
+ *       200:
+ *         description: Login successful, cookies set automatically
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: number
+ *                     username:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     roles:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Email verification required
  */
 authRouter.post(
   '/login',
@@ -47,16 +128,30 @@ authRouter.post(
 );
 
 /**
- * @route   POST /api/auth/logout
- * @desc    Log out the current user by clearing the session cookie.
- * @access  Public
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout from the system
+ *     description: Revokes refresh token and clears authentication cookies
+ *     responses:
+ *       200:
+ *         description: Logout successful
  */
 authRouter.post('/logout', authController.logout);
 
 /**
- * @route   POST /api/auth/refresh
- * @desc    Refresh access token using refresh token.
- * @access  Public
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token
+ *     description: Uses refresh token cookie to generate new access token
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Invalid or expired refresh token
  */
 authRouter.post('/refresh', authController.refresh);
 
