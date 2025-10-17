@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser';
 import { v7 as uuidv7 } from 'uuid';
 import { RequestContext } from '@mikro-orm/core';
 import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './config/swagger.config';
+import { swaggerSpec } from './config/swagger.config.js';
 
 // ============================================================================
 // IMPORTS - Internal modules

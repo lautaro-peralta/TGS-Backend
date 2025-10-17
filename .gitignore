@@ -32,8 +32,8 @@ dist/
 
 logs/
 
-estructura.sql
+scripts/test-sendgrid.ts
 
-scripts
+estructura.sql
 
 .claude/
