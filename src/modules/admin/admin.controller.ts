@@ -10,9 +10,12 @@ import { orm } from '../../shared/db/orm.js';
 import { Admin } from './admin.entity.js';
 import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
-import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
+import { searchEntityWithPagination, searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
+import { CACHE_TTL } from '../../shared/services/cache.service.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchAdminsSchema } from './admin.schema.js';
+import { EntityFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - Admin
@@ -43,7 +46,7 @@ export class AdminController {
     const validated = validateQueryParams(req, res, searchAdminsSchema);
     if (!validated) return;
 
-    return searchEntityWithPagination(req, res, Admin, {
+    return searchEntityWithPaginationCached(req, res, Admin, {
       entityName: 'admin',
       em,
       searchFields: (() => {
@@ -52,6 +55,8 @@ export class AdminController {
       })(),
       buildFilters: () => ({}),
       orderBy: { name: 'ASC' } as any,
+      useCache: true,
+      cacheTtl: CACHE_TTL.AUTHORITY_LIST,
     });
   }
 
@@ -101,7 +106,7 @@ export class AdminController {
 
       return ResponseUtil.created(res, 'Admin created successfully', admin.toDTO());
     } catch (err: any) {
-      console.error('Error creating admin:', err);
+      logger.error({ err }, 'Error creating admin');
       return ResponseUtil.internalError(res, 'Error creating admin', err);
     }
   }
@@ -148,7 +153,7 @@ export class AdminController {
 
       return ResponseUtil.success(res, 'Admin found successfully', admin.toDTO());
     } catch (err) {
-      console.error('Error searching for admin:', err);
+      logger.error({ err }, 'Error searching for admin');
       return ResponseUtil.internalError(res, 'Error searching for the admin', err);
     }
   }
@@ -188,7 +193,7 @@ export class AdminController {
 
       return ResponseUtil.updated(res, 'Admin updated successfully', admin.toDTO());
     } catch (err) {
-      console.error('Error updating admin:', err);
+      logger.error({ err }, 'Error updating admin');
       return ResponseUtil.internalError(res, 'Error updating admin', err);
     }
   }
@@ -219,7 +224,7 @@ export class AdminController {
 
       return ResponseUtil.deleted(res, 'Admin deleted successfully');
     } catch (err) {
-      console.error('Error deleting admin:', err);
+      logger.error({ err }, 'Error deleting admin');
       return ResponseUtil.internalError(res, 'Error deleting admin', err);
     }
   }

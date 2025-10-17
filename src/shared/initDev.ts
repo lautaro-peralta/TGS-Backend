@@ -10,6 +10,7 @@ import { orm } from './db/orm.js';
 import { User, Role } from '../modules/auth/user/user.entity.js';
 import { BasePersonEntity } from './base.person.entity.js';
 import { Zone } from '../modules/zone/zone.entity.js';
+import logger from './utils/logger.js';
 
 // ============================================================================
 // DEVELOPMENT SEED FUNCTIONS
@@ -31,7 +32,7 @@ export async function createAdminDev() {
   // Environment validation
   // ──────────────────────────────────────────────────────────────────────
   if (process.env.NODE_ENV !== 'development') {
-    console.log('createAdminDev is not executed outside of development');
+    logger.info('createAdminDev is not executed outside of development');
     return;
   }
 
@@ -51,8 +52,7 @@ export async function createAdminDev() {
   // ──────────────────────────────────────────────────────────────────────
   const existingAdmin = await em.findOne(User, { email: adminEmail });
   if (existingAdmin) {
-    console.log();
-    console.log('Admin already exists, a new one is not created');
+    logger.info('Admin already exists, a new one is not created');
     return;
   }
 
@@ -82,15 +82,14 @@ export async function createAdminDev() {
     [Role.ADMIN]
   );
   adminUser.person = newAdmin as any;
-  adminUser.emailVerified = true;
+  adminUser.isVerified = true;
   adminUser.profileCompleteness = 100;
 
   // ──────────────────────────────────────────────────────────────────────
   // Persist to database
   // ──────────────────────────────────────────────────────────────────────
   await em.persistAndFlush([newAdmin, adminUser]);
-  console.log();
-  console.log('Development admin created successfully');
+  logger.info('Development admin created successfully');
 }
 
 /**
@@ -117,8 +116,7 @@ export async function createZoneDev() {
   });
 
   if (existingHeardquarters) {
-    console.log();
-    console.log(
+    logger.info(
       `Central office already exists: ${existingHeardquarters.name} (ID: ${existingHeardquarters.id}), another one is not created`
     );
     return;
@@ -133,6 +131,5 @@ export async function createZoneDev() {
   // Persist to database
   // ──────────────────────────────────────────────────────────────────────
   await em.persistAndFlush(newZone);
-  console.log();
-  console.log(`Central zone created successfully with ID ${newZone.id}`);
+  logger.info(`Central zone created successfully with ID ${newZone.id}`);
 }

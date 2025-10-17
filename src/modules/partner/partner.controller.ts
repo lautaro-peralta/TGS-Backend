@@ -14,7 +14,9 @@ import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchPartnersSchema } from './partner.schema.js';
+import { PartnerFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - Partner
@@ -180,7 +182,7 @@ export class PartnerController {
 
       return ResponseUtil.created(res, message, responseData);
     } catch (error) {
-      console.error('Error creating partner:', error);
+      logger.error({ err: error }, 'Error creating partner');
       return ResponseUtil.internalError(res, 'Error creating partner', error);
     }
   }
@@ -249,7 +251,7 @@ export class PartnerController {
         partner.toDetailedDTO()
       );
     } catch (err) {
-      console.error('Error searching for partner:', err);
+      logger.error({ err }, 'Error searching for partner');
       return ResponseUtil.internalError(res, 'Error searching for partner', err);
     }
   }
@@ -307,7 +309,7 @@ export class PartnerController {
         partner.toDTO()
       );
     } catch (err) {
-      console.error('Error in PATCH partner:', err);
+      logger.error({ err }, 'Error in PATCH partner');
       return ResponseUtil.internalError(res, 'Error updating partner', err);
     }
   }
@@ -350,7 +352,7 @@ export class PartnerController {
         `${name}, DNI ${dni} successfully removed from the list of partners`
       );
     } catch (err) {
-      console.error('Error deleting partner:', err);
+      logger.error({ err }, 'Error deleting partner');
       return ResponseUtil.internalError(res, 'Error deleting partner', err);
     }
   }

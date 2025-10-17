@@ -5,6 +5,10 @@ import { z } from 'zod';
 import {
   paginationSchema,
   textSearchSchema,
+  nameSchema,
+  emailSchema,
+  phoneSchema,
+  dniSchema,
 } from '../../shared/schemas/common.schema.js';
 
 // ============================================================================
@@ -22,28 +26,45 @@ export const searchClientsSchema = paginationSchema.merge(textSearchSchema);
 
 /**
  * Zod schema for creating a new client.
+ * Uses professional validation schemas for data integrity.
  */
 export const createClientSchema = z.object({
   /**
-   * Client's DNI.
+   * Client's DNI (Argentine identification number).
+   * Must follow the official DNI format.
    */
-  dni: z.string().min(1, 'DNI is required'),
+  dni: dniSchema,
+
   /**
-   * Client's name.
+   * Client's full name.
+   * Professional name validation with proper character set.
    */
-  name: z.string().min(1, 'Name is required'),
+  name: nameSchema,
+
   /**
    * Client's email address.
+   * Professional email validation with format checks.
    */
-  email: z.email('Invalid email'),
+  email: emailSchema,
+
   /**
    * Client's address.
+   * Must be a valid address string.
    */
-  address: z.string().min(1),
+  address: z
+    .string()
+    .min(5, { message: 'Address must be at least 5 characters long' })
+    .max(200, { message: 'Address cannot exceed 200 characters' })
+    .refine((val) => /\S/.test(val), {
+      message: 'Address cannot be empty or only whitespace'
+    })
+    .transform((val) => val.trim()),
+
   /**
    * Client's phone number.
+   * Professional phone number validation with international format support.
    */
-  phone: z.string().min(6),
+  phone: phoneSchema,
 });
 
 /**

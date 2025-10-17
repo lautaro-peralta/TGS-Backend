@@ -13,7 +13,9 @@ import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchMonthlyReviewsSchema, salesStatsSchema } from './monthlyReview.schema.js';
+import { MonthlyReviewFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - MonthlyReview
@@ -50,7 +52,7 @@ export class MonthlyReviewController {
       em,
       buildFilters: () => {
         const { year, month, status, partnerDni } = validated;
-        const filters: any = {};
+        const filters: MonthlyReviewFilters = {};
 
         if (year) filters.year = year;
         if (month) filters.month = month;
@@ -137,7 +139,7 @@ export class MonthlyReviewController {
         result?.toDTO() || review.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating monthly review:', err);
+      logger.error({ err }, 'Error creating monthly review');
       return ResponseUtil.internalError(res, 'Error creating monthly review', err);
     }
   };
@@ -195,7 +197,7 @@ export class MonthlyReviewController {
         review.toDTO()
       );
     } catch (err) {
-      console.error('Error finding monthly review:', err);
+      logger.error({ err }, 'Error finding monthly review');
       return ResponseUtil.internalError(res, 'Error finding monthly review', err);
     }
   };
@@ -244,7 +246,7 @@ export class MonthlyReviewController {
         review.toDTO()
       );
     } catch (err) {
-      console.error('Error updating monthly review:', err);
+      logger.error({ err }, 'Error updating monthly review');
       return ResponseUtil.internalError(res, 'Error updating monthly review', err);
     }
   };
@@ -276,7 +278,7 @@ export class MonthlyReviewController {
 
       return ResponseUtil.deleted(res, 'Monthly review deleted successfully');
     } catch (err) {
-      console.error('Error deleting monthly review:', err);
+      logger.error({ err }, 'Error deleting monthly review');
       return ResponseUtil.internalError(res, 'Error deleting monthly review', err);
     }
   };
@@ -377,7 +379,7 @@ export class MonthlyReviewController {
         response
       );
     } catch (err) {
-      console.error('Error calculating sales statistics:', err);
+      logger.error({ err }, 'Error calculating sales statistics');
       return ResponseUtil.internalError(res, 'Error calculating sales statistics', err);
     }
   };

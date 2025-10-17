@@ -12,8 +12,8 @@ POST http://localhost:3000/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "lautaa@email.com",
-  "password":"1234a@A1"
+  "email": "lauta@email.com",
+  "password":"1234a@A1abcd"
 }
 
 ### Register new user
@@ -21,9 +21,9 @@ POST http://localhost:3000/api/auth/register
 Content-Type: application/json
 
 {
-  "username": "lauta",
-  "email": "lautaa@email.com",
-  "password":"1234a@A1"
+  "username": "laus",
+  "email": "lauta@email.com",
+  "password":"1234a@A1abcd"
 }
 
 ### Get current user (requires access_token cookie)
@@ -75,7 +75,6 @@ PUT http://localhost:3000/api/users/01999310-fd1c-76ca-b828-8ed980694b5b
 Content-Type: application/json
 
 {
-  "emailVerified": true,
   "isActive": true
 }
 

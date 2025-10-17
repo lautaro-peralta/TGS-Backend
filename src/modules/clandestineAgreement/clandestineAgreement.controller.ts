@@ -14,7 +14,9 @@ import { Authority } from '../authority/authority.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
+import logger from '../../shared/utils/logger.js';
 import { searchClandestineAgreementsSchema } from './clandestineAgreement.schema.js';
+import { EntityFilters } from '../../shared/types/common.types.js';
 
 // ============================================================================
 // CONTROLLER - ClandestineAgreement
@@ -135,7 +137,7 @@ export class ClandestineAgreementController {
         result?.toDTO() || clandestineAgreement.toDTO()
       );
     } catch (err: any) {
-      console.error('Error creating clandestine agreement:', err);
+      logger.error({ err }, 'Error creating clandestine agreement');
       return ResponseUtil.internalError(res, 'Error creating clandestine agreement', err);
     }
   }
@@ -191,7 +193,7 @@ export class ClandestineAgreementController {
         clandestineAgreement.toDTO()
       );
     } catch (err) {
-      console.error('Error searching for clandestine agreement:', err);
+      logger.error({ err }, 'Error searching for clandestine agreement');
       return ResponseUtil.internalError(res, 'Error searching for clandestine agreement', err);
     }
   }
@@ -243,7 +245,7 @@ export class ClandestineAgreementController {
         clandestineAgreement.toDTO()
       );
     } catch (err) {
-      console.error('Error updating clandestine agreement:', err);
+      logger.error({ err }, 'Error updating clandestine agreement');
       return ResponseUtil.internalError(res, 'Error updating clandestine agreement', err);
     }
   }
@@ -274,7 +276,7 @@ export class ClandestineAgreementController {
 
       return ResponseUtil.deleted(res, 'Clandestine Agreement deleted successfully');
     } catch (err) {
-      console.error('Error deleting clandestine agreement:', err);
+      logger.error({ err }, 'Error deleting clandestine agreement');
       return ResponseUtil.internalError(res, 'Error deleting clandestine agreement', err);
     }
   }

@@ -13,6 +13,7 @@ import { User, Role } from './user.entity.js';
 import { orm } from '../../../shared/db/orm.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../../shared/utils/response.util.js';
+import logger from '../../../shared/utils/logger.js';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -111,7 +112,7 @@ export class UserController {
         user.toDTO()
       );
     } catch (err) {
-      console.error('Error getting user:', err);
+      logger.error({ err }, 'Error getting user');
       return ResponseUtil.internalError(res, 'Error getting user', err);
     }
   }
@@ -403,7 +404,7 @@ export class UserController {
    * Process:
    * 1. Validates user exists
    * 2. Validates role compatibility if roles are being updated
-   * 3. Updates allowed properties: emailVerified, isActive, roles
+   * 3. Updates allowed properties: isVerified, emailVerified, isActive, roles
    * 4. Persists changes to database
    * 5. Returns updated user data
    *
@@ -413,7 +414,7 @@ export class UserController {
    *
    * @example
    * PUT /api/users/:id
-   * Body: { emailVerified: true, isActive: false }
+   * Body: { isVerified: true, isActive: false }
    * Requires: ADMIN role
    */
   async updateUser(req: Request, res: Response) {
@@ -465,6 +466,9 @@ export class UserController {
       // ────────────────────────────────────────────────────────────────────
       // Update allowed properties
       // ────────────────────────────────────────────────────────────────────
+      if (updates.isVerified !== undefined) {
+        user.isVerified = updates.isVerified;
+      }
       if (updates.emailVerified !== undefined) {
         user.emailVerified = updates.emailVerified;
       }
@@ -486,7 +490,7 @@ export class UserController {
         user.toDTO()
       );
     } catch (err) {
-      console.error('Error updating user:', err);
+      logger.error({ err }, 'Error updating user');
       return ResponseUtil.internalError(res, 'Error updating user', err);
     }
   }
@@ -591,7 +595,7 @@ export class UserController {
         user.toDTO()
       );
     } catch (err) {
-      console.error('Error completing profile:', err);
+      logger.error({ err }, 'Error completing profile');
       return ResponseUtil.internalError(res, 'Error completing profile', err);
     }
   }

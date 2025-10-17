@@ -7,6 +7,8 @@ import {
   Populate
 } from '@mikro-orm/core';
 import { ResponseUtil } from './response.util.js';
+import { EntityFilters, SearchConfig } from '../types/common.types.js';
+import { cacheService, CACHE_TTL } from '../services/cache.service.js';
 
 // ============================================================================ 
 // HELPER FUNCTIONS - Filters
@@ -46,7 +48,7 @@ function createTextFilter<T>(field: string, value: string): FilterQuery<T> {
   const lastKey = keys.pop()!;
 
   // Build the filter from the deepest field upwards
-  let filter: any = { [lastKey]: { $like: `%${sanitizedValue}%` } };
+  let filter: EntityFilters = { [lastKey]: { $like: `%${sanitizedValue}%` } };
 
   // Wrap in nested objects for dot notation
   for (let i = keys.length - 1; i >= 0; i--) {
@@ -76,7 +78,7 @@ function createMultiFieldTextFilter<T>(
     const keys = field.split('.');
     const lastKey = keys.pop()!;
 
-    let filter: any = { [lastKey]: { $like: `%${sanitizedValue}%` } };
+    let filter: EntityFilters = { [lastKey]: { $like: `%${sanitizedValue}%` } };
 
     for (let i = keys.length - 1; i >= 0; i--) {
       filter = { [keys[i]]: filter };
@@ -110,8 +112,8 @@ function createOrder<T>(
  * Why: Allows transforming entities to DTOs safely,
  * avoiding exposing internal properties (passwords, timestamps, etc.)
  */
-function hasToDTO(obj: any): obj is { toDTO: () => any } {
-  return typeof obj?.toDTO === 'function';
+function hasToDTO(obj: unknown): obj is { toDTO: () => unknown } {
+  return obj !== null && typeof obj === 'object' && 'toDTO' in obj && typeof (obj as any).toDTO === 'function';
 }
 
 
@@ -124,6 +126,7 @@ function hasToDTO(obj: any): obj is { toDTO: () => any } {
  * - Dynamic filters from query params
  * - Support for numeric range (min/max)
  * - Customizable sorting
+ * - Optional Redis caching support
  *
  * Standard query params:
  * - page: page number (default: 1, min: 1)
@@ -163,6 +166,8 @@ export async function searchEntityWithPagination<T extends { toDTO?: () => any }
     orderBy?: OrderDefinition<T>;
     defaultLimit?: number;
     maxLimit?: number;
+    useCache?: boolean; // Enable caching for this search
+    cacheTtl?: number; // Cache TTL in seconds (default: from CACHE_TTL.PRODUCT_LIST)
   }
 ) {
   try {
@@ -251,6 +256,119 @@ export async function searchEntityWithPagination<T extends { toDTO?: () => any }
       err
     );
   }
+}
+
+/**
+ * Search for entities with pagination and caching support.
+ *
+ * This function wraps searchEntityWithPagination with intelligent caching
+ * to improve performance for frequently accessed data.
+ *
+ * @param req - Express Request
+ * @param res - Express Response
+ * @param entity - MikroORM Entity
+ * @param options - Search options with cache configuration
+ *
+ * @example
+ * // Search products with caching
+ * await searchEntityWithPaginationCached(req, res, Product, {
+ *   entityName: 'product',
+ *   em,
+ *   searchFields: 'description',
+ *   buildFilters: (query) => ({ ... }),
+ *   useCache: true,
+ *   cacheTtl: CACHE_TTL.PRODUCT_LIST
+ * })
+ */
+export async function searchEntityWithPaginationCached<T extends { toDTO?: () => any }>(
+  req: Request,
+  res: Response,
+  entity: EntityName<T>,
+  options: {
+    entityName: string;
+    em: EntityManager;
+    searchFields?: string | string[]; // Fields for text search
+    buildFilters: (query: any) => FilterQuery<T>;
+    populate?: Populate<T, string>;
+    orderBy?: OrderDefinition<T>;
+    defaultLimit?: number;
+    maxLimit?: number;
+    useCache?: boolean; // Enable caching for this search
+    cacheTtl?: number; // Cache TTL in seconds (default: from CACHE_TTL.PRODUCT_LIST)
+  }
+) {
+  const useCache = options.useCache ?? true;
+  const cacheTtl = options.cacheTtl ?? CACHE_TTL.PRODUCT_LIST;
+
+  if (!useCache) {
+    return searchEntityWithPagination(req, res, entity, options);
+  }
+
+  // Create cache key based on request parameters
+  const cacheKey = createSearchCacheKey(req, options.entityName);
+
+  // Try to get from cache first
+  const cachedResult = await cacheService.get<{
+    data: any[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(cacheKey);
+
+  if (cachedResult) {
+    return ResponseUtil.successList(
+      res,
+      `Found ${cachedResult.total} ${options.entityName}${cachedResult.total === 1 ? '' : 's'}${req.query.q ? ` matching "${req.query.q}"` : ''} (cached)`,
+      cachedResult.data,
+      {
+        page: cachedResult.page,
+        limit: cachedResult.limit,
+        total: cachedResult.total,
+      }
+    );
+  }
+
+  // Execute search if not in cache
+  const searchResult = await searchEntityWithPagination(req, res, entity, options);
+
+  // Cache the result if search was successful
+  if (searchResult) {
+    try {
+      // Extract data from the response to cache it
+      const responseData = res as any;
+      if (responseData.statusCode === 200 && responseData.responseData) {
+        await cacheService.set(cacheKey, {
+          data: responseData.responseData.data,
+          total: responseData.responseData.pagination.total,
+          page: responseData.responseData.pagination.page,
+          limit: responseData.responseData.pagination.limit,
+        }, cacheTtl);
+      }
+    } catch (cacheError) {
+      // Don't fail the request if caching fails
+      console.warn('Failed to cache search results:', cacheError);
+    }
+  }
+
+  return searchResult;
+}
+
+/**
+ * Creates a cache key for search requests based on query parameters.
+ * This ensures that different search parameters produce different cache keys.
+ */
+function createSearchCacheKey(req: Request, entityName: string): string {
+  const queryParams = { ...req.query };
+  // Remove pagination params from cache key as they don't affect the result data
+  delete queryParams.page;
+  delete queryParams.limit;
+
+  const sortedParams = Object.keys(queryParams)
+    .sort()
+    .map(key => `${key}:${queryParams[key]}`)
+    .join('|');
+
+  return `search:${entityName}:${sortedParams}`;
 }
 
 /**

@@ -4,12 +4,10 @@ coverage
 # API keys and secrets
 .env.*
 .env
+!.env.example
 
 # dependency directory
 node_modules
-
-# my docs
-docs/
 
 # OS metadata
 .DS_Store
@@ -35,3 +33,7 @@ dist/
 logs/
 
 estructura.sql
+
+scripts
+
+.claude/

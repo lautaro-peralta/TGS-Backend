@@ -65,8 +65,8 @@ const logger = pino(
       req: (req: any) => ({
         method: req.method,
         url: req.url,
-        userAgent: req.headers['user-agent'],
-        ip: req.ip || req.socket?.remoteAddress,
+        userAgent: req.headers?.['user-agent'],
+        ip: req.ip || (req.socket as any)?.remoteAddress,
         requestId: req.requestId,
       }),
 
