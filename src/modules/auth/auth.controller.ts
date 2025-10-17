@@ -102,7 +102,7 @@ export class AuthController {
         username,
         email,
         hashedPassword,
-        [Role.USER, Role.CLIENT]
+        [Role.USER]
       );
 
       // ────────────────────────────────────────────────────────────────────
