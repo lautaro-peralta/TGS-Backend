@@ -6,6 +6,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import { v7 as uuidv7 } from 'uuid';
 import { RequestContext } from '@mikro-orm/core';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.config';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -137,6 +139,23 @@ app.use((req, res, next) => {
 });
 
 // ============================================================================
+// API DOCUMENTATION
+// ============================================================================
+
+// Swagger UI - API Documentation
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'The Garrison System API',
+  customCss: '.swagger-ui .topbar { display: none }',
+}));
+
+// Endpoint para obtener la especificación JSON
+app.get('/api-docs.json', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// ============================================================================
 // API ROUTES
 // ============================================================================
 
@@ -235,8 +254,10 @@ export const initDev = async () => {
 
     logger.info("Loading development routes...");
     logRoutes([
-      '/api/clients',
+      '/api-docs',
+      '/health',
       '/api/auth',
+      '/api/clients',
       '/api/sales',
       '/api/authorities',
       '/api/zones',
@@ -253,7 +274,6 @@ export const initDev = async () => {
       '/api/role-requests',
       '/api/email-verification',
       '/api/user-verification',
-      '/health',
     ]);
   }
 };
