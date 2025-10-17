@@ -54,19 +54,6 @@ Bienvenido a la documentación académica completa del backend de **The Garrison
 
 ---
 
-## 🔧 Documentación Técnica Adicional
-
-La carpeta `docs/` también contiene documentación técnica específica:
-
-- **[REDIS_CONFIGURATION.md](REDIS_CONFIGURATION.md)** - Configuración de Redis para caché
-- **[EMAIL_CONFIGURATION.md](EMAIL_CONFIGURATION.md)** - Configuración del servicio de email (SMTP/SendGrid)
-- **[EMAIL_VERIFICATION_FLOW.md](EMAIL_VERIFICATION_FLOW.md)** - Flujo de verificación de email
-- **[USER_VERIFICATION_FLOW.md](USER_VERIFICATION_FLOW.md)** - Flujo de verificación de usuarios
-- **[VALIDATION_ARCHITECTURE.md](VALIDATION_ARCHITECTURE.md)** - Arquitectura de validación de datos con Zod
-- **[PROFILE_COMPLETENESS_USAGE.md](PROFILE_COMPLETENESS_USAGE.md)** - Sistema de completitud de perfiles
-
----
-
 ## 🎯 ¿Por dónde empezar?
 
 ### Si eres nuevo en el proyecto:
