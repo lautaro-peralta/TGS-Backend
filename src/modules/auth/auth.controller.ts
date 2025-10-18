@@ -111,80 +111,62 @@ export class AuthController {
       await em.persistAndFlush(newUser);
 
       // ────────────────────────────────────────────────────────────────────
-      // Verificación de email según modo (producción/desarrollo vs demo)
+      // Crear solicitud automática de verificación de email
       // ────────────────────────────────────────────────────────────────────
-      if (env.EMAIL_VERIFICATION_REQUIRED) {
-        // MODO PRODUCCIÓN/DESARROLLO: Verificación obligatoria automática
-        try {
-          const emailVerification = new EmailVerification(email);
-          await em.persistAndFlush(emailVerification);
+      try {
+        const emailVerification = new EmailVerification(email);
+        await em.persistAndFlush(emailVerification);
 
-          // Enviar email de verificación
-          const emailSent = await emailService.sendVerificationEmail(
-            email,
-            emailVerification.token,
-            username // Usar username como nombre temporal
-          );
-
-          if (emailSent) {
-            logger.info({
-              userId: newUser.id,
-              email
-            }, 'Email verification sent automatically after registration');
-          } else {
-            logger.warn({
-              userId: newUser.id,
-              email
-            }, 'Failed to send verification email after registration');
-          }
-
-          return ResponseUtil.created(res, 'User created successfully. Please check your email to verify your account.', {
-            id: newUser.id,
-            username: newUser.username,
-            email: newUser.email,
-            roles: newUser.roles,
-            emailVerified: newUser.emailVerified,
-            verificationRequired: true,
-            verificationEmailSent: emailSent,
-            expiresAt: emailVerification.expiresAt.toISOString(),
-          });
-
-        } catch (verificationError) {
-          logger.error({
-            err: verificationError,
-            userId: newUser.id,
-            email
-          }, 'Failed to create email verification after registration');
-
-          // Si falla la verificación, aún devolver éxito pero indicar que debe solicitar manualmente
-          return ResponseUtil.created(res, 'User created successfully. Please request email verification manually.', {
-            id: newUser.id,
-            username: newUser.username,
-            email: newUser.email,
-            roles: newUser.roles,
-            emailVerified: newUser.emailVerified,
-            verificationRequired: true,
-            verificationEmailSent: false,
-            message: 'Please request email verification manually from your profile',
-          });
-        }
-      } else {
-        // MODO DEMO: Verificación opcional (el usuario puede verificar cuando quiera)
-        logger.info({
-          userId: newUser.id,
+        // Enviar email de verificación
+        const emailSent = await emailService.sendVerificationEmail(
           email,
-          mode: 'demo'
-        }, 'User created in demo mode - email verification is optional');
+          emailVerification.token,
+          username // Usar username como nombre temporal
+        );
 
-        return ResponseUtil.created(res, 'User created successfully (demo mode - email verification optional)', {
+        if (emailSent) {
+          logger.info({ 
+            userId: newUser.id, 
+            email 
+          }, 'Email verification sent automatically after registration');
+        } else {
+          logger.warn({ 
+            userId: newUser.id, 
+            email 
+          }, 'Failed to send verification email after registration');
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        // Return sanitized user data with verification info
+        // ────────────────────────────────────────────────────────────────────
+        return ResponseUtil.created(res, 'User created successfully. Please check your email to verify your account.', {
           id: newUser.id,
           username: newUser.username,
           email: newUser.email,
           roles: newUser.roles,
           emailVerified: newUser.emailVerified,
-          verificationRequired: false,
-          mode: 'demo',
-          message: 'You can verify your email later if needed',
+          verificationRequired: true,
+          verificationEmailSent: emailSent,
+          expiresAt: emailVerification.expiresAt.toISOString(),
+        });
+
+      } catch (verificationError) {
+        logger.error({ 
+          err: verificationError, 
+          userId: newUser.id, 
+          email 
+        }, 'Failed to create email verification after registration');
+
+        // Si falla la verificación, aún devolver éxito pero indicar que debe solicitar manualmente
+        return ResponseUtil.created(res, 'User created successfully. Please request email verification manually.', {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          roles: newUser.roles,
+          emailVerified: newUser.emailVerified,
+          verificationRequired: true,
+          verificationEmailSent: false,
+          message: 'Please request email verification manually from your profile',
         });
       }
     } catch (error) {

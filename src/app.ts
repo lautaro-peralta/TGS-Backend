@@ -6,8 +6,6 @@ import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import { v7 as uuidv7 } from 'uuid';
 import { RequestContext } from '@mikro-orm/core';
-import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './config/swagger.config.js';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -72,7 +70,13 @@ const app = express();
 
 
 // CORS configuration - Enhanced security
-app.use(cors(secureCors));
+app.use(cors({
+  origin: true, 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+}));
 
 // Security headers and protection middleware
 app.use(securityMiddleware);
@@ -136,23 +140,6 @@ app.use((req, res, next) => {
 // Database context middleware (MikroORM)
 app.use((req, res, next) => {
   RequestContext.create(orm.em, next);
-});
-
-// ============================================================================
-// API DOCUMENTATION
-// ============================================================================
-
-// Swagger UI - API Documentation
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'The Garrison System API',
-  customCss: '.swagger-ui .topbar { display: none }',
-}));
-
-// Endpoint para obtener la especificación JSON
-app.get('/api-docs.json', (_req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
 });
 
 // ============================================================================
@@ -254,10 +241,8 @@ export const initDev = async () => {
 
     logger.info("Loading development routes...");
     logRoutes([
-      '/api-docs',
-      '/health',
-      '/api/auth',
       '/api/clients',
+      '/api/auth',
       '/api/sales',
       '/api/authorities',
       '/api/zones',
@@ -274,6 +259,7 @@ export const initDev = async () => {
       '/api/role-requests',
       '/api/email-verification',
       '/api/user-verification',
+      '/health',
     ]);
   }
 };

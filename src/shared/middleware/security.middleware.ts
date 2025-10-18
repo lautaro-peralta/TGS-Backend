@@ -481,7 +481,7 @@ export const secureCors = {
  */
 export const securityMiddleware = [
   securityHeaders,           // Headers de seguridad
-  originValidation,         // Validación de origen
+  //originValidation,         // Validación de origen
   securityMonitor,          // Monitoreo de seguridad
   inputSanitization,        // Sanitización básica
   hppProtection,            // Protección HPP
