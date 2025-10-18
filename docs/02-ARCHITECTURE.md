@@ -301,8 +301,8 @@ export const createTokens = (userId: string, role: string) => {
 // 1. REQUEST
 POST /api/clients
 Headers: {
-  "Authorization": "Bearer eyJhbGc...",
   "Content-Type": "application/json"
+  // Cookies (automáticas): access_token=eyJhbGc...
 }
 Body: {
   "name": "Thomas Shelby",

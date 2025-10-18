@@ -64,15 +64,10 @@ Todas las respuestas siguen el formato:
 | Header | Valor | Cuándo |
 |--------|-------|--------|
 | `Content-Type` | `application/json` | En requests con body |
-| `Cookie` | `access_token=...` | En endpoints protegidos |
 
 ### Autenticación
 
-Los endpoints protegidos requieren un JWT válido enviado como cookie HTTP-Only:
-
-```
-Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+Los endpoints protegidos requieren un JWT válido enviado como cookie HTTP-Only. Las cookies se envían **automáticamente** por el navegador después de iniciar sesión, no necesitas configurarlas manualmente en cada request.
 
 **Símbolos en la documentación:**
 - 🔓 Endpoint público (sin autenticación)
@@ -168,7 +163,6 @@ Content-Type: application/json
 
 ```http
 POST /api/auth/logout
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -190,8 +184,9 @@ Cookie: access_token=...
 
 ```http
 POST /api/auth/refresh
-Cookie: refresh_token=...
 ```
+
+**Nota:** La cookie `refresh_token` se envía automáticamente.
 
 **Respuesta (200 OK + Nuevas Cookies):**
 
@@ -214,7 +209,6 @@ Cookie: refresh_token=...
 
 ```http
 GET /api/auth/me
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -243,7 +237,6 @@ Cookie: access_token=...
 
 ```http
 GET /api/users
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -271,7 +264,6 @@ Cookie: access_token=...
 
 ```http
 GET /api/users/:id
-Cookie: access_token=...
 ```
 
 **Ejemplo:**
@@ -306,7 +298,6 @@ GET /api/users/uuid-123
 
 ```http
 PATCH /api/users/me/personal-info
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -341,7 +332,6 @@ Content-Type: application/json
 
 ```http
 POST /api/role-requests
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -381,7 +371,6 @@ Content-Type: application/json
 
 ```http
 GET /api/clients
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -409,7 +398,6 @@ Cookie: access_token=...
 
 ```http
 GET /api/clients/:id
-Cookie: access_token=...
 ```
 
 **Ejemplo:**
@@ -448,7 +436,6 @@ GET /api/clients/client-uuid-1
 
 ```http
 POST /api/clients
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -483,7 +470,6 @@ Content-Type: application/json
 
 ```http
 GET /api/products
-Cookie: access_token=...
 ```
 
 **Query Parameters (Opcionales):**
@@ -523,7 +509,6 @@ Cookie: access_token=...
 
 ```http
 GET /api/products/:id
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -550,7 +535,6 @@ Cookie: access_token=...
 
 ```http
 POST /api/products
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -584,7 +568,6 @@ Content-Type: application/json
 
 ```http
 PATCH /api/products/:id
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -616,7 +599,6 @@ Content-Type: application/json
 
 ```http
 GET /api/sales
-Cookie: access_token=...
 ```
 
 **Query Parameters (Opcionales):**
@@ -667,7 +649,6 @@ Cookie: access_token=...
 
 ```http
 POST /api/sales
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -722,7 +703,6 @@ Content-Type: application/json
 
 ```http
 GET /api/zones
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -751,7 +731,6 @@ Cookie: access_token=...
 
 ```http
 POST /api/zones
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -782,7 +761,6 @@ Content-Type: application/json
 
 ```http
 GET /api/distributors
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -814,7 +792,6 @@ Cookie: access_token=...
 
 ```http
 POST /api/distributors
-Cookie: access_token=...
 Content-Type: application/json
 
 {
@@ -851,7 +828,6 @@ Content-Type: application/json
 
 ```http
 GET /api/decisions
-Cookie: access_token=...
 ```
 
 **Respuesta (200 OK):**
@@ -884,7 +860,6 @@ Cookie: access_token=...
 
 ```http
 POST /api/decisions
-Cookie: access_token=...
 Content-Type: application/json
 
 {

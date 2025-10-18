@@ -364,6 +364,7 @@ curl http://localhost:3000/health
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
+  -c cookies.txt \
   -d '{
     "email": "admin@tgs.com",
     "password": "admin123"
@@ -373,17 +374,19 @@ curl -X POST http://localhost:3000/api/auth/login \
 **Respuesta esperada:**
 ```json
 {
-  "status": "success",
+  "success": true,
+  "message": "Login successful",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "...",
-      "email": "admin@tgs.com",
-      "role": "ADMIN"
-    }
+    "id": "...",
+    "username": "admin",
+    "email": "admin@tgs.com",
+    "roles": ["ADMIN"],
+    "isActive": true
   }
 }
 ```
+
+**Nota:** Los tokens de autenticación se establecen automáticamente como cookies HTTP-Only (`access_token` y `refresh_token`). El parámetro `-c cookies.txt` guarda las cookies para requests posteriores.
 
 ### 3. Verificar Base de Datos
 
