@@ -818,7 +818,7 @@ New Refresh Token (7 días) → ACTIVO
 
 4. Acceder a Recursos Protegidos
    GET /api/users/me
-   Cookie: access_token=eyJhbGc...
+   (Las cookies se envían automáticamente)
 
    Response: 200 OK
    {
@@ -831,9 +831,9 @@ New Refresh Token (7 días) → ACTIVO
 
 5. Renovar Token (después de 15 min)
    POST /api/auth/refresh
-   Cookie: refresh_token=abc123...
+   (La cookie refresh_token se envía automáticamente)
 
-   Response: 200 OK (+ new cookies)
+   Response: 200 OK (+ nuevas cookies establecidas)
 
 6. Logout
    POST /api/auth/logout
