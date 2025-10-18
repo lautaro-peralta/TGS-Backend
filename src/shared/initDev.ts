@@ -82,7 +82,8 @@ export async function createAdminDev() {
     [Role.ADMIN]
   );
   adminUser.person = newAdmin as any;
-  adminUser.isVerified = true;
+  adminUser.emailVerified = true;  // Email verification
+  adminUser.isVerified = true;     // Admin verification
   adminUser.profileCompleteness = 100;
 
   // ──────────────────────────────────────────────────────────────────────

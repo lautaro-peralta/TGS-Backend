@@ -35,8 +35,8 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
   // Security Configuration
-  ALLOWED_ORIGINS: z.string().default(isDocker ? 'http://localhost:3000,http://localhost:4200' : 'http://localhost:4200,http://localhost:3000'),
-    TRUST_PROXY: z.coerce.boolean().default(isDocker ? true : false),
+  ALLOWED_ORIGINS: z.string().default(isDocker ? 'http://localhost:3000,http://frontend:3000' : 'http://localhost:3000'),
+  TRUST_PROXY: z.preprocess((val) => parseBoolean(val as string, isDocker), z.boolean()),
   ENABLE_SECURITY_HEADERS: z.preprocess((val) => parseBoolean(val as string, true), z.boolean()),
   ENABLE_RATE_LIMITING: z.preprocess((val) => parseBoolean(val as string, true), z.boolean()),
   SECURITY_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('warn'),
