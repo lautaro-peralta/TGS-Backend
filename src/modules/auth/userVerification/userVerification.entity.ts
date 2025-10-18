@@ -5,6 +5,7 @@
 import { Entity, PrimaryKey, Property, ManyToOne, EntityDTO } from '@mikro-orm/core';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 import { v7 as uuidv7 } from 'uuid';
+import { nullable } from 'zod';
 
 /**
  * Estados posibles de una solicitud de verificación de usuario
@@ -39,7 +40,7 @@ export class UserVerification {
   @Property()
   expiresAt: Date;
 
-  @Property()
+  @Property({ nullable: true })
   verifiedAt?: Date;
 
   @Property()

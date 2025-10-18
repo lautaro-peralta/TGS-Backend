@@ -224,7 +224,7 @@ export class EmailService {
     verificationToken: string,
     userName?: string
   ): Promise<boolean> {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:4200'}/verify-email/${encodeURIComponent(verificationToken)}`;
 
     return this.sendEmail(email, EmailTemplate.VERIFICATION, {
       userName: userName || 'Usuario',
@@ -243,7 +243,7 @@ export class EmailService {
   ): Promise<boolean> {
     return this.sendEmail(email, EmailTemplate.WELCOME, {
       userName,
-      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`,
+      loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:4200'}`,
     });
   }
 
@@ -258,7 +258,7 @@ export class EmailService {
     return this.sendEmail(adminEmail, EmailTemplate.ADMIN_NOTIFICATION, {
       clientName,
       clientEmail,
-      adminPanelUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/verifications`,
+      adminPanelUrl: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/admin/verifications`,
     }, {
       subject: `Nueva solicitud de verificación de email - ${clientName}`,
     });
@@ -441,7 +441,7 @@ export class EmailService {
               <li>Participar en el sistema de decisiones estratégicas</li>
             </ul>
 
-            <a href="${data.loginUrl}" class="button">Iniciar Sesión</a>
+            <a href="${data.loginUrl}" class="button">Ir al inicio</a>
 
             <p>Si tienes alguna pregunta o necesitas ayuda, nuestro equipo de soporte está aquí para asistirte.</p>
 
@@ -475,7 +475,7 @@ export class EmailService {
       - Acceder a información detallada
       - Participar en decisiones estratégicas
 
-      Inicia sesión en: ${data.loginUrl}
+      Ve al inicio: ${data.loginUrl}
 
       ¡Disfruta de tu experiencia en TGS System!
 

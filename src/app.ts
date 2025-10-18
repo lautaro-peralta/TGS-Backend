@@ -72,7 +72,13 @@ const app = express();
 
 
 // CORS configuration - Enhanced security
-app.use(cors(secureCors));
+app.use(cors({
+  origin: true, 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+}));
 
 // Security headers and protection middleware
 app.use(securityMiddleware);
