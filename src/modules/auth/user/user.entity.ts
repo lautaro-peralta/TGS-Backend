@@ -205,14 +205,6 @@ export class User {
       updatedAt: this.updatedAt.toISOString(),
       lastLoginAt: this.lastLoginAt?.toISOString(),
       hasPersonalInfo: this.hasPersonalInfo,
-
-      person: this.person ? {
-      dni: (this.person as any).dni,
-      name: (this.person as any).name,
-      email: (this.person as any).email,
-      phone: (this.person as any).phone,
-      address: (this.person as any).address
-    } : null
     };
   }
 
