@@ -248,12 +248,7 @@ pnpm start:demo
 
 Si deseas probar el sistema de emails:
 
-**Opción 1: Gmail (Desarrollo)**
-1. Habilita la verificación en 2 pasos en tu cuenta de Gmail
-2. Genera una "Contraseña de aplicación" en tu cuenta de Google
-3. Usa esa contraseña en `SMTP_PASS`
-
-**Opción 2: Mailtrap (Recomendado para Testing)**
+**Mailtrap (Recomendado para Testing)**
 1. Crea una cuenta gratuita en [Mailtrap.io](https://mailtrap.io)
 2. Copia las credenciales SMTP de tu bandeja de entrada
 3. Úsalas en las variables SMTP
