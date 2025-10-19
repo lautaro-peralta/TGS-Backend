@@ -252,6 +252,8 @@ export class ProductController {
       // ──────────────────────────────────────────────────────────────────────
       if (validatedData.description !== undefined)
         product.description = validatedData.description;
+      if (validatedData.detail !== undefined)  
+      product.detail = validatedData.detail;
       if (validatedData.price !== undefined)
         product.price = validatedData.price;
       if (validatedData.stock !== undefined)
