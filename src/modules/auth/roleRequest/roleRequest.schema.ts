@@ -14,6 +14,16 @@ import { paginationSchema } from '../../../shared/schemas/common.schema.js';
 // SCHEMAS - Role Request
 // ============================================================================
 
+
+const additionalDataSchema = z.object({
+  // Para DISTRIBUTOR
+  zoneId: z.number().positive().int().optional(),
+  address: z.string().min(1).max(500).optional(),
+  productsIds: z.array(z.number().positive().int()).optional(),
+  
+  // Para AUTHORITY
+  rank: z.enum(['0', '1', '2', '3']).optional(),
+}).optional();
 /**
  * Zod schema for creating a role request.
  * Only PARTNER, DISTRIBUTOR, and AUTHORITY roles can be requested.
@@ -45,6 +55,7 @@ export const createRoleRequestSchema = z.object({
     .min(20, 'Justification must be at least 20 characters')
     .max(500, 'Justification cannot exceed 500 characters')
     .optional(),
+    additionalData: additionalDataSchema,
 }).refine(
   (data) => {
     // If roleToRemove is specified, it must be different from requestedRole
@@ -56,6 +67,31 @@ export const createRoleRequestSchema = z.object({
   {
     message: 'roleToRemove must be different from requestedRole',
     path: ['roleToRemove'],
+  }
+).refine((data) => {
+  if (data.requestedRole === Role.DISTRIBUTOR) {
+    if (!data.additionalData) return false;
+    if (!data.additionalData.zoneId || !data.additionalData.address) return false;
+    if (data.additionalData.address.trim().length === 0) return false;
+  }
+  return true;
+},
+{
+  
+    message: 'DISTRIBUTOR role requires zoneId and address in additionalData',
+    path: ['additionalData'],
+  }
+).refine(
+  (data) => {
+    // Validate AUTHORITY has required additional data
+    if (data.requestedRole === Role.AUTHORITY && data.additionalData) {
+      return !!(data.additionalData.rank && data.additionalData.zoneId);
+    }
+    return true;
+  },
+  {
+    message: 'AUTHORITY role requires rank and zoneId in additionalData',
+    path: ['additionalData'],
   }
 );
 

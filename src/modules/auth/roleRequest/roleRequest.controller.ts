@@ -76,6 +76,7 @@ export class RoleRequestController {
       // ────────────────────────────────────────────────────────────────────
       const { id: userId } = (req as any).user;
       const { requestedRole, roleToRemove, justification } = res.locals.validated.body;
+      const { requestedRole, roleToRemove, justification, additionalData } = res.locals.validated.body;
 
       // ────────────────────────────────────────────────────────────────────
       // Fetch user with person data
@@ -196,19 +197,59 @@ export class RoleRequestController {
         );
       }
 
-      // ────────────────────────────────────────────────────────────────────
-      // Create role request
-      // ────────────────────────────────────────────────────────────────────
+      if (requestedRole === Role.DISTRIBUTOR) {
+        if (!additionalData || !additionalData.zoneId || !additionalData.address) {
+          logger.error('❌ Missing additionalData for DISTRIBUTOR:', additionalData);
+          return ResponseUtil.validationError(
+            res,
+            'DISTRIBUTOR role requires additional data',
+            [
+              {
+                field: 'additionalData',
+                message: 'Must provide zoneId and address for DISTRIBUTOR role'
+              }
+            ]
+          );
+        }
+        logger.info('✅ DISTRIBUTOR additionalData validated:', additionalData);
+      }
+
+      if (requestedRole === Role.AUTHORITY) {
+        if (!additionalData || !additionalData.rank || !additionalData.zoneId) {
+          logger.error('❌ Missing additionalData for AUTHORITY:', additionalData);
+          return ResponseUtil.validationError(
+            res,
+            'AUTHORITY role requires additional data',
+            [
+              {
+                field: 'additionalData',
+                message: 'Must provide rank and zoneId for AUTHORITY role'
+              }
+            ]
+          );
+        }
+        logger.info('✅ AUTHORITY additionalData validated:', additionalData);
+      }
+
       const roleRequest = em.create(RoleRequest, {
         user: user as any,
         requestedRole,
         roleToRemove: roleToRemove || undefined,
         justification,
+        additionalData: additionalData || undefined,
         status: RequestStatus.PENDING,
         createdAt: new Date(),
       });
 
+      console.log('💾 [CREATE REQUEST] Saving with additionalData:', {
+        id: roleRequest.id,
+        requestedRole: roleRequest.requestedRole,
+        additionalData: roleRequest.additionalData
+      });
+
       await em.persistAndFlush(roleRequest);
+
+      console.log('✅ [CREATE REQUEST] Role request saved successfully with ID:', roleRequest.id);
 
       const message = isRoleChange
         ? `Role change request submitted successfully. You are requesting to change from ${roleToRemove} to ${requestedRole}. An admin will review it soon.`
@@ -229,13 +270,6 @@ export class RoleRequestController {
   // GET USER'S REQUESTS
   // ──────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Gets all role requests for the authenticated user.
-   *
-   * @param req - Express request with authenticated user
-   * @param res - Express response
-   * @returns 200 with user's role requests
-   */
   async getMyRequests(req: Request, res: Response) {
     const em = orm.em.fork();
 
@@ -263,23 +297,11 @@ export class RoleRequestController {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────
   // ADMIN: SEARCH REQUESTS
   // ──────────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Searches role requests with filters (Admin only).
-   *
-   * Query params:
-   * - status: RequestStatus - Filter by status
-   * - requestedRole: Role - Filter by requested role
-   * - userId: string - Filter by user ID
-   * - page: number (default: 1)
-   * - limit: number (default: 10, max: 100)
-   *
-   * @param req - Express request
-   * @param res - Express response
-   * @returns 200 with paginated requests
-   */
   async searchRequests(req: Request, res: Response) {
     const em = orm.em.fork();
 
@@ -309,14 +331,6 @@ export class RoleRequestController {
   // ADMIN: REVIEW REQUEST
   // ──────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Reviews a role request (approve or reject).
-   * If approved, adds the role to the user.
-   *
-   * @param req - Express request with admin user
-   * @param res - Express response
-   * @returns 200 with updated request
-   */
   async reviewRequest(req: Request, res: Response) {
     const em = orm.em.fork();
 
@@ -342,7 +356,7 @@ export class RoleRequestController {
       const roleRequest = await em.findOne(
         RoleRequest,
         { id: requestId },
-        { populate: ['user'] }
+        { populate: ['user', 'user.person'] }
       );
 
       if (!roleRequest) {
@@ -362,9 +376,41 @@ export class RoleRequestController {
 
       const requestUser = roleRequest.user as any;
 
-      // ────────────────────────────────────────────────────────────────────
-      // Process action
-      // ────────────────────────────────────────────────────────────────────
+      if (action === 'approve') {
+        const requestedRole = roleRequest.requestedRole;
+        const additionalData = roleRequest.additionalData;
+
+        if (requestedRole === Role.DISTRIBUTOR) {
+          if (!additionalData?.zoneId || !additionalData?.address) {
+            return ResponseUtil.validationError(
+              res,
+              'Cannot approve: This DISTRIBUTOR request is missing required additional data',
+              [
+                {
+                  field: 'additionalData',
+                  message: 'DISTRIBUTOR requests require zoneId and address. Please ask the user to create a new request with complete information.'
+                }
+              ]
+            );
+          }
+        }
+
+        if (requestedRole === Role.AUTHORITY) {
+          if (!additionalData?.rank || !additionalData?.zoneId) {
+            return ResponseUtil.validationError(
+              res,
+              'Cannot approve: This AUTHORITY request is missing required additional data',
+              [
+                {
+                  field: 'additionalData',
+                  message: 'AUTHORITY requests require rank and zoneId. Please ask the user to create a new request with complete information.'
+                }
+              ]
+            );
+          }
+        }
+      }
+
       if (action === 'approve') {
         const isRoleChange = roleRequest.isRoleChangeRequest();
 
@@ -416,7 +462,21 @@ export class RoleRequestController {
           );
           requestUser.roles.push(roleRequest.requestedRole);
 
-          // Approve request
+          try {
+            await createRoleRecordForApproval(em, roleRequest, requestUser);
+          } catch (err) {
+            const errorMessage = err instanceof Error 
+              ? err.message 
+              : 'Unknown error occurred';
+            
+            logger.error({ err }, 'Error creating role record');
+            return ResponseUtil.error(
+              res,
+              `Failed to create ${roleRequest.requestedRole} record: ${errorMessage}`,
+              500
+            );
+          }
+
           roleRequest.approve(adminUser, comments);
           await em.flush();
 
@@ -426,11 +486,6 @@ export class RoleRequestController {
             roleRequest.toDTO()
           );
         } else {
-          // ──────────────────────────────────────────────────────────────────
-          // Handle regular role request approval
-          // ──────────────────────────────────────────────────────────────────
-
-          // Validate role compatibility before approval
           if (!requestUser.roles.includes(roleRequest.requestedRole)) {
             const potentialRoles = [...requestUser.roles, roleRequest.requestedRole];
             const compatibilityError = validateRoleCompatibility(potentialRoles);
@@ -449,10 +504,19 @@ export class RoleRequestController {
             }
           }
 
-          // Approve request
+          try {
+            await createRoleRecordForApproval(em, roleRequest, requestUser);
+          } catch (err: any) {
+            logger.error({ err }, 'Error creating role record');
+            return ResponseUtil.error(
+              res,
+              `Failed to create ${roleRequest.requestedRole} record: ${err.message}`,
+              500
+            );
+          }
+
           roleRequest.approve(adminUser, comments);
 
-          // Add role to user
           if (!requestUser.roles.includes(roleRequest.requestedRole)) {
             requestUser.roles.push(roleRequest.requestedRole);
           }
@@ -466,7 +530,6 @@ export class RoleRequestController {
           );
         }
       } else {
-        // Reject request
         roleRequest.reject(adminUser, comments);
         await em.flush();
 
@@ -482,7 +545,7 @@ export class RoleRequestController {
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────
   // ADMIN: GET PENDING REQUESTS
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -503,7 +566,7 @@ export class RoleRequestController {
         { status: RequestStatus.PENDING },
         {
           populate: ['user'],
-          orderBy: { createdAt: 'ASC' }, // Oldest first
+          orderBy: { createdAt: 'ASC' },
         }
       );
 
@@ -517,4 +580,139 @@ export class RoleRequestController {
       return ResponseUtil.internalError(res, 'Error getting pending requests', err);
     }
   }
+}
+
+// ============================================================================
+// ✅ HELPER FUNCTIONS - FUERA DE LA CLASE
+// ============================================================================
+
+async function createRoleRecordForApproval(
+  em: any,
+  roleRequest: RoleRequest,
+  user: any
+): Promise<void> {
+  const requestedRole = roleRequest.requestedRole;
+  const additionalData = roleRequest.additionalData;
+  const person = user.person;
+
+  if (!person) {
+    throw new Error('User must have person data to create role record');
+  }
+
+  logger.info(`Creating ${requestedRole} record for user ${user.id}`);
+
+  switch (requestedRole) {
+    case Role.PARTNER:
+      await createPartnerRecord(em, person);
+      break;
+
+    case Role.DISTRIBUTOR:
+      if (!additionalData?.zoneId || !additionalData?.address) {
+        throw new Error('Missing required data for DISTRIBUTOR: zoneId and address');
+      }
+      await createDistributorRecord(em, person, additionalData);
+      break;
+
+    case Role.AUTHORITY:
+      if (!additionalData?.rank || !additionalData?.zoneId) {
+        throw new Error('Missing required data for AUTHORITY: rank and zoneId');
+      }
+      await createAuthorityRecord(em, person, additionalData);
+      break;
+
+    default:
+      logger.warn(`No record creation logic for role: ${requestedRole}`);
+  }
+}
+
+async function createPartnerRecord(em: any, person: any): Promise<void> {
+  const { Partner } = await import('../../partner/partner.entity.js');
+
+  const existing = await em.findOne(Partner, { dni: person.dni });
+  if (existing) {
+    logger.info(`Partner with DNI ${person.dni} already exists, skipping creation`);
+    return;
+  }
+
+  const partner = em.create(Partner, {
+    dni: person.dni,
+    name: person.name,
+    email: person.email,
+    phone: person.phone || null,
+    address: person.address || null,
+  });
+
+  await em.persistAndFlush(partner);
+  logger.info(`✅ Partner created successfully with DNI: ${person.dni}`);
+}
+
+async function createDistributorRecord(
+  em: any,
+  person: any,
+  additionalData: any
+): Promise<void> {
+  const { Distributor } = await import('../../distributor/distributor.entity.js');
+  const { Zone } = await import('../../zone/zone.entity.js');
+
+  const existing = await em.findOne(Distributor, { dni: person.dni });
+  if (existing) {
+    logger.info(`Distributor with DNI ${person.dni} already exists, skipping creation`);
+    return;
+  }
+
+  const zone = await em.findOne(Zone, { id: additionalData.zoneId });
+  if (!zone) {
+    throw new Error(`Zone with ID ${additionalData.zoneId} not found`);
+  }
+
+  const distributor = em.create(Distributor, {
+    dni: person.dni,
+    name: person.name,
+    email: person.email,
+    phone: person.phone || '-',
+    address: additionalData.address,
+    zone: zone,
+  });
+
+  if (additionalData.productsIds && additionalData.productsIds.length > 0) {
+    const { Product } = await import('../../product/product.entity.js');
+    const products = await em.find(Product, { id: { $in: additionalData.productsIds } });
+    distributor.products.set(products);
+  }
+
+  await em.persistAndFlush(distributor);
+  logger.info(`✅ Distributor created successfully with DNI: ${person.dni}`);
+}
+
+async function createAuthorityRecord(
+  em: any,
+  person: any,
+  additionalData: any
+): Promise<void> {
+  const { Authority } = await import('../../authority/authority.entity.js');
+  const { Zone } = await import('../../zone/zone.entity.js');
+
+  const existing = await em.findOne(Authority, { dni: person.dni });
+  if (existing) {
+    logger.info(`Authority with DNI ${person.dni} already exists, skipping creation`);
+    return;
+  }
+
+  const zone = await em.findOne(Zone, { id: additionalData.zoneId });
+  if (!zone) {
+    throw new Error(`Zone with ID ${additionalData.zoneId} not found`);
+  }
+
+  const authority = em.create(Authority, {
+    dni: person.dni,
+    name: person.name,
+    email: person.email,
+    phone: person.phone || null,
+    address: person.address || null,
+    rank: Number(additionalData.rank),
+    zone: zone,
+  });
+
+  await em.persistAndFlush(authority);
+  logger.info(`✅ Authority created successfully with DNI: ${person.dni}`);
 }
