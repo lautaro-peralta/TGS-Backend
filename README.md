@@ -7,6 +7,29 @@ Repo general (repositorio padre):
 
 ---
 
+## ⚡ Inicio Rápido
+
+### Con Infraestructura Docker (Recomendado)
+
+Si estás usando el repositorio principal, la forma más fácil es levantar MySQL y Redis con Docker:
+
+```bash
+# Desde el repositorio principal (TP-Desarrollo-de-Software)
+cd infra
+docker compose up -d
+
+# Luego, en este repositorio
+pnpm install
+cp .env.example .env.development
+pnpm start:dev
+```
+
+### Sin Docker
+
+Si prefieres instalar MySQL y Redis localmente, sigue las instrucciones en la sección [Configuración del Entorno](#configuración-del-entorno).
+
+---
+
 ## 📚 Documentación Completa
 
 Para una documentación académica completa y detallada, consulta la carpeta [docs/](docs/):
