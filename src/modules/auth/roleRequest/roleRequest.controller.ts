@@ -75,7 +75,6 @@ export class RoleRequestController {
       // Extract authenticated user and validated data
       // ────────────────────────────────────────────────────────────────────
       const { id: userId } = (req as any).user;
-      const { requestedRole, roleToRemove, justification } = res.locals.validated.body;
       const { requestedRole, roleToRemove, justification, additionalData } = res.locals.validated.body;
 
       // ────────────────────────────────────────────────────────────────────
