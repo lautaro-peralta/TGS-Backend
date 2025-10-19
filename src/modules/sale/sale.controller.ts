@@ -383,7 +383,7 @@ export class SaleController {
       entityName: 'sale',
       em,
       buildFilters: () => ({}),
-      populate: ['client', 'details', 'authority'] as any,
+      populate: ['client', 'details', 'authority','distributor'] as any,
       orderBy: { saleDate: 'DESC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.SEARCH_RESULTS,
