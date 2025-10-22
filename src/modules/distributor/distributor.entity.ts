@@ -86,6 +86,14 @@ export class Distributor extends BasePersonEntity {
             isHeadquarters: this.zone.isHeadquarters,
           }
         : null,
+        products: this.products.isInitialized()
+      ? this.products.isEmpty()
+        ? []
+        : this.products.getItems().map((p) => ({
+            id: p.id,
+            description: p.description
+          }))
+      : [],
     };
   }
 
