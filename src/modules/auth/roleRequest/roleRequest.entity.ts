@@ -23,6 +23,25 @@ export enum RequestStatus {
 }
 
 // ============================================================================
+// TYPES - Additional Data
+// ============================================================================
+
+/**
+ * Additional data required for specific roles
+ */
+export interface RoleRequestAdditionalData {
+  // Para DISTRIBUTOR
+  zoneId?: number;
+  address?: string;
+  productsIds?: number[];
+  
+  // Para AUTHORITY
+  rank?: '0' | '1' | '2' | '3';
+  // authorityZoneId también usa zoneId
+}
+
+
+// ============================================================================
 // ENTITY - RoleRequest
 // ============================================================================
 
@@ -84,6 +103,19 @@ export class RoleRequest {
    */
   @Property({ type: 'text', nullable: true })
   justification?: string;
+
+  /**
+  Additional data specific to the requested role.
+   * Stored as JSON. Required fields depend on the role:
+   * - DISTRIBUTOR: zoneId (required), address (required), productsIds (optional)
+   * - AUTHORITY: rank (required), zoneId (required)
+   * - PARTNER: no additional data required
+   *
+   * @type {RoleRequestAdditionalData | undefined}
+   */
+  @Property({ type: 'json', nullable: true })
+  additionalData?: RoleRequestAdditionalData;
+
 
   /**
    * When the request was created.
@@ -193,6 +225,7 @@ export class RoleRequest {
       isRoleChange: this.isRoleChangeRequest(),
       status: this.status,
       justification: this.justification,
+      additionalData: this.additionalData,
       createdAt: this.createdAt.toISOString(),
       reviewedAt: this.reviewedAt?.toISOString(),
       reviewedBy: this.reviewedBy

@@ -128,6 +128,7 @@ export class Product extends BaseObjectEntity {
       id: this.id,
       description: this.description,
       price: this.price,
+      detail: this.detail,
       stock: this.stock,
       isIllegal: this.isIllegal,
       distributorsCount: this.distributors.isInitialized()
