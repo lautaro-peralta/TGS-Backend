@@ -12,7 +12,8 @@ import {
   createClientSchema,
 } from './client.schema.js';
 import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
-
+import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
+import { Role } from '../auth/user/user.entity.js';
 // ============================================================================
 // ROUTER - Client
 // ============================================================================
@@ -44,7 +45,9 @@ const clientController = new ClientController();
  *       401:
  *         description: Not authenticated
  */
-clientRouter.get('/search', clientController.searchClients);
+clientRouter.get('/search', authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
+  clientController.searchClients);
 
 /**
  * @swagger
@@ -61,7 +64,9 @@ clientRouter.get('/search', clientController.searchClients);
  *       401:
  *         description: Not authenticated
  */
-clientRouter.get('/', clientController.getAllClients);
+clientRouter.get('/', 
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),clientController.getAllClients);
 
 /**
  * @swagger
@@ -88,7 +93,9 @@ clientRouter.get('/', clientController.getAllClients);
  *       401:
  *         description: Not authenticated
  */
-clientRouter.get('/:dni', clientController.getOneClientByDni);
+clientRouter.get('/:dni', 
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),clientController.getOneClientByDni);
 
 /**
  * @swagger

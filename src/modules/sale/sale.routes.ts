@@ -42,7 +42,7 @@ const saleController = new SaleController();
 saleRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN,Role.DISTRIBUTOR]),
   saleController.getAllSales
 );
 
@@ -89,7 +89,7 @@ saleRouter.get('/search', saleController.searchSales);
 saleRouter.get(
   '/summary',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   saleController.getSalesSummary
 );
 
@@ -123,7 +123,7 @@ saleRouter.get(
 saleRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN,Role.DISTRIBUTOR]),
   saleController.getOneSaleById
 );
 
