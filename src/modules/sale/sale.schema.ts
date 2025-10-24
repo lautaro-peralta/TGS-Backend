@@ -8,10 +8,25 @@ import {
   dateSearchSchema,
   dniSchema,
   descriptionSchema,
-  detailSchema,
   moneySchema,
   quantitySchema,
 } from '../../shared/schemas/common.schema.js';
+
+// ============================================================================
+// SCHEMAS - Sale-specific validations
+// ============================================================================
+
+/**
+ * Schema for sale detail (mandatory field).
+ * Must be a non-empty string with meaningful content.
+ */
+const detailSchema = z
+  .string()
+  .min(1, { message: 'Detail is required and cannot be empty' })
+  .refine((val) => /\S/.test(val), {
+    message: 'Detail cannot be only whitespace'
+  })
+  .transform((val) => val.trim());
 
 // ============================================================================
 // SCHEMAS - Sale Search
@@ -61,6 +76,12 @@ export const createSaleSchema = z.object({
    * Must follow official Argentine DNI format.
    */
   distributorDni: dniSchema,
+
+  /**
+   * The detail/description of the sale.
+   * Mandatory field with no length restrictions.
+   */
+  detail: detailSchema,
 
   /**
    * An array of sale details with professional validation.

@@ -28,11 +28,11 @@ const bribeController = new BribeController();
  * @access  Private (Admin only)
  */
 
-bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN]), bribeController.searchBribes);
+bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PARTNER]), bribeController.searchBribes);
 bribeRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   bribeController.getAllBribes
 );
 
@@ -44,7 +44,7 @@ bribeRouter.get(
 bribeRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   bribeController.getOneBribeById
 );
 
@@ -56,7 +56,7 @@ bribeRouter.get(
 bribeRouter.patch(
   '/pay',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: payBribesSchema }),
   bribeController.payBribes
 );
@@ -69,7 +69,7 @@ bribeRouter.patch(
 bribeRouter.patch(
   '/:id/pay',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: payBribesSchema }),
   bribeController.payBribes
 );
@@ -82,6 +82,6 @@ bribeRouter.patch(
 bribeRouter.delete(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   bribeController.deleteBribe
 );

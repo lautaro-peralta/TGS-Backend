@@ -44,7 +44,7 @@ const idParamSchema = z.object({
 clandestineAgreementRouter.get(
   '/search',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   clandestineAgreementController.searchClandestineAgreements
 );
 
@@ -56,7 +56,7 @@ clandestineAgreementRouter.get(
 clandestineAgreementRouter.post(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: createClandestineAgreementSchema }),
   clandestineAgreementController.createClandestineAgreement
 );
@@ -69,7 +69,7 @@ clandestineAgreementRouter.post(
 clandestineAgreementRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   clandestineAgreementController.getAllClandestineAgreements
 );
 
@@ -81,7 +81,7 @@ clandestineAgreementRouter.get(
 clandestineAgreementRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ params: idParamSchema }),
   clandestineAgreementController.getOneClandestineAgreementById
 );
@@ -94,7 +94,7 @@ clandestineAgreementRouter.get(
 clandestineAgreementRouter.put(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ params: idParamSchema, body: updateClandestineAgreementSchema }),
   clandestineAgreementController.updateClandestineAgreement
 );
@@ -107,7 +107,7 @@ clandestineAgreementRouter.put(
 clandestineAgreementRouter.delete(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ params: idParamSchema }),
   clandestineAgreementController.deleteClandestineAgreement
 );

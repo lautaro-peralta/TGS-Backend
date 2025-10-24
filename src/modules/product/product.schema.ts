@@ -7,10 +7,23 @@ import {
   textSearchSchema,
   numericRangeSchema,
   descriptionSchema,
-  detailSchema,
   moneySchema,
   quantitySchema,
 } from '../../shared/schemas/common.schema.js';
+
+// ============================================================================
+// SCHEMAS - Product-specific validations
+// ============================================================================
+
+/**
+ * Schema for product detail (optional field with maximum length limit).
+ * Can be any string content up to 1000 characters.
+ */
+const detailSchema = z
+  .string()
+  .max(1000, { message: 'Detail cannot exceed 1000 characters' })
+  .optional()
+  .transform((val) => val?.trim());
 
 // ============================================================================
 // SCHEMAS - Product Search

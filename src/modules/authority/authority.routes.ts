@@ -45,7 +45,7 @@ const dniParamSchema = z.object({
 authorityRouter.get(
   '/search',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   authorityController.searchAuthorities
 );
 
@@ -57,7 +57,7 @@ authorityRouter.get(
 authorityRouter.post(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: createAuthoritySchema }),
   authorityController.createAuthority
 );
@@ -69,8 +69,8 @@ authorityRouter.post(
  */
 authorityRouter.get(
   '/',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   authorityController.getAllAuthorities
 );
 
@@ -81,8 +81,8 @@ authorityRouter.get(
  */
 authorityRouter.get(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ params: dniParamSchema }),
   authorityController.getOneAuthorityByDni
 );
@@ -95,7 +95,7 @@ authorityRouter.get(
 authorityRouter.get(
   '/:dni/bribes',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY, Role.PARTNER]),
   authorityController.getAuthorityBribes
 );
 
@@ -106,8 +106,8 @@ authorityRouter.get(
  */
 authorityRouter.put(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY, Role.PARTNER]),
   validateWithSchema({ body: updateAuthoritySchema }),
   authorityController.putUpdateAuthority
 );
@@ -119,8 +119,8 @@ authorityRouter.put(
  */
 authorityRouter.patch(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY, Role.PARTNER]),
   validateWithSchema({ body: partialUpdateAuthoritySchema }),
   authorityController.patchUpdateAuthority
 );
@@ -132,7 +132,7 @@ authorityRouter.patch(
  */
 authorityRouter.delete(
   '/:dni',
-  //authMiddleware,
-  //rolesMiddleware([Role.ADMIN, Role.AUTHORITY]),
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.AUTHORITY, Role.PARTNER]),
   authorityController.deleteAuthority
 );
