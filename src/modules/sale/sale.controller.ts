@@ -102,7 +102,7 @@ export class SaleController {
 
         return filters;
       },
-      populate: ['distributor', 'distributor.zone', 'client', 'details', 'authority'] as unknown as Populate<Sale, string>,
+      populate: ['distributor', 'distributor.zone', 'client', 'details', 'details.product', 'authority'] as unknown as Populate<Sale, string>,
       orderBy: { saleDate: 'desc' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.SEARCH_RESULTS,
@@ -383,7 +383,7 @@ export class SaleController {
       entityName: 'sale',
       em,
       buildFilters: () => ({}),
-      populate: ['client', 'details', 'authority','distributor'] as any,
+      populate: ['client', 'details', 'details.product', 'authority', 'distributor'] as any,
       orderBy: { saleDate: 'DESC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.SEARCH_RESULTS,
