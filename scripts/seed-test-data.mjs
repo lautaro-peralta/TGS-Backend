@@ -58,19 +58,38 @@ async function loadTestData() {
     const products = await client.query('SELECT COUNT(*) as count FROM products');
     const users = await client.query('SELECT COUNT(*) as count FROM users');
     const sales = await client.query('SELECT COUNT(*) as count FROM sales');
+    const bribes = await client.query('SELECT COUNT(*) as count FROM bribes');
+    const topics = await client.query('SELECT COUNT(*) as count FROM topics');
+    const decisions = await client.query('SELECT COUNT(*) as count FROM strategic_decisions');
+    const councils = await client.query('SELECT COUNT(*) as count FROM consejos_shelby');
+    const reviews = await client.query('SELECT COUNT(*) as count FROM monthly_reviews');
+    const agreements = await client.query('SELECT COUNT(*) as count FROM clandestine_agreements');
 
     console.log('📊 Resumen de datos cargados:');
     console.log(`   - Zonas: ${zones.rows[0].count}`);
     console.log(`   - Productos: ${products.rows[0].count}`);
     console.log(`   - Usuarios: ${users.rows[0].count}`);
     console.log(`   - Ventas: ${sales.rows[0].count}`);
+    console.log(`   - Sobornos: ${bribes.rows[0].count}`);
+    console.log(`   - Topics: ${topics.rows[0].count}`);
+    console.log(`   - Strategic Decisions: ${decisions.rows[0].count}`);
+    console.log(`   - Consejos Shelby: ${councils.rows[0].count}`);
+    console.log(`   - Monthly Reviews: ${reviews.rows[0].count}`);
+    console.log(`   - Clandestine Agreements: ${agreements.rows[0].count}`);
     console.log('\n✅ Script completado exitosamente!');
     console.log('\n📝 Usuarios de prueba (password: "password123"):');
-    console.log('   - thomas.shelby (ADMIN)');
-    console.log('   - arthur.shelby, polly.gray (PARTNERS)');
-    console.log('   - john.shelby, michael.gray, isaiah.jesus (DISTRIBUTORS)');
-    console.log('   - alfie.solomons, johnny.dogs, aberama.gold (CLIENTS)');
-    console.log('   - insp.campbell, moss.officer (AUTHORITIES)\n');
+    console.log('   ADMIN:');
+    console.log('   - thomas.shelby');
+    console.log('\n   PARTNERS (4):');
+    console.log('   - arthur.shelby, polly.gray, ada.thorne, finn.shelby');
+    console.log('\n   DISTRIBUTORS (8):');
+    console.log('   - john.shelby, michael.gray, isaiah.jesus, charlie.strong');
+    console.log('   - jeremiah.jesus, billy.kitchen, curly, danny.owen');
+    console.log('\n   CLIENTS (8):');
+    console.log('   - alfie.solomons, johnny.dogs, aberama.gold, darby.sabini');
+    console.log('   - billy.kimber, luca.changretta, may.carleton, freddie.thorne');
+    console.log('\n   AUTHORITIES (5):');
+    console.log('   - insp.campbell, moss.officer, major.campbell, sgt.thorne, insp.davies\n');
 
   } catch (error) {
     console.error('\n❌ Error al cargar datos de prueba:');
