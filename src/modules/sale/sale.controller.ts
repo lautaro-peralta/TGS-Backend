@@ -2,7 +2,7 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
-import { SqlEntityManager, Populate } from '@mikro-orm/mysql';
+import { SqlEntityManager, Populate } from '@mikro-orm/postgresql';
 import { orm } from '../../shared/db/orm.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';

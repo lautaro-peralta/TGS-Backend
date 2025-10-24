@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { Request, Response } from 'express';
-import { SqlEntityManager } from '@mikro-orm/mysql';
+import { SqlEntityManager } from '@mikro-orm/postgresql';
 import { orm } from '../../../shared/db/orm.js';
 import { ResponseUtil } from '../../../shared/utils/response.util.js';
 import { validateQueryParams } from '../../../shared/middleware/validation.middleware.js';
