@@ -1,19 +1,19 @@
 import { Options } from '@mikro-orm/core';
-import { MySqlDriver } from '@mikro-orm/mysql';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { SqlHighlighter } from '@mikro-orm/sql-highlighter';
 
 // Detect if running in Docker
 const isDocker = process.env.DOCKER_CONTAINER === 'true';
 
 export default {
-  driver: MySqlDriver,
+  driver: PostgreSqlDriver,
   entities: ['dist/**/*.entity.js'],
   entitiesTs: ['src/**/*.entity.ts'],
   dbName: process.env.DB_NAME || 'tpdesarrollo',
-  user: process.env.DB_USER || 'dsw',
-  password: process.env.DB_PASSWORD || 'dsw',
-  host: process.env.DB_HOST || (isDocker ? 'mysql' : 'localhost'),
-  port: parseInt(process.env.DB_PORT || (isDocker ? '3306' : '3307')),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  host: process.env.DB_HOST || (isDocker ? 'postgres' : 'localhost'),
+  port: parseInt(process.env.DB_PORT || (isDocker ? '5432' : '5432')),
   highlighter: new SqlHighlighter(),
   debug: process.env.NODE_ENV === 'development',
   
@@ -38,10 +38,8 @@ export default {
   // ============================================================================
   // CHARACTER SET CONFIGURATION
   // ============================================================================
-  // UTF8MB4 supports full Unicode including emojis (😀) and special characters
-  // UTF8 (without MB4) only supports Basic Multilingual Plane
-  charset: 'utf8mb4',
-  collate: 'utf8mb4_unicode_ci',
+  // PostgreSQL uses UTF8 by default for full Unicode support including emojis
+  // No need to specify charset/collate (handled automatically by PostgreSQL)
 
   // ============================================================================
   // MIGRATIONS CONFIGURATION
