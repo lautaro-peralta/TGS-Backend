@@ -55,6 +55,28 @@ export class SaleController {
     const validated = validateQueryParams(req, res, searchSalesSchema);
     if (!validated) return; // Validation failed, response already sent
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Get authenticated user and check roles
+    // ──────────────────────────────────────────────────────────────────────
+    const userId = (req as any).user?.id;
+    const user = userId ? await em.findOne(User, { id: userId }, { populate: ['person'] }) : null;
+    
+    let authorityId: string | number | undefined;
+    if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
+      const authority = await em.findOne(Authority, { email: user.email });
+      if (authority) {
+        authorityId = authority.id;
+      }
+    }
+
+    let distributorDni: string | undefined;
+    if (user && user.roles.includes(Role.DISTRIBUTOR)) {
+      const distributor = await em.findOne(Distributor, { email: user.email });
+      if (distributor) {
+        distributorDni = distributor.dni;
+      }
+    }
+
     return searchEntityWithPaginationCached(req, res, Sale, {
       entityName: 'sale',
       em,
@@ -70,6 +92,14 @@ export class SaleController {
       buildFilters: () => {
         const { date, type, endDate } = validated;
         const filters: SalesFilters = {};
+
+        // Si es PARTNER o AUTHORITY, filtrar solo ventas de su autoridad
+        if (authorityId) {
+          (filters as any).authority = authorityId;
+        }
+        if (distributorDni) {
+          (filters as any).distributor = { dni: distributorDni };
+        }
 
         // Filter by date (already validated by Zod)
         if (date && type) {
@@ -205,13 +235,13 @@ export class SaleController {
       ]);
     }
 
-    let client = await em.findOne(Client, { dni: effectiveClientDni });
+    let client = await em.findOne(Client, { dni: String(effectiveClientDni) });
 
     try {
       // ──────────────────────────────────────────────────────────────────────
       // Find distributor (required)
       // ──────────────────────────────────────────────────────────────────────
-      const distributor = await em.findOne(Distributor, { dni: distributorDni });
+      const distributor = await em.findOne(Distributor, { dni: String(distributorDni) });
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', distributorDni);
       }
@@ -221,7 +251,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       if (!client) {
         let basePerson = await em.findOne(BasePersonEntity, {
-          dni: effectiveClientDni,
+          dni: String(effectiveClientDni),
         });
 
         if (!basePerson) {
@@ -241,7 +271,7 @@ export class SaleController {
           };
 
           basePerson = em.create(BasePersonEntity, {
-            dni: effectiveClientDni,
+            dni: String(effectiveClientDni),
             name: personData.name,
             email: personData.email,
             phone: personData.phone ?? '-',
@@ -379,10 +409,35 @@ export class SaleController {
   async getAllSales(req: Request, res: Response) {
     const em = orm.em.fork();
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Get authenticated user and check roles
+    // ──────────────────────────────────────────────────────────────────────
+    const userId = (req as any).user?.id;
+    const user = userId ? await em.findOne(User, { id: userId }, { populate: ['person'] }) : null;
+    
+    const filters: any = {};
+    
+    // Si es PARTNER o AUTHORITY, filtrar solo ventas de su autoridad
+    if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
+      // Buscar authority por email del usuario (debe coincidir)
+      const authority = await em.findOne(Authority, { email: user.email });
+      if (authority) {
+        filters.authority = authority.id;
+      }
+    }
+
+    // Si es DISTRIBUTOR, filtrar solo ventas de ese distribuidor
+    if (user && user.roles.includes(Role.DISTRIBUTOR)) {
+      const distributor = await em.findOne(Distributor, { email: user.email });
+      if (distributor) {
+        filters.distributor = { dni: distributor.dni };
+      }
+    }
+
     return searchEntityWithPaginationCached(req, res, Sale, {
       entityName: 'sale',
       em,
-      buildFilters: () => ({}),
+      buildFilters: () => filters,
       populate: ['client', 'details', 'details.product', 'authority', 'distributor'] as any,
       orderBy: { saleDate: 'DESC' } as any,
       useCache: true,
@@ -420,10 +475,28 @@ export class SaleController {
       const sale = await em.findOne(
         Sale,
         { id },
-        { populate: ['client', 'details.product'] }
+        { populate: ['client', 'details.product', 'authority'] }
       );
       if (!sale) {
         return ResponseUtil.notFound(res, 'Sale', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Check access if user is PARTNER or AUTHORITY
+      // ──────────────────────────────────────────────────────────────────────
+      const userId = (req as any).user?.id;
+      const user = userId ? await em.findOne(User, { id: userId }, { populate: ['person'] }) : null;
+      
+      if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
+        const authority = await em.findOne(Authority, { email: user.email });
+        if (authority && sale.authority) {
+          const saleAuthority = await em.findOne(Authority, { id: (sale.authority as any).id });
+          if (!saleAuthority || saleAuthority.id !== authority.id) {
+            return ResponseUtil.error(res, 'Access denied: You can only view sales from your authority', 403);
+          }
+        } else if (!sale.authority) {
+          return ResponseUtil.error(res, 'Access denied: This sale has no associated authority', 403);
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -498,7 +571,7 @@ export class SaleController {
       // Reassign distributor if provided
       // ──────────────────────────────────────────────────────────────────────
       if (distributorDni) {
-        const newDistributor = await em.findOne(Distributor, { dni: distributorDni });
+        const newDistributor = await em.findOne(Distributor, { dni: String(distributorDni) });
         if (!newDistributor) {
           return ResponseUtil.error(res, `Distributor with DNI ${distributorDni} not found`, 404);
         }
@@ -515,7 +588,7 @@ export class SaleController {
           sale.authority = undefined;
           updates.push('authority removed');
         } else {
-          const newAuthority = await em.findOne(Authority, { dni: authorityDni });
+          const newAuthority = await em.findOne(Authority, { dni: String(authorityDni) });
           if (!newAuthority) {
             return ResponseUtil.error(res, `Authority with DNI ${authorityDni} not found`, 404);
           }

@@ -138,7 +138,8 @@ export class UserController {
   async getAllUsers(req: Request, res: Response) {
     try {
       const em = orm.em.fork();
-      const users = await em.find(User, {});
+      
+      const users = await em.find(User, {}, { populate: ['person'] });
 
       return ResponseUtil.success(
         res,
@@ -551,7 +552,7 @@ export class UserController {
       // Check if DNI is already in use
       // ────────────────────────────────────────────────────────────────────
       const existingPerson = await em.findOne(BasePersonEntity, {
-        dni: validatedData.dni,
+        dni: String(validatedData.dni),
       });
 
       if (existingPerson) {
@@ -566,7 +567,7 @@ export class UserController {
       // Create person entity
       // ────────────────────────────────────────────────────────────────────
       const person = em.create(BasePersonEntity, {
-        dni: validatedData.dni,
+        dni: String(validatedData.dni),
         name: validatedData.name,
         email: user.email,
         phone: validatedData.phone,

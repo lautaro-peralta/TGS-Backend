@@ -89,7 +89,7 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       // Verify if a client with that DNI already exists
       // ──────────────────────────────────────────────────────────────────────
-      const existingClient = await em.findOne(Client, { dni });
+      const existingClient = await em.findOne(Client, { dni: String(dni) });
       if (existingClient) {
         return ResponseUtil.conflict(
           res,
@@ -117,7 +117,7 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       // Find or create base person
       // ──────────────────────────────────────────────────────────────────────
-      let person = await em.findOne(BasePersonEntity, { dni });
+      let person = await em.findOne(BasePersonEntity, { dni: String(dni) });
       if (!person) {
         person = em.create(BasePersonEntity, {
           dni,
@@ -134,7 +134,7 @@ export class ClientController {
         // ──────────────────────────────────────────────────────────────────────
         // Create user if credentials are provided
         // ──────────────────────────────────────────────────────────────────────
-        user = await em.findOne(User, { person: { dni } });
+        user = await em.findOne(User, { person: { dni: String(dni) } });
 
         if (!user) {
           const hashedPassword = await argon2.hash(password);
@@ -239,7 +239,7 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       const client = await em.findOne(
         Client,
-        { dni },
+        { dni: String(dni) },
         { populate: ['user', 'purchases'] }
       );
       if (!client) {
@@ -279,7 +279,7 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch client by DNI
       // ──────────────────────────────────────────────────────────────────────
-      const client = await em.findOne(Client, { dni });
+      const client = await em.findOne(Client, { dni: String(dni) });
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);
       }
@@ -324,7 +324,7 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch client by DNI
       // ──────────────────────────────────────────────────────────────────────
-      const client = await em.findOne(Client, { dni });
+      const client = await em.findOne(Client, { dni: String(dni) });
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);
       }
