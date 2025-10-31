@@ -2,6 +2,7 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
+import argon2 from 'argon2';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -10,6 +11,8 @@ import { orm } from '../../shared/db/orm.js';
 import { Distributor } from './distributor.entity.js';
 import { Product } from '../product/product.entity.js';
 import { Zone } from '../zone/zone.entity.js';
+import { User, Role } from '../auth/user/user.entity.js';
+import { BasePersonEntity } from '../../shared/base.person.entity.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
@@ -134,7 +137,7 @@ export class DistributorController {
       // ────────────────────────────────
       // Extract and validate data
       // ────────────────────────────────
-      const { dni, name, address, phone, email, productsIds, zoneId } =
+      const { dni, name, address, phone, email, productsIds, zoneId, username, password } =
         res.locals.validated?.body ?? req.body;
 
       // ────────────────────────────────
@@ -145,12 +148,81 @@ export class DistributorController {
         return ResponseUtil.conflict(res, 'A distributor with that DNI already exists', 'dni');
       }
 
+      const createUser = !!(username && password);
+
+      if (createUser) {
+        // ──────────────────────────────────────────────────────────────────────
+        // Additional validation when creating credentials
+        // ──────────────────────────────────────────────────────────────────────
+        const existingUser = await em.findOne(User, { username });
+        if (existingUser) {
+          return ResponseUtil.conflict(
+            res,
+            'A user with that username already exists',
+            'username'
+          );
+        }
+      }
+
       // ────────────────────────────────
       // Verify zone
       // ────────────────────────────────
       const zone = await em.findOne(Zone, { id: Number(zoneId) });
       if (!zone) {
         return ResponseUtil.notFound(res, 'Zone', zoneId);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Find or create base person
+      // ──────────────────────────────────────────────────────────────────────
+      let person = await em.findOne(BasePersonEntity, { dni });
+      if (!person) {
+        person = em.create(BasePersonEntity, {
+          dni,
+          name,
+          email,
+          address: address ?? '',
+          phone: phone ?? '',
+        });
+        await em.persistAndFlush(person);
+      }
+
+      let user;
+      if (createUser) {
+        // ──────────────────────────────────────────────────────────────────────
+        // Create user if credentials are provided (manual mode)
+        // ──────────────────────────────────────────────────────────────────────
+        user = await em.findOne(User, { person: { dni } });
+
+        if (!user) {
+          const hashedPassword = await argon2.hash(password);
+          user = new User(
+            username,
+            email,
+            hashedPassword,
+            [Role.DISTRIBUTOR]
+          );
+          user.person = person as any;
+          await em.persistAndFlush(user);
+
+          if (!user.id) {
+            return ResponseUtil.internalError(res, 'Could not create user');
+          }
+        }
+      } else {
+        // ──────────────────────────────────────────────────────────────────────
+        // If creating from existing user (fromUser mode), assign DISTRIBUTOR role
+        // ──────────────────────────────────────────────────────────────────────
+        user = await em.findOne(User, { person: { dni } });
+
+        if (user) {
+          // Add DISTRIBUTOR role if not already present
+          if (!user.roles.includes(Role.DISTRIBUTOR)) {
+            user.roles.push(Role.DISTRIBUTOR);
+            await em.flush();
+            logger.info({ userId: user.id, dni }, 'Assigned DISTRIBUTOR role to existing user');
+          }
+        }
       }
 
       // ────────────────────────────────
@@ -180,7 +252,26 @@ export class DistributorController {
       // Save to DB
       // ────────────────────────────────
       await em.persistAndFlush(distributor);
-      return ResponseUtil.created(res, 'Distributor created successfully', distributor.toDTO());
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Prepare and send response
+      // ──────────────────────────────────────────────────────────────────────
+      const message = createUser
+        ? 'Distributor and user created successfully'
+        : 'Distributor created successfully';
+
+      const responseData = {
+        distributor: distributor.toDTO(),
+        ...(user && {
+          user: {
+            id: (user as User).id,
+            username: (user as User).username,
+            email: (user as User).email,
+          },
+        }),
+      };
+
+      return ResponseUtil.created(res, message, responseData);
     } catch (error) {
       logger.error({ err: error }, 'Error creating distributor');
       return ResponseUtil.internalError(res, 'Error creating distributor', error);
@@ -284,6 +375,19 @@ export class DistributorController {
           `Cannot delete distributor ${distributor.name} (DNI ${dni}) because they have ${distributor.sales.length} sale(s) associated. Please delete or reassign the sales first.`,
           400
         );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Remove DISTRIBUTOR role from associated user if exists
+      // ──────────────────────────────────────────────────────────────────────
+      const person = await em.findOne(BasePersonEntity, { dni });
+      if (person) {
+        const user = await em.findOne(User, { person: { dni } });
+        if (user && user.roles.includes(Role.DISTRIBUTOR)) {
+          user.roles = user.roles.filter(role => role !== Role.DISTRIBUTOR);
+          await em.flush();
+          logger.info({ userId: user.id, dni }, 'Removed DISTRIBUTOR role from user');
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────────

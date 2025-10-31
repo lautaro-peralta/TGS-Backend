@@ -68,6 +68,18 @@ userRouter.patch(
 );
 
 /**
+ * @route   GET /api/users/verified
+ * @desc    Get all verified users eligible for role conversion.
+ * @access  Private (Admin only)
+ */
+userRouter.get(
+  '/verified',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  userController.getVerifiedUsers
+);
+
+/**
  * @route   GET /api/users
  * @desc    Get all users.
  * @access  Private (Admin only)

@@ -128,7 +128,7 @@ export class PartnerController {
       let user;
       if (createUser) {
         // ──────────────────────────────────────────────────────────────────────
-        // Create user if credentials are provided
+        // Create user if credentials are provided (manual mode)
         // ──────────────────────────────────────────────────────────────────────
         user = await em.findOne(User, { person: { dni } });
 
@@ -145,6 +145,20 @@ export class PartnerController {
 
           if (!user.id) {
             return ResponseUtil.internalError(res, 'Could not create user');
+          }
+        }
+      } else {
+        // ──────────────────────────────────────────────────────────────────────
+        // If creating from existing user (fromUser mode), assign PARTNER role
+        // ──────────────────────────────────────────────────────────────────────
+        user = await em.findOne(User, { person: { dni } });
+
+        if (user) {
+          // Add PARTNER role if not already present
+          if (!user.roles.includes(Role.PARTNER)) {
+            user.roles.push(Role.PARTNER);
+            await em.flush();
+            logger.info({ userId: user.id, dni }, 'Assigned PARTNER role to existing user');
           }
         }
       }
@@ -339,6 +353,19 @@ export class PartnerController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
+      // Remove PARTNER role from associated user if exists
+      // ──────────────────────────────────────────────────────────────────────
+      const person = await em.findOne(BasePersonEntity, { dni });
+      if (person) {
+        const user = await em.findOne(User, { person: { dni } });
+        if (user && user.roles.includes(Role.PARTNER)) {
+          user.roles = user.roles.filter(role => role !== Role.PARTNER);
+          await em.flush();
+          logger.info({ userId: user.id, dni }, 'Removed PARTNER role from user');
+        }
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
       // Delete the partner
       // ──────────────────────────────────────────────────────────────────────
       const name = partner.name;
@@ -354,6 +381,84 @@ export class PartnerController {
     } catch (err) {
       logger.error({ err }, 'Error deleting partner');
       return ResponseUtil.internalError(res, 'Error deleting partner', err);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // MIGRATION UTILITY - Assign PARTNER role to existing partners
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Assigns PARTNER role to all users who have an associated partner entity
+   * but don't have the PARTNER role yet.
+   *
+   * This is a one-time migration endpoint to fix existing data.
+   *
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @returns {Promise<Response>} A promise that resolves to the response.
+   */
+  async migratePartnerRoles(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // ──────────────────────────────────────────────────────────────────────
+      // Fetch all partners
+      // ──────────────────────────────────────────────────────────────────────
+      const partners = await em.find(Partner, {});
+
+      let updated = 0;
+      let notFound = 0;
+      let alreadyHasRole = 0;
+
+      // ──────────────────────────────────────────────────────────────────────
+      // For each partner, find associated user and assign PARTNER role
+      // ──────────────────────────────────────────────────────────────────────
+      for (const partner of partners) {
+        const person = await em.findOne(BasePersonEntity, { dni: partner.dni });
+
+        if (!person) {
+          logger.warn({ dni: partner.dni }, 'Partner has no associated person');
+          notFound++;
+          continue;
+        }
+
+        const user = await em.findOne(User, { person: { dni: partner.dni } });
+
+        if (!user) {
+          logger.warn({ dni: partner.dni }, 'Partner has no associated user');
+          notFound++;
+          continue;
+        }
+
+        // Assign PARTNER role if not already present
+        if (!user.roles.includes(Role.PARTNER)) {
+          user.roles.push(Role.PARTNER);
+          updated++;
+          logger.info({ userId: user.id, dni: partner.dni }, 'Assigned PARTNER role during migration');
+        } else {
+          alreadyHasRole++;
+        }
+      }
+
+      await em.flush();
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Return migration summary
+      // ──────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Partner role migration completed successfully',
+        {
+          totalPartners: partners.length,
+          rolesAssigned: updated,
+          alreadyHadRole: alreadyHasRole,
+          userNotFound: notFound
+        }
+      );
+    } catch (err) {
+      logger.error({ err }, 'Error during partner role migration');
+      return ResponseUtil.internalError(res, 'Error during migration', err);
     }
   }
 }

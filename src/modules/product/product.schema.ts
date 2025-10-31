@@ -90,6 +90,12 @@ export const createProductSchema = z.object({
    * Boolean validation with flexible input formats.
    */
   isIllegal: z.boolean(),
+
+  /**
+   * Array of distributor DNIs to associate with this product.
+   * Optional field for automatic distributor association.
+   */
+  distributorsIds: z.array(z.string()).optional(),
 });
 
 /**

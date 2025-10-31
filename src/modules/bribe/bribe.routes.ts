@@ -28,11 +28,11 @@ const bribeController = new BribeController();
  * @access  Private (Admin only)
  */
 
-bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PARTNER]), bribeController.searchBribes);
+bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]), bribeController.searchBribes);
 bribeRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.getAllBribes
 );
 
@@ -44,7 +44,7 @@ bribeRouter.get(
 bribeRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.getOneBribeById
 );
 

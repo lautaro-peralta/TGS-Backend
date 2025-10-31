@@ -42,7 +42,7 @@ const saleController = new SaleController();
 saleRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN,Role.DISTRIBUTOR]),
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR, Role.PARTNER, Role.AUTHORITY]),
   saleController.getAllSales
 );
 
@@ -67,7 +67,7 @@ saleRouter.get(
  *       401:
  *         description: Not authenticated
  */
-saleRouter.get('/search', saleController.searchSales);
+saleRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR, Role.PARTNER, Role.AUTHORITY]), saleController.searchSales);
 
 /**
  * @swagger
@@ -89,7 +89,7 @@ saleRouter.get('/search', saleController.searchSales);
 saleRouter.get(
   '/summary',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR, Role.PARTNER, Role.AUTHORITY]),
   saleController.getSalesSummary
 );
 
@@ -123,7 +123,7 @@ saleRouter.get(
 saleRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN,Role.DISTRIBUTOR]),
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR, Role.PARTNER, Role.AUTHORITY]),
   saleController.getOneSaleById
 );
 

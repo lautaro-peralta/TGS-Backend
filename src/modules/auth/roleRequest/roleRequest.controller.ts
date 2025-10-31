@@ -21,8 +21,13 @@ import { RoleRequestFilters } from '../../../shared/types/common.types.js';
 // ============================================================================
 
 /**
- * Validates that roles are compatible.
- * AUTHORITY role is incompatible with PARTNER, DISTRIBUTOR, and ADMIN.
+ * Validates that roles are compatible according to business rules.
+ *
+ * Business Rules:
+ * 1. PARTNER can be combined with DISTRIBUTOR or ADMIN, but NOT with AUTHORITY
+ * 2. DISTRIBUTOR can be combined with PARTNER or ADMIN, but NOT with AUTHORITY
+ * 3. AUTHORITY cannot be combined with PARTNER, DISTRIBUTOR, or ADMIN
+ * 4. ADMIN when assigned alone, removes all other roles (handled separately)
  *
  * @param roles - Array of roles to validate
  * @returns Error message if roles are incompatible, null otherwise
@@ -33,14 +38,18 @@ function validateRoleCompatibility(roles: Role[]): string | null {
   const hasDistributor = roles.includes(Role.DISTRIBUTOR);
   const hasAdmin = roles.includes(Role.ADMIN);
 
+  // Rule 1: AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, and ADMIN
   if (hasAuthority && (hasPartner || hasDistributor || hasAdmin)) {
     const incompatibleRoles = [];
     if (hasPartner) incompatibleRoles.push('PARTNER');
     if (hasDistributor) incompatibleRoles.push('DISTRIBUTOR');
     if (hasAdmin) incompatibleRoles.push('ADMIN');
 
-    return `AUTHORITY role is incompatible with: ${incompatibleRoles.join(', ')}`;
+    return `AUTHORITY role is incompatible with: ${incompatibleRoles.join(', ')}. AUTHORITY cannot be combined with business roles.`;
   }
+
+  // Rule 2: PARTNER cannot be combined with AUTHORITY (already covered above)
+  // Rule 3: DISTRIBUTOR cannot be combined with AUTHORITY (already covered above)
 
   return null;
 }

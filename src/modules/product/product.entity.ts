@@ -137,6 +137,17 @@ export class Product extends BaseObjectEntity {
       detailsCount: this.details.isInitialized()
         ? this.details.length
         : undefined,
+      distributors: this.distributors.isInitialized()
+        ? this.distributors.getItems().map(d => ({
+            dni: d.dni,
+            name: d.name,
+            zone: d.zone ? {
+              id: d.zone.id,
+              name: d.zone.name,
+              isHeadquarters: d.zone.isHeadquarters,
+            } : null,
+          }))
+        : undefined,
     };
   }
 }

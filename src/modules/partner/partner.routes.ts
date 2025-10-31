@@ -216,3 +216,20 @@ partnerRouter.patch(
  *         description: Not authenticated
  */
 partnerRouter.delete('/:dni', partnerController.deletePartner);
+
+/**
+ * @swagger
+ * /api/partners/migrate/roles:
+ *   post:
+ *     tags: [Partners]
+ *     summary: Migrate partner roles (Admin only)
+ *     description: Assigns PARTNER role to all users who have an associated partner entity but don't have the role yet. This is a one-time migration endpoint.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Migration completed successfully
+ *       401:
+ *         description: Not authenticated
+ */
+partnerRouter.post('/migrate/roles', partnerController.migratePartnerRoles);
