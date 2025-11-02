@@ -124,7 +124,7 @@ Re-login requerido
 - ✅ **Multi-sesión**: Cada navegador mantiene su propia sesión
 - ✅ **Logout**: Cierra sesión para probar con otro usuario`,
       contact: {
-        name: 'Grupo Shelby',
+        name: 'The Garrison System - Website',
         url: 'https://github.com/Lau-prog/TP-Desarrollo-de-Software',
       },
     },

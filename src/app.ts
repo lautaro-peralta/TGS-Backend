@@ -387,23 +387,122 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       border-color: #1a1a1a;
     }
 
-    /* Models section */
+    /* Models/Schemas section - Enhanced UI */
     .swagger-ui .models {
-      border-radius: 10px;
+      border-radius: 12px;
       overflow: hidden;
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      border: 2px solid #e8eef2;
+      padding: 20px;
+      margin-top: 30px;
     }
     .swagger-ui section.models h4 {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: #1a1a1a;
       border-left: 5px solid #3498db;
-      padding-left: 15px;
-      margin: 30px 0 15px 0;
+      padding: 15px 20px;
+      margin: 0 0 20px 0;
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+      color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-left: none;
+    }
+
+    /* Individual model containers */
+    .swagger-ui .model-container {
       background: #ffffff;
+      border: 2px solid #e8eef2;
+      border-radius: 10px;
+      margin: 15px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+    }
+    .swagger-ui .model-container:hover {
+      border-color: #3498db;
+      box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
+      transform: translateY(-2px);
+    }
+
+    /* Model title */
+    .swagger-ui .model-box {
+      background: #f8f9fa;
+      padding: 15px 20px;
+      border-radius: 8px;
+    }
+    .swagger-ui .model-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    /* Schema properties */
+    .swagger-ui .model {
+      background: #ffffff;
+    }
+    .swagger-ui .property-row {
+      border-bottom: 1px solid #ecf0f1;
+      padding: 10px 15px;
+    }
+    .swagger-ui .property-row:hover {
+      background: #f8f9fa;
+    }
+
+    /* Property names */
+    .swagger-ui .prop-name {
+      color: #3498db;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* Property types */
+    .swagger-ui .prop-type {
+      color: #27ae60;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    /* Property format */
+    .swagger-ui .prop-format {
+      color: #95a5a6;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    /* Model toggle button */
+    .swagger-ui .model-toggle {
+      cursor: pointer;
+      color: #3498db;
+      font-weight: 600;
+      padding: 8px 15px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .swagger-ui .model-toggle:hover {
+      background: #3498db;
+      color: #ffffff;
+    }
+
+    /* Example values */
+    .swagger-ui .example {
+      background: #2c3e50;
+      color: #ecf0f1;
       padding: 15px;
       border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+    }
+
+    /* Required indicator */
+    .swagger-ui .required {
+      color: #e74c3c;
+      font-weight: 700;
+      font-size: 11px;
     }
 
     /* Response tabs */
