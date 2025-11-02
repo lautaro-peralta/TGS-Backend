@@ -387,122 +387,141 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       border-color: #1a1a1a;
     }
 
-    /* Models/Schemas section - Enhanced UI */
-    .swagger-ui .models {
-      border-radius: 12px;
-      overflow: hidden;
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      border: 2px solid #e8eef2;
-      padding: 20px;
-      margin-top: 30px;
+    /* Schemas section - Clean, professional design */
+    .swagger-ui section.models {
+      margin-top: 40px;
+      padding: 0;
     }
+
+    /* Schemas section header */
     .swagger-ui section.models h4 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #1a1a1a;
-      border-left: 5px solid #3498db;
-      padding: 15px 20px;
-      margin: 0 0 20px 0;
-      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-      color: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      border-left: none;
-    }
-
-    /* Individual model containers */
-    .swagger-ui .model-container {
-      background: #ffffff;
-      border: 2px solid #e8eef2;
-      border-radius: 10px;
-      margin: 15px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      transition: all 0.3s ease;
-    }
-    .swagger-ui .model-container:hover {
-      border-color: #3498db;
-      box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
-      transform: translateY(-2px);
-    }
-
-    /* Model title */
-    .swagger-ui .model-box {
-      background: #f8f9fa;
-      padding: 15px 20px;
-      border-radius: 8px;
-    }
-    .swagger-ui .model-title {
-      font-size: 16px;
-      font-weight: 700;
+      font-size: 28px;
+      font-weight: 600;
       color: #2c3e50;
+      margin: 0 0 25px 0;
+      padding: 0;
+      border: none;
+      background: none;
+      text-transform: none;
+      letter-spacing: 0;
     }
 
-    /* Schema properties */
-    .swagger-ui .model {
+    /* Individual schema model wrapper */
+    .swagger-ui section.models .model-container {
+      margin-bottom: 20px;
+      border: 1px solid #e1e8ed;
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    /* Schema title area */
+    .swagger-ui .model-container .model-box {
+      padding: 0;
+      background: none;
+    }
+
+    /* Schema toggle (expand/collapse) */
+    .swagger-ui .model-box .model-toggle {
+      padding: 16px 20px;
+      background: #f7fafc;
+      border-bottom: 1px solid #e1e8ed;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .swagger-ui .model-box .model-toggle:hover {
+      background: #edf2f7;
+    }
+
+    /* Schema name/title */
+    .swagger-ui .model-toggle .model-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0;
+    }
+
+    /* Schema collapse icon */
+    .swagger-ui .model-toggle svg {
+      fill: #718096;
+    }
+
+    /* Model content (when expanded) */
+    .swagger-ui .model-container .model {
+      padding: 20px;
       background: #ffffff;
     }
-    .swagger-ui .property-row {
-      border-bottom: 1px solid #ecf0f1;
-      padding: 10px 15px;
-    }
-    .swagger-ui .property-row:hover {
-      background: #f8f9fa;
+
+    /* Property table */
+    .swagger-ui table.model tbody tr {
+      border-bottom: 1px solid #f1f5f9;
     }
 
-    /* Property names */
-    .swagger-ui .prop-name {
-      color: #3498db;
-      font-weight: 700;
+    .swagger-ui table.model tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    .swagger-ui table.model tbody tr td {
+      padding: 12px 8px;
+      vertical-align: top;
+    }
+
+    /* Property name column */
+    .swagger-ui table.model tbody tr td:first-child {
+      font-weight: 600;
+      color: #1a202c;
+      font-size: 14px;
+      width: 35%;
+    }
+
+    /* Property type and description column */
+    .swagger-ui table.model tbody tr td:nth-child(2) {
+      color: #4a5568;
       font-size: 14px;
     }
 
-    /* Property types */
+    /* Property type badge */
     .swagger-ui .prop-type {
-      color: #27ae60;
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    /* Property format */
-    .swagger-ui .prop-format {
-      color: #95a5a6;
+      display: inline-block;
+      padding: 4px 10px;
+      background: #edf2f7;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
       font-size: 12px;
-      font-style: italic;
-    }
-
-    /* Model toggle button */
-    .swagger-ui .model-toggle {
-      cursor: pointer;
-      color: #3498db;
       font-weight: 600;
-      padding: 8px 15px;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-    }
-    .swagger-ui .model-toggle:hover {
-      background: #3498db;
-      color: #ffffff;
+      color: #2d3748;
+      margin-right: 8px;
+      font-family: 'Consolas', 'Monaco', monospace;
     }
 
-    /* Example values */
-    .swagger-ui .example {
-      background: #2c3e50;
-      color: #ecf0f1;
-      padding: 15px;
-      border-radius: 8px;
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 13px;
-      overflow-x: auto;
+    /* Property format (e.g., "int32", "date-time") */
+    .swagger-ui .prop-format {
+      color: #718096;
+      font-size: 12px;
+      margin-left: 4px;
     }
 
-    /* Required indicator */
+    /* Required asterisk */
     .swagger-ui .required {
-      color: #e74c3c;
+      color: #e53e3e;
+      margin-left: 4px;
       font-weight: 700;
-      font-size: 11px;
+    }
+
+    /* Example/default values */
+    .swagger-ui .model .property.primitive {
+      padding: 8px 0;
+    }
+
+    /* Description text */
+    .swagger-ui .model tbody tr td .renderedMarkdown p {
+      margin: 8px 0 0 0;
+      color: #718096;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     /* Response tabs */
