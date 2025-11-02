@@ -97,6 +97,15 @@ app.use(cookieParser());
 // Serve static files (for Swagger customizations)
 app.use(express.static('public'));
 
+// Favicon handlers - serve SVG favicon
+app.get('/favicon.ico', (_req, res) => {
+  res.redirect('/favicon.svg');
+});
+
+app.get('/favicon.svg', (_req, res) => {
+  res.sendFile('favicon.svg', { root: 'public' });
+});
+
 // Request logging and monitoring middleware
 app.use((req, res, next) => {
   const start = Date.now();
@@ -235,6 +244,11 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);
       letter-spacing: 0.5px;
       text-transform: uppercase;
+    }
+
+    /* Custom style for servers title */
+    .swagger-ui .servers-title {
+      color: #ffffff !important;
     }
 
     /* Server dropdown - white with blue accent */
@@ -387,141 +401,117 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       border-color: #1a1a1a;
     }
 
-    /* Schemas section - Clean, professional design */
+    /* Schemas section - estructura simple */
     .swagger-ui section.models {
       margin-top: 40px;
-      padding: 0;
-    }
-
-    /* Schemas section header */
-    .swagger-ui section.models h4 {
-      font-size: 28px;
-      font-weight: 600;
-      color: #2c3e50;
-      margin: 0 0 25px 0;
-      padding: 0;
-      border: none;
-      background: none;
-      text-transform: none;
-      letter-spacing: 0;
-    }
-
-    /* Individual schema model wrapper */
-    .swagger-ui section.models .model-container {
-      margin-bottom: 20px;
-      border: 1px solid #e1e8ed;
-      border-radius: 8px;
-      background: #ffffff;
-      overflow: hidden;
-    }
-
-    /* Schema title area */
-    .swagger-ui .model-container .model-box {
-      padding: 0;
-      background: none;
-    }
-
-    /* Schema toggle (expand/collapse) */
-    .swagger-ui .model-box .model-toggle {
-      padding: 16px 20px;
-      background: #f7fafc;
-      border-bottom: 1px solid #e1e8ed;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .swagger-ui .model-box .model-toggle:hover {
-      background: #edf2f7;
-    }
-
-    /* Schema name/title */
-    .swagger-ui .model-toggle .model-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #2d3748;
-      margin: 0;
-    }
-
-    /* Schema collapse icon */
-    .swagger-ui .model-toggle svg {
-      fill: #718096;
-    }
-
-    /* Model content (when expanded) */
-    .swagger-ui .model-container .model {
       padding: 20px;
       background: #ffffff;
     }
 
-    /* Property table */
+    /* Título de schemas */
+    .swagger-ui section.models h4,
+    .swagger-ui section.models h4 span {
+      font-size: 28px !important;
+      font-weight: 700 !important;
+      color: #1a1a1a !important;
+      margin: 0 0 20px 0 !important;
+      padding: 0 0 10px 0 !important;
+      border-bottom: 2px solid #1a1a1a !important;
+    }
+
+    /* Container de cada schema */
+    .swagger-ui section.models .model-container {
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      background: #ffffff;
+    }
+
+    /* Reset de modelo */
+    .swagger-ui .model-container .model-box {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Título del schema individual */
+    .swagger-ui .model-box > .model-toggle {
+      padding: 12px 16px !important;
+      background: #f5f5f5 !important;
+      border-bottom: 1px solid #ddd !important;
+      cursor: pointer !important;
+    }
+
+    .swagger-ui .model-toggle .model-title,
+    .swagger-ui .model-toggle .model-title span {
+      font-size: 16px !important;
+      font-weight: 600 !important;
+      color: #1a1a1a !important;
+      margin: 0 !important;
+    }
+
+    /* Contenido expandido - sin superposición */
+    .swagger-ui .model-container .model {
+      padding: 16px !important;
+      background: #ffffff !important;
+      margin: 0 !important;
+      clear: both !important;
+      overflow: visible !important;
+    }
+
+    .swagger-ui .model-container.model-open {
+      overflow: visible !important;
+    }
+
+    .swagger-ui .model-box .model {
+      border: none !important;
+    }
+
+    /* Tabla de propiedades */
+    .swagger-ui table.model {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin: 0 !important;
+    }
+
     .swagger-ui table.model tbody tr {
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid #eee !important;
     }
 
     .swagger-ui table.model tbody tr:last-child {
-      border-bottom: none;
+      border-bottom: none !important;
     }
 
     .swagger-ui table.model tbody tr td {
-      padding: 12px 8px;
-      vertical-align: top;
+      padding: 10px 8px !important;
+      vertical-align: top !important;
     }
 
-    /* Property name column */
+    /* Nombre de propiedad */
     .swagger-ui table.model tbody tr td:first-child {
-      font-weight: 600;
-      color: #1a202c;
-      font-size: 14px;
-      width: 35%;
+      font-weight: 600 !important;
+      color: #1a1a1a !important;
+      width: 30% !important;
     }
 
-    /* Property type and description column */
+    /* Tipo y descripción */
     .swagger-ui table.model tbody tr td:nth-child(2) {
-      color: #4a5568;
-      font-size: 14px;
+      color: #333 !important;
+      width: 70% !important;
     }
 
-    /* Property type badge */
+    /* Badge de tipo */
     .swagger-ui .prop-type {
-      display: inline-block;
-      padding: 4px 10px;
-      background: #edf2f7;
-      border: 1px solid #cbd5e0;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #2d3748;
-      margin-right: 8px;
-      font-family: 'Consolas', 'Monaco', monospace;
+      padding: 2px 8px !important;
+      background: #3498db !important;
+      color: #fff !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      margin-right: 8px !important;
     }
 
-    /* Property format (e.g., "int32", "date-time") */
-    .swagger-ui .prop-format {
-      color: #718096;
-      font-size: 12px;
-      margin-left: 4px;
-    }
-
-    /* Required asterisk */
+    /* Asterisco requerido */
     .swagger-ui .required {
-      color: #e53e3e;
-      margin-left: 4px;
-      font-weight: 700;
-    }
-
-    /* Example/default values */
-    .swagger-ui .model .property.primitive {
-      padding: 8px 0;
-    }
-
-    /* Description text */
-    .swagger-ui .model tbody tr td .renderedMarkdown p {
-      margin: 8px 0 0 0;
-      color: #718096;
-      font-size: 13px;
-      line-height: 1.5;
+      color: #e74c3c !important;
+      margin-left: 4px !important;
     }
 
     /* Response tabs */
@@ -546,7 +536,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       color: #2980b9;
     }
   `,
-  customfavIcon: '/favicon.ico',
+  customfavIcon: '/favicon.svg',
   swaggerOptions: {
     persistAuthorization: true,
     displayRequestDuration: true,
@@ -571,6 +561,11 @@ app.get('/api-docs.json', (_req, res) => {
 // ============================================================================
 // API ROUTES
 // ============================================================================
+
+// Root route - Serve landing page
+app.get('/', (_req, res) => {
+  res.sendFile('index.html', { root: 'public' });
+});
 
 // Health checks - Should be before other routes for proper monitoring
 app.use('/health', healthRouter);

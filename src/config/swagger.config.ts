@@ -1,7 +1,6 @@
 import swaggerJsdoc from 'swagger-jsdoc';
-import { SwaggerDefinition } from 'swagger-jsdoc';
 
-const swaggerDefinition: SwaggerDefinition = {
+const swaggerDefinition = {
     openapi: '3.0.0',
     info: {
       title: 'The Garrison System API',
@@ -124,7 +123,7 @@ Re-login requerido
 - ✅ **Multi-sesión**: Cada navegador mantiene su propia sesión
 - ✅ **Logout**: Cierra sesión para probar con otro usuario`,
       contact: {
-        name: 'The Garrison System - Website',
+        name: 'The Garrison System',
         url: 'https://github.com/Lau-prog/TP-Desarrollo-de-Software',
       },
     },
@@ -145,174 +144,6 @@ Re-login requerido
           in: 'cookie',
           name: 'access_token',
           description: 'JWT token almacenado en cookie HTTP-only. Se establece automáticamente al hacer login.',
-        },
-      },
-      schemas: {
-        Error: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            error: {
-              type: 'object',
-              properties: {
-                code: {
-                  type: 'string',
-                  example: 'VALIDATION_ERROR',
-                },
-                message: {
-                  type: 'string',
-                  example: 'Error de validación',
-                },
-                details: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                  },
-                },
-              },
-            },
-          },
-        },
-        SuccessResponse: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: true,
-            },
-            data: {
-              type: 'object',
-              description: 'Datos de respuesta',
-            },
-          },
-        },
-        PaginationMeta: {
-          type: 'object',
-          properties: {
-            total: {
-              type: 'integer',
-              example: 100,
-            },
-            page: {
-              type: 'integer',
-              example: 1,
-            },
-            limit: {
-              type: 'integer',
-              example: 10,
-            },
-            totalPages: {
-              type: 'integer',
-              example: 10,
-            },
-          },
-        },
-        ValidationError: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            error: {
-              type: 'object',
-              properties: {
-                code: {
-                  type: 'string',
-                  example: 'VALIDATION_ERROR',
-                },
-                message: {
-                  type: 'string',
-                  example: 'Validation failed',
-                },
-                details: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      field: {
-                        type: 'string',
-                        example: 'email',
-                      },
-                      message: {
-                        type: 'string',
-                        example: 'Invalid email format',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        UnauthorizedError: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            error: {
-              type: 'object',
-              properties: {
-                code: {
-                  type: 'string',
-                  example: 'UNAUTHORIZED',
-                },
-                message: {
-                  type: 'string',
-                  example: 'Authentication required',
-                },
-              },
-            },
-          },
-        },
-        ForbiddenError: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            error: {
-              type: 'object',
-              properties: {
-                code: {
-                  type: 'string',
-                  example: 'FORBIDDEN',
-                },
-                message: {
-                  type: 'string',
-                  example: 'Insufficient permissions',
-                },
-              },
-            },
-          },
-        },
-        NotFoundError: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            error: {
-              type: 'object',
-              properties: {
-                code: {
-                  type: 'string',
-                  example: 'NOT_FOUND',
-                },
-                message: {
-                  type: 'string',
-                  example: 'Resource not found',
-                },
-              },
-            },
-          },
         },
       },
     },

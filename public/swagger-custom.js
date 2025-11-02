@@ -4,6 +4,23 @@
 (function() {
   'use strict';
 
+  // Set favicon
+  function setFavicon() {
+    // Remove existing favicons
+    const existingLinks = document.querySelectorAll('link[rel*="icon"]');
+    existingLinks.forEach(link => link.remove());
+
+    // Add new favicon
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.type = 'image/svg+xml';
+    link.href = '/favicon.svg';
+    document.head.appendChild(link);
+  }
+
+  // Call immediately
+  setFavicon();
+
   // Wait for Swagger UI to fully load
   function initCustomFilter() {
     const filterInput = document.querySelector('.filter-container input');
