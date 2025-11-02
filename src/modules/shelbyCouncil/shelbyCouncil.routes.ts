@@ -39,12 +39,12 @@ const idParamSchema = z.object({
 /**
  * @route   GET /api/shelby-council/search
  * @desc    Search for shelby council records.
- * @access  Private (Admin and Partner only)
+ * @access  Private (Admin, Partner, Authority)
  */
 shelbyCouncilRouter.get(
   '/search',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   shelbyCouncilController.searchShelbyCouncil
 );
 
@@ -64,24 +64,24 @@ shelbyCouncilRouter.post(
 /**
  * @route   GET /api/shelby-council
  * @desc    Get all shelby council records.
- * @access  Private (Admin and Partner only)
+ * @access  Private (Admin, Partner, Authority)
  */
 shelbyCouncilRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   shelbyCouncilController.getAllConsejosShelby
 );
 
 /**
  * @route   GET /api/shelby-council/:id
  * @desc    Get a shelby council record by ID.
- * @access  Private (Admin and Partner only)
+ * @access  Private (Admin, Partner, Authority)
  */
 shelbyCouncilRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   validateWithSchema({ params: idParamSchema }),
   shelbyCouncilController.getOneShelbyCouncilById
 );

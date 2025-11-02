@@ -2,6 +2,7 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Request, Response } from 'express';
+import argon2 from 'argon2';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -181,7 +182,7 @@ export class AuthorityController {
       // Extract and validate data
       // ──────────────────────────────────────────────────────────────────────
       logger.info({ data: res.locals.validated?.body }, '🔍 Data received');
-      const { dni, name, email, address, phone, rank, zoneId } =
+      const { dni, name, email, address, phone, rank, zoneId, username, password } =
         res.locals.validated.body;
 
       // ──────────────────────────────────────────────────────────────────────
@@ -194,6 +195,22 @@ export class AuthorityController {
           'An authority with that DNI already exists',
           'dni'
         );
+      }
+
+      const createUser = !!(username && password);
+
+      if (createUser) {
+        // ──────────────────────────────────────────────────────────────────────
+        // Additional validation when creating credentials
+        // ──────────────────────────────────────────────────────────────────────
+        const existingUser = await em.findOne(User, { username });
+        if (existingUser) {
+          return ResponseUtil.conflict(
+            res,
+            'A user with that username already exists',
+            'username'
+          );
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────────
@@ -221,6 +238,44 @@ export class AuthorityController {
         logger.info('✅ Base person created');
       }
 
+      let user;
+      if (createUser) {
+        // ──────────────────────────────────────────────────────────────────────
+        // Create user if credentials are provided (manual mode)
+        // ──────────────────────────────────────────────────────────────────────
+        user = await em.findOne(User, { person: { dni } });
+
+        if (!user) {
+          const hashedPassword = await argon2.hash(password);
+          user = new User(
+            username,
+            email,
+            hashedPassword,
+            [Role.AUTHORITY]
+          );
+          user.person = basePerson as any;
+          await em.persistAndFlush(user);
+
+          if (!user.id) {
+            return ResponseUtil.internalError(res, 'Could not create user');
+          }
+        }
+      } else {
+        // ──────────────────────────────────────────────────────────────────────
+        // If creating from existing user (fromUser mode), assign AUTHORITY role
+        // ──────────────────────────────────────────────────────────────────────
+        user = await em.findOne(User, { person: { dni } });
+
+        if (user) {
+          // Add AUTHORITY role if not already present
+          if (!user.roles.includes(Role.AUTHORITY)) {
+            user.roles.push(Role.AUTHORITY);
+            await em.flush();
+            logger.info({ userId: user.id, dni }, 'Assigned AUTHORITY role to existing user');
+          }
+        }
+      }
+
       // ──────────────────────────────────────────────────────────────────────
       // Create Authority
       // ──────────────────────────────────────────────────────────────────────
@@ -239,6 +294,10 @@ export class AuthorityController {
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
+      const message = createUser
+        ? 'Authority and user created successfully'
+        : 'Authority created successfully';
+
       const authorityData = authority.toDTO?.() ?? {
         id: authority.id,
         dni: authority.dni,
@@ -246,10 +305,21 @@ export class AuthorityController {
         email: authority.email,
       };
 
+      const responseData = {
+        authority: authorityData,
+        ...(user && {
+          user: {
+            id: (user as User).id,
+            username: (user as User).username,
+            email: (user as User).email,
+          },
+        }),
+      };
+
       return ResponseUtil.created(
         res,
-        'Authority created successfully',
-        authorityData
+        message,
+        responseData
       );
     } catch (error: any) {
       logger.error({ err: error }, '💥 Full error');
@@ -505,6 +575,19 @@ export class AuthorityController {
           'The authority cannot be deleted because it has associated pending bribes',
           400
         );
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Remove AUTHORITY role from associated user if exists
+      // ──────────────────────────────────────────────────────────────────────
+      const person = await em.findOne(BasePersonEntity, { dni });
+      if (person) {
+        const user = await em.findOne(User, { person: { dni } });
+        if (user && user.roles.includes(Role.AUTHORITY)) {
+          user.roles = user.roles.filter(role => role !== Role.AUTHORITY);
+          await em.flush();
+          logger.info({ userId: user.id, dni }, 'Removed AUTHORITY role from user');
+        }
       }
 
       const name = authority.name;
