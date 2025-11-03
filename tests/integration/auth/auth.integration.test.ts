@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { createTestDatabase, clearDatabase, cleanupTestDatabase } from '../../test-helpers.js';
 import { User, Role } from '../../../src/modules/auth/user/user.entity.js';
 import argon2 from 'argon2';
@@ -30,11 +31,8 @@ describe('Auth Integration Tests', () => {
     it('should create a new user with hashed password', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'testuser';
-      user.email = 'test@example.com';
-      user.password = await argon2.hash('SecurePassword123!');
-      user.roles = [Role.USER];
+      const hashedPassword = await argon2.hash('SecurePassword123!');
+      const user = new User('testuser', 'test@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
 
@@ -46,17 +44,13 @@ describe('Auth Integration Tests', () => {
     it('should prevent duplicate usernames', async () => {
       const em = orm.em.fork();
 
-      const user1 = new User();
-      user1.username = 'duplicate';
-      user1.email = 'user1@example.com';
-      user1.password = await argon2.hash('Password123!');
+      const hashedPassword1 = await argon2.hash('Password123!');
+      const user1 = new User('duplicate', 'user1@example.com', hashedPassword1);
 
       await em.persistAndFlush(user1);
 
-      const user2 = new User();
-      user2.username = 'duplicate';
-      user2.email = 'user2@example.com';
-      user2.password = await argon2.hash('Password123!');
+      const hashedPassword2 = await argon2.hash('Password123!');
+      const user2 = new User('duplicate', 'user2@example.com', hashedPassword2);
 
       await expect(em.persistAndFlush(user2)).rejects.toThrow();
     });
@@ -64,17 +58,13 @@ describe('Auth Integration Tests', () => {
     it('should prevent duplicate emails', async () => {
       const em = orm.em.fork();
 
-      const user1 = new User();
-      user1.username = 'user1';
-      user1.email = 'duplicate@example.com';
-      user1.password = await argon2.hash('Password123!');
+      const hashedPassword1 = await argon2.hash('Password123!');
+      const user1 = new User('user1', 'duplicate@example.com', hashedPassword1);
 
       await em.persistAndFlush(user1);
 
-      const user2 = new User();
-      user2.username = 'user2';
-      user2.email = 'duplicate@example.com';
-      user2.password = await argon2.hash('Password123!');
+      const hashedPassword2 = await argon2.hash('Password123!');
+      const user2 = new User('user2', 'duplicate@example.com', hashedPassword2);
 
       await expect(em.persistAndFlush(user2)).rejects.toThrow();
     });
@@ -85,10 +75,8 @@ describe('Auth Integration Tests', () => {
       const em = orm.em.fork();
       const password = 'SecurePassword123!';
 
-      const user = new User();
-      user.username = 'loginuser';
-      user.email = 'login@example.com';
-      user.password = await argon2.hash(password);
+      const hashedPassword = await argon2.hash(password);
+      const user = new User('loginuser', 'login@example.com', hashedPassword);
       user.isActive = true;
 
       await em.persistAndFlush(user);
@@ -103,92 +91,83 @@ describe('Auth Integration Tests', () => {
     it('should find user by username', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'findme';
-      user.email = 'findme@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('findme', 'findme@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
-      em.clear();
 
       const foundUser = await em.findOne(User, { username: 'findme' });
-      expect(foundUser).toBeTruthy();
+      expect(foundUser).toBeDefined();
       expect(foundUser?.email).toBe('findme@example.com');
     });
 
     it('should find user by email', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'emailuser';
-      user.email = 'findbyemail@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('emailuser', 'findbyme@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
-      em.clear();
 
-      const foundUser = await em.findOne(User, { email: 'findbyemail@example.com' });
-      expect(foundUser).toBeTruthy();
+      const foundUser = await em.findOne(User, { email: 'findbyme@example.com' });
+      expect(foundUser).toBeDefined();
       expect(foundUser?.username).toBe('emailuser');
+    });
+
+    it('should not find inactive users', async () => {
+      const em = orm.em.fork();
+
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('inactive', 'inactive@example.com', hashedPassword);
+      user.isActive = false;
+
+      await em.persistAndFlush(user);
+
+      const foundUser = await em.findOne(User, { username: 'inactive', isActive: true });
+      expect(foundUser).toBeNull();
     });
   });
 
   describe('User Roles', () => {
-    it('should default to USER role', async () => {
+    it('should assign default USER role', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'defaultrole';
-      user.email = 'defaultrole@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('roleuser', 'role@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
 
-      expect(user.roles).toEqual([Role.USER]);
+      expect(user.roles).toContain(Role.USER);
+      expect(user.roles).toHaveLength(1);
     });
 
-    it('should allow assigning CLIENT role', async () => {
+    it('should support multiple roles', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'client';
-      user.email = 'client@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.roles = [Role.CLIENT];
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('multirole', 'multi@example.com', hashedPassword, [
+        Role.USER,
+        Role.CLIENT,
+      ]);
 
       await em.persistAndFlush(user);
 
-      expect(user.roles).toContain(Role.CLIENT);
-    });
-
-    it('should allow assigning ADMIN role', async () => {
-      const em = orm.em.fork();
-
-      const user = new User();
-      user.username = 'admin';
-      user.email = 'admin@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.roles = [Role.ADMIN];
-
-      await em.persistAndFlush(user);
-
-      expect(user.roles).toContain(Role.ADMIN);
-    });
-
-    it('should allow multiple roles', async () => {
-      const em = orm.em.fork();
-
-      const user = new User();
-      user.username = 'multirole';
-      user.email = 'multirole@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.roles = [Role.USER, Role.CLIENT];
-
-      await em.persistAndFlush(user);
-
-      expect(user.roles).toHaveLength(2);
       expect(user.roles).toContain(Role.USER);
       expect(user.roles).toContain(Role.CLIENT);
+      expect(user.roles).toHaveLength(2);
+    });
+
+    it('should query users by role', async () => {
+      const em = orm.em.fork();
+
+      const hashedPassword = await argon2.hash('Password123!');
+      const adminUser = new User('admin', 'admin@example.com', hashedPassword, [Role.ADMIN]);
+
+      await em.persistAndFlush(adminUser);
+
+      const admins = await em.find(User, { roles: { $contains: [Role.ADMIN] } });
+      expect(admins).toHaveLength(1);
+      expect(admins[0].username).toBe('admin');
     });
   });
 
@@ -196,57 +175,59 @@ describe('Auth Integration Tests', () => {
     it('should default to active', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'activeuser';
-      user.email = 'active@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('activeuser', 'active@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
 
       expect(user.isActive).toBe(true);
     });
 
-    it('should allow deactivating user', async () => {
+    it('should default to not verified', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'inactive';
-      user.email = 'inactive@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.isActive = false;
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('newuser', 'new@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
 
-      expect(user.isActive).toBe(false);
+      expect(user.isVerified).toBe(false);
+    });
+
+    it('should support verification', async () => {
+      const em = orm.em.fork();
+
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('verifyuser', 'verify@example.com', hashedPassword);
+      user.isVerified = true;
+
+      await em.persistAndFlush(user);
+
+      expect(user.isVerified).toBe(true);
     });
   });
 
-  describe('User Verification', () => {
-    it('should default to not verified by admin', async () => {
+  describe('Profile Completeness', () => {
+    it('should default to 25% for new users', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'unverified';
-      user.email = 'unverified@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('profileuser', 'profile@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
 
-      expect(user.verifiedByAdmin).toBe(false);
+      expect(user.profileCompleteness).toBe(25);
     });
 
-    it('should allow admin verification', async () => {
+    it('should calculate completeness correctly', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'verified';
-      user.email = 'verified@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.verifiedByAdmin = true;
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('completeuser', 'complete@example.com', hashedPassword);
+      user.isVerified = true;
 
-      await em.persistAndFlush(user);
-
-      expect(user.verifiedByAdmin).toBe(true);
+      const completeness = user.calculateProfileCompleteness();
+      expect(completeness).toBeGreaterThan(25);
     });
   });
 });

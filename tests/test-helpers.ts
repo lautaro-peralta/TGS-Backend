@@ -1,19 +1,20 @@
 import { MikroORM } from '@mikro-orm/core';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
-import mikroOrmConfig from '../src/shared/db/mikro-orm.config.js';
+import mikroOrmConfig from '../src/shared/db/orm.config.js';
 
 /**
  * Create a test database connection
  */
-export async function createTestDatabase(): Promise<MikroORM<PostgreSqlDriver>> {
+export async function createTestDatabase(): Promise<MikroORM> {
   const orm = await MikroORM.init({
     ...mikroOrmConfig,
     dbName: process.env.DB_NAME || 'tgs_test',
     allowGlobalContext: true,
   });
 
-  // Run migrations
-  await orm.getMigrator().up();
+  // Create schema directly (no migrations needed for tests)
+  const generator = orm.getSchemaGenerator();
+  await generator.createSchema();
 
   return orm;
 }
@@ -21,7 +22,7 @@ export async function createTestDatabase(): Promise<MikroORM<PostgreSqlDriver>> 
 /**
  * Clean up test database
  */
-export async function cleanupTestDatabase(orm: MikroORM<PostgreSqlDriver>): Promise<void> {
+export async function cleanupTestDatabase(orm: MikroORM): Promise<void> {
   const generator = orm.getSchemaGenerator();
   await generator.dropSchema();
   await orm.close(true);
@@ -30,7 +31,7 @@ export async function cleanupTestDatabase(orm: MikroORM<PostgreSqlDriver>): Prom
 /**
  * Clear all tables but keep schema
  */
-export async function clearDatabase(orm: MikroORM<PostgreSqlDriver>): Promise<void> {
+export async function clearDatabase(orm: MikroORM): Promise<void> {
   const em = orm.em.fork();
   const connection = em.getConnection();
 

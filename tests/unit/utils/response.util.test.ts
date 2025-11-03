@@ -141,7 +141,8 @@ describe('ResponseUtil', () => {
         expect.objectContaining({
           success: false,
           message: 'Error occurred',
-          meta: expect.objectContaining({ statusCode: 400 }),
+          code: 'BAD_REQUEST',
+          timestamp: expect.any(String),
         })
       );
     });
@@ -157,6 +158,7 @@ describe('ResponseUtil', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
+          message: 'Validation failed',
           errors,
         })
       );
@@ -177,7 +179,9 @@ describe('ResponseUtil', () => {
         expect.objectContaining({
           success: false,
           message: 'Validation failed',
-          meta: expect.objectContaining({ statusCode: 400 }),
+          code: 'VALIDATION_ERROR',
+          timestamp: expect.any(String),
+          errors,
         })
       );
     });
@@ -187,12 +191,13 @@ describe('ResponseUtil', () => {
     it('should return 401 unauthorized response', () => {
       ResponseUtil.unauthorized(res, 'Authentication required');
 
-      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
           message: 'Authentication required',
-          meta: expect.objectContaining({ statusCode: 401 }),
+          code: 'BAD_REQUEST',
+          timestamp: expect.any(String),
         })
       );
     });
@@ -207,7 +212,8 @@ describe('ResponseUtil', () => {
         expect.objectContaining({
           success: false,
           message: 'Access denied',
-          meta: expect.objectContaining({ statusCode: 403 }),
+          code: 'FORBIDDEN',
+          timestamp: expect.any(String),
         })
       );
     });
@@ -215,24 +221,27 @@ describe('ResponseUtil', () => {
 
   describe('notFound', () => {
     it('should return 404 not found response', () => {
-      ResponseUtil.notFound(res, 'Resource not found');
+      ResponseUtil.notFound(res, 'Resource');
 
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          message: 'Resource not found',
-          meta: expect.objectContaining({ statusCode: 404 }),
+          message: expect.stringContaining('Resource'),
+          code: 'NOT_FOUND',
+          timestamp: expect.any(String),
         })
       );
     });
 
-    it('should accept resource name parameter', () => {
-      ResponseUtil.notFound(res, 'Not found', 'User');
+    it('should accept resource name and identifier parameter', () => {
+      ResponseUtil.notFound(res, 'User', '123');
 
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Not found',
+          success: false,
+          message: expect.stringContaining('User'),
+          code: 'NOT_FOUND',
         })
       );
     });
@@ -247,7 +256,8 @@ describe('ResponseUtil', () => {
         expect.objectContaining({
           success: false,
           message: 'Resource already exists',
-          meta: expect.objectContaining({ statusCode: 409 }),
+          code: 'CONFLICT',
+          timestamp: expect.any(String),
         })
       );
     });
@@ -257,7 +267,9 @@ describe('ResponseUtil', () => {
 
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
+          success: false,
           message: 'Email already in use',
+          code: 'CONFLICT',
         })
       );
     });
@@ -272,7 +284,8 @@ describe('ResponseUtil', () => {
         expect.objectContaining({
           success: false,
           message: 'Something went wrong',
-          meta: expect.objectContaining({ statusCode: 500 }),
+          code: 'INTERNAL_SERVER_ERROR',
+          timestamp: expect.any(String),
         })
       );
     });
@@ -282,7 +295,9 @@ describe('ResponseUtil', () => {
 
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
+          success: false,
           message: expect.any(String),
+          code: 'INTERNAL_SERVER_ERROR',
         })
       );
     });

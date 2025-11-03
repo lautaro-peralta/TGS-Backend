@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
+import { jest, afterAll } from '@jest/globals';
 
 // Load test environment variables
 config({ path: '.env.test' });

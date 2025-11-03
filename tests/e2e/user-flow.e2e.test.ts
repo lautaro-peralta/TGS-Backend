@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { createTestDatabase, clearDatabase, cleanupTestDatabase } from '../test-helpers.js';
 import { User, Role } from '../../src/modules/auth/user/user.entity.js';
-import { Client } from '../../src/modules/client/client.entity.js';
 import argon2 from 'argon2';
 
 /**
@@ -30,23 +30,19 @@ describe('E2E: User Flow Tests', () => {
       const em = orm.em.fork();
 
       // Step 1: User registers
-      const user = new User();
-      user.username = 'newuser';
-      user.email = 'newuser@example.com';
-      user.password = await argon2.hash('SecurePassword123!');
-      user.roles = [Role.USER];
+      const hashedPassword = await argon2.hash('SecurePassword123!');
+      const user = new User('newuser', 'newuser@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
 
       expect(user.id).toBeDefined();
       expect(user.roles).toContain(Role.USER);
-      expect(user.verifiedByAdmin).toBe(false);
+      expect(user.isVerified).toBe(false);
 
-      // Step 2: User completes profile (simulated)
+      // Step 2: Verify user exists and can be retrieved
       const userId = user.id;
       em.clear();
 
-      // Step 3: Verify user exists and can be retrieved
       const retrievedUser = await em.findOne(User, { id: userId });
       expect(retrievedUser).toBeTruthy();
       expect(retrievedUser?.username).toBe('newuser');
@@ -55,17 +51,15 @@ describe('E2E: User Flow Tests', () => {
     it('should calculate profile completeness correctly', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'profileuser';
-      user.email = 'profile@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('profileuser', 'profile@example.com', hashedPassword);
 
       // Initial profile completeness (25% - account created)
       const initialCompleteness = user.calculateProfileCompleteness();
       expect(initialCompleteness).toBe(25);
 
       // After admin verification (50%)
-      user.verifiedByAdmin = true;
+      user.isVerified = true;
       const afterVerification = user.calculateProfileCompleteness();
       expect(afterVerification).toBe(50);
 
@@ -78,11 +72,8 @@ describe('E2E: User Flow Tests', () => {
       const em = orm.em.fork();
 
       // Step 1: Create regular user
-      const user = new User();
-      user.username = 'futureClient';
-      user.email = 'client@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.roles = [Role.USER];
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('futureClient', 'client@example.com', hashedPassword);
 
       await em.persistAndFlush(user);
       const userId = user.id;
@@ -93,25 +84,22 @@ describe('E2E: User Flow Tests', () => {
       expect(upgradeUser).toBeTruthy();
 
       upgradeUser!.roles = [Role.CLIENT];
-      upgradeUser!.verifiedByAdmin = true;
+      upgradeUser!.isVerified = true;
       await em.flush();
 
       // Step 3: Verify upgrade
       em.clear();
       const clientUser = await em.findOne(User, { id: userId });
       expect(clientUser?.roles).toContain(Role.CLIENT);
-      expect(clientUser?.verifiedByAdmin).toBe(true);
+      expect(clientUser?.isVerified).toBe(true);
     });
 
-    it('should not allow purchase without complete profile', async () => {
+    it('should not allow purchase without verification', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'incompleteclient';
-      user.email = 'incomplete@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.roles = [Role.CLIENT];
-      user.verifiedByAdmin = false; // Not verified
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('incompleteclient', 'incomplete@example.com', hashedPassword, [Role.CLIENT]);
+      user.isVerified = false; // Not verified
 
       await em.persistAndFlush(user);
 
@@ -124,21 +112,16 @@ describe('E2E: User Flow Tests', () => {
       const em = orm.em.fork();
 
       // Step 1: Create admin user
-      const admin = new User();
-      admin.username = 'admin';
-      admin.email = 'admin@example.com';
-      admin.password = await argon2.hash('AdminPassword123!');
-      admin.roles = [Role.ADMIN];
-      admin.verifiedByAdmin = true;
+      const adminPassword = await argon2.hash('AdminPassword123!');
+      const admin = new User('admin', 'admin@example.com', adminPassword, [Role.ADMIN]);
+      admin.isVerified = true;
 
       await em.persistAndFlush(admin);
       expect(admin.roles).toContain(Role.ADMIN);
 
       // Step 2: Create regular user
-      const regularUser = new User();
-      regularUser.username = 'regular';
-      regularUser.email = 'regular@example.com';
-      regularUser.password = await argon2.hash('Password123!');
+      const regularPassword = await argon2.hash('Password123!');
+      const regularUser = new User('regular', 'regular@example.com', regularPassword);
 
       await em.persistAndFlush(regularUser);
       const regularUserId = regularUser.id;
@@ -148,13 +131,13 @@ describe('E2E: User Flow Tests', () => {
       const userToVerify = await em.findOne(User, { id: regularUserId });
       expect(userToVerify).toBeTruthy();
 
-      userToVerify!.verifiedByAdmin = true;
+      userToVerify!.isVerified = true;
       await em.flush();
 
       // Step 4: Verify changes persisted
       em.clear();
       const verifiedUser = await em.findOne(User, { id: regularUserId });
-      expect(verifiedUser?.verifiedByAdmin).toBe(true);
+      expect(verifiedUser?.isVerified).toBe(true);
     });
   });
 
@@ -162,11 +145,12 @@ describe('E2E: User Flow Tests', () => {
     it('should handle user with multiple roles', async () => {
       const em = orm.em.fork();
 
-      const user = new User();
-      user.username = 'multirole';
-      user.email = 'multi@example.com';
-      user.password = await argon2.hash('Password123!');
-      user.roles = [Role.USER, Role.CLIENT, Role.PARTNER];
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('multirole', 'multi@example.com', hashedPassword, [
+        Role.USER,
+        Role.CLIENT,
+        Role.PARTNER,
+      ]);
 
       await em.persistAndFlush(user);
 
@@ -182,10 +166,8 @@ describe('E2E: User Flow Tests', () => {
       const em = orm.em.fork();
 
       // Step 1: Create active user
-      const user = new User();
-      user.username = 'toggleactive';
-      user.email = 'toggle@example.com';
-      user.password = await argon2.hash('Password123!');
+      const hashedPassword = await argon2.hash('Password123!');
+      const user = new User('toggleactive', 'toggle@example.com', hashedPassword);
       user.isActive = true;
 
       await em.persistAndFlush(user);
@@ -223,10 +205,8 @@ describe('E2E: User Flow Tests', () => {
       const newPassword = 'NewPassword123!';
 
       // Step 1: Create user with initial password
-      const user = new User();
-      user.username = 'passwordchange';
-      user.email = 'pwchange@example.com';
-      user.password = await argon2.hash(oldPassword);
+      const hashedOldPassword = await argon2.hash(oldPassword);
+      const user = new User('passwordchange', 'pwchange@example.com', hashedOldPassword);
 
       await em.persistAndFlush(user);
       const userId = user.id;
@@ -260,10 +240,8 @@ describe('E2E: User Flow Tests', () => {
       // Create multiple users
       const users = [];
       for (let i = 1; i <= 5; i++) {
-        const user = new User();
-        user.username = `user${i}`;
-        user.email = `user${i}@example.com`;
-        user.password = await argon2.hash(`Password${i}!`);
+        const hashedPassword = await argon2.hash(`Password${i}!`);
+        const user = new User(`user${i}`, `user${i}@example.com`, hashedPassword);
         users.push(user);
       }
 
