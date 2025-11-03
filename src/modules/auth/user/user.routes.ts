@@ -99,6 +99,8 @@ userRouter.put(
   userController.completeProfile
 );
 
+
+
 /**
  * @swagger
  * /api/users/{id}:
@@ -157,6 +159,58 @@ userRouter.put(
   rolesMiddleware([Role.ADMIN]),
   validateWithSchema(updateUserSchema),
   userController.updateUser
+);
+
+/**
+ * @swagger
+ * /api/users/me/personal-info:
+ *   patch:
+ *     tags: [Users]
+ *     summary: Update personal information
+ *     description: Updates authenticated user's personal information (phone and/or address). Requires profile to be completed first.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+44 121 496 0000"
+ *                 description: User's phone number
+ *               address:
+ *                 type: string
+ *                 example: "6 Watery Lane, Birmingham"
+ *                 description: User's address
+ *             minProperties: 1
+ *     responses:
+ *       200:
+ *         description: Personal information updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Personal information updated successfully"
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Validation error or profile not completed
+ *       401:
+ *         description: Unauthorized
+ */
+userRouter.patch(
+  '/me/personal-info',
+  authMiddleware,
+  userController.updatePersonalInfo
 );
 
 /**
