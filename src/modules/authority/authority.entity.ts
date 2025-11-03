@@ -123,6 +123,9 @@ export class Authority extends BasePersonEntity {
     return {
       dni: this.dni,
       name: this.name,
+      email: this.email,
+      phone: this.phone,
+      address: this.address,
       rank: this.rank,
       zone: this.zone,
       bribes:

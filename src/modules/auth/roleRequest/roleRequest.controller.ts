@@ -123,9 +123,19 @@ export class RoleRequestController {
         }
 
         // Validate compatibility after the swap
-        const rolesAfterSwap = user.roles
-          .filter((r) => r !== roleToRemove)
-          .concat(requestedRole);
+        // ✅ SPECIAL CASE: For AUTHORITY, calculate roles after removing ALL incompatible roles
+        let rolesAfterSwap: Role[];
+        if (requestedRole === Role.AUTHORITY) {
+          // AUTHORITY removes ALL business roles (PARTNER, DISTRIBUTOR, ADMIN)
+          rolesAfterSwap = user.roles
+            .filter((r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r))
+            .concat(requestedRole);
+        } else {
+          // Normal role swap - remove only the specified role
+          rolesAfterSwap = user.roles
+            .filter((r) => r !== roleToRemove)
+            .concat(requestedRole);
+        }
 
         const compatibilityError = validateRoleCompatibility(rolesAfterSwap);
         if (compatibilityError) {
@@ -446,9 +456,19 @@ export class RoleRequestController {
           }
 
           // Validate compatibility after swap
-          const rolesAfterSwap = requestUser.roles
-            .filter((r: Role) => r !== roleRequest.roleToRemove)
-            .concat(roleRequest.requestedRole);
+          // ✅ SPECIAL CASE: For AUTHORITY, calculate roles after removing ALL incompatible roles
+          let rolesAfterSwap: Role[];
+          if (roleRequest.requestedRole === Role.AUTHORITY) {
+            // AUTHORITY removes ALL business roles (PARTNER, DISTRIBUTOR, ADMIN)
+            rolesAfterSwap = requestUser.roles
+              .filter((r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r))
+              .concat(roleRequest.requestedRole);
+          } else {
+            // Normal role swap - remove only the specified role
+            rolesAfterSwap = requestUser.roles
+              .filter((r: Role) => r !== roleRequest.roleToRemove)
+              .concat(roleRequest.requestedRole);
+          }
 
           const compatibilityError = validateRoleCompatibility(rolesAfterSwap);
           if (compatibilityError) {
@@ -465,10 +485,25 @@ export class RoleRequestController {
           }
 
           // Perform the role swap
-          requestUser.roles = requestUser.roles.filter(
-            (r: Role) => r !== roleRequest.roleToRemove
-          );
-          requestUser.roles.push(roleRequest.requestedRole);
+          // ✅ SPECIAL CASE: If requesting AUTHORITY, remove ALL incompatible roles
+          if (roleRequest.requestedRole === Role.AUTHORITY) {
+            // AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, and ADMIN
+            // Remove ALL of them if present
+            requestUser.roles = requestUser.roles.filter(
+              (r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
+            );
+            requestUser.roles.push(roleRequest.requestedRole);
+
+            logger.info(
+              `Removed all incompatible roles (PARTNER, DISTRIBUTOR, ADMIN) when approving AUTHORITY for user ${requestUser.id}`
+            );
+          } else {
+            // Normal role swap - remove only the specified role
+            requestUser.roles = requestUser.roles.filter(
+              (r: Role) => r !== roleRequest.roleToRemove
+            );
+            requestUser.roles.push(roleRequest.requestedRole);
+          }
 
           try {
             await createRoleRecordForApproval(em, roleRequest, requestUser);

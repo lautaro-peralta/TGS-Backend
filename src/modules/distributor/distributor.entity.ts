@@ -72,7 +72,7 @@ export class Distributor extends BasePersonEntity {
    *
    * @returns {object} A DTO containing the distributor's DNI, name, address, phone, email, and zone.
    */
-  toDTO() {
+  toDTO(): any {
     return {
       dni: this.dni,
       name: this.name,
@@ -86,14 +86,17 @@ export class Distributor extends BasePersonEntity {
             isHeadquarters: this.zone.isHeadquarters,
           }
         : null,
-        products: this.products.isInitialized()
-      ? this.products.isEmpty()
-        ? []
-        : this.products.getItems().map((p) => ({
-            id: p.id,
-            description: p.description
-          }))
-      : [],
+      products: this.products.isInitialized()
+        ? this.products.isEmpty()
+          ? []
+          : this.products.getItems().map((p) => ({
+              id: p.id,
+              description: p.description
+            }))
+        : [],
+      sales: this.sales.isInitialized()
+        ? this.sales.getItems().map((s) => s.toDTO?.() ?? s)
+        : [],
     };
   }
 

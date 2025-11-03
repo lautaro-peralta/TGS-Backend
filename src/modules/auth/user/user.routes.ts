@@ -42,6 +42,17 @@ userRouter.put(
 );
 
 /**
+ * @route   PATCH /api/users/me/personal-info
+ * @desc    Update user personal information (phone, address).
+ * @access  Private
+ */
+userRouter.patch(
+  '/me/personal-info',
+  authMiddleware,
+  userController.updatePersonalInfo
+);
+
+/**
  * @route   PUT /api/users/:id
  * @desc    Update user properties (emailVerified, isActive, roles, profileCompleteness).
  * @access  Private (Admin only)
