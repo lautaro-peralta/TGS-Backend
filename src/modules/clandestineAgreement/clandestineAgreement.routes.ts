@@ -132,7 +132,7 @@ const idParamSchema = z.object({
 clandestineAgreementRouter.get(
   '/search',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   clandestineAgreementController.searchClandestineAgreements
 );
 
@@ -271,7 +271,7 @@ clandestineAgreementRouter.post(
 clandestineAgreementRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   clandestineAgreementController.getAllClandestineAgreements
 );
 
@@ -363,7 +363,7 @@ clandestineAgreementRouter.get(
 clandestineAgreementRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   validateWithSchema({ params: idParamSchema }),
   clandestineAgreementController.getOneClandestineAgreementById
 );

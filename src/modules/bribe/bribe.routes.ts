@@ -100,7 +100,7 @@ const bribeController = new BribeController();
  *       403:
  *         description: Forbidden - Admin or Partner role required
  */
-bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PARTNER]), bribeController.searchBribes);
+bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]]), bribeController.searchBribes);
 
 /**
  * @swagger
@@ -157,7 +157,7 @@ bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PAR
 bribeRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.getAllBribes
 );
 
@@ -224,7 +224,7 @@ bribeRouter.get(
 bribeRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.getOneBribeById
 );
 

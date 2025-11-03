@@ -115,7 +115,7 @@ const dniParamSchema = z.object({
 authorityRouter.get(
   '/search',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   authorityController.searchAuthorities
 );
 
@@ -238,7 +238,7 @@ authorityRouter.post(
 authorityRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   authorityController.getAllAuthorities
 );
 
@@ -301,7 +301,7 @@ authorityRouter.get(
 authorityRouter.get(
   '/:dni',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   validateWithSchema({ params: dniParamSchema }),
   authorityController.getOneAuthorityByDni
 );

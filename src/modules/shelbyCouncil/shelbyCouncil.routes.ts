@@ -117,7 +117,7 @@ const idParamSchema = z.object({
 shelbyCouncilRouter.get(
   '/search',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   shelbyCouncilController.searchShelbyCouncil
 );
 
@@ -244,7 +244,7 @@ shelbyCouncilRouter.post(
 shelbyCouncilRouter.get(
   '/',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   shelbyCouncilController.getAllConsejosShelby
 );
 
@@ -316,7 +316,7 @@ shelbyCouncilRouter.get(
 shelbyCouncilRouter.get(
   '/:id',
   authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   validateWithSchema({ params: idParamSchema }),
   shelbyCouncilController.getOneShelbyCouncilById
 );
