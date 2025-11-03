@@ -1,5 +1,5 @@
 // ============================================================================
-// REDIS MIDDLEWARE - Redis 錯誤處理和降級策略中介軟體
+// REDIS MIDDLEWARE - Middleware de manejo de errores y estrategias de degradación
 // ============================================================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -8,16 +8,16 @@ import { redisService } from '../services/redis.service.js';
 import { cacheService } from '../services/cache.service.js';
 
 /**
- * Redis 可用性檢查中介軟體
- * 在請求處理前檢查 Redis 狀態，如果不可用則記錄警告
+ * Middleware de verificación de disponibilidad de Redis
+ * Verifica el estado de Redis antes de procesar la solicitud, registra advertencia si no está disponible
  */
 export const redisHealthCheck = async (req: Request, res: Response, next: NextFunction) => {
-  // 檢查 Redis 狀態（非阻塞）
+  // Verificar estado de Redis (no bloqueante)
   const isRedisAvailable = await redisService.isAvailable().catch(() => false);
 
   if (!isRedisAvailable) {
-    logger.debug('Redis unavailable, using memory cache fallback');
-    // 設定請求標記，表示應該使用記憶體快取
+    logger.debug('Redis no disponible, usando fallback a caché en memoria');
+    // Establecer marca en la solicitud indicando que se debe usar caché en memoria
     (req as any).useMemoryCache = true;
   }
 
@@ -25,42 +25,42 @@ export const redisHealthCheck = async (req: Request, res: Response, next: NextFu
 };
 
 /**
- * Redis 錯誤處理中介軟體
- * 包裝快取操作，提供統一的錯誤處理和降級策略
+ * Middleware de manejo de errores de Redis
+ * Envuelve operaciones de caché con manejo unificado de errores y estrategia de degradación
  */
 export const withRedisFallback = (operation: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // 如果請求標記為使用記憶體快取，則略過 Redis 操作
+      // Si la solicitud está marcada para usar caché en memoria, omitir operación de Redis
       if ((req as any).useMemoryCache) {
-        logger.debug(`Skipping Redis ${operation} due to unavailability`);
+        logger.debug(`Omitiendo ${operation} de Redis debido a no disponibilidad`);
         return next();
       }
 
-      // 嘗試執行下一個中介軟體或路由處理器
+      // Intentar ejecutar el siguiente middleware o manejador de ruta
       await next();
 
     } catch (error) {
-      // 檢查是否為 Redis 相關錯誤
+      // Verificar si es un error relacionado con Redis
       const isRedisError = (error as Error).message?.includes('Redis') ||
                           (error as Error).message?.includes('ECONNREFUSED') ||
                           (error as any).code === 'REDIS_ERROR';
 
       if (isRedisError) {
-        logger.warn({ err: error as Error, operation }, `Redis ${operation} failed, continuing with memory cache`);
+        logger.warn({ err: error as Error, operation }, `${operation} de Redis falló, continuando con caché en memoria`);
 
-        // 設定標記並繼續處理
+        // Establecer marca y continuar procesamiento
         (req as any).useMemoryCache = true;
 
-        // 重新執行處理器，這次會使用記憶體快取
+        // Reintentar ejecución del manejador, esta vez usará caché en memoria
         try {
           await next();
         } catch (retryError) {
-          logger.error({ err: retryError, operation }, `Memory cache fallback also failed for ${operation}`);
+          logger.error({ err: retryError, operation }, `Fallback a caché en memoria también falló para ${operation}`);
           throw retryError;
         }
       } else {
-        // 非 Redis 錯誤，直接拋出
+        // Error no relacionado con Redis, lanzar directamente
         throw error;
       }
     }
@@ -68,15 +68,15 @@ export const withRedisFallback = (operation: string) => {
 };
 
 /**
- * 快取失效中介軟體
- * 在資料更新後自動失效相關快取
+ * Middleware de invalidación de caché
+ * Invalida automáticamente el caché relacionado después de actualizar datos
  */
 export const invalidateCache = (patterns: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // 先執行實際的請求處理
+    // Primero ejecutar el procesamiento real de la solicitud
     await next();
 
-    // 如果請求成功，則失效相關快取
+    // Si la solicitud fue exitosa, invalidar el caché relacionado
     if (res.statusCode >= 200 && res.statusCode < 300) {
       try {
         for (const pattern of patterns) {
@@ -84,29 +84,29 @@ export const invalidateCache = (patterns: string[]) => {
         }
 
         if (patterns.length > 0) {
-          logger.debug({ patterns }, 'Cache invalidated after successful operation');
+          logger.debug({ patterns }, 'Caché invalidado después de operación exitosa');
         }
       } catch (error) {
-        // 快取失效失敗不應該影響主要功能
-        logger.warn({ err: error, patterns }, 'Failed to invalidate cache patterns');
+        // El fallo en la invalidación de caché no debe afectar la funcionalidad principal
+        logger.warn({ err: error, patterns }, 'Fallo al invalidar patrones de caché');
       }
     }
   };
 };
 
 /**
- * Redis 監控中介軟體
- * 記錄快取命中率和效能指標
+ * Middleware de monitoreo de Redis
+ * Registra tasa de aciertos de caché y métricas de rendimiento
  */
 export const redisMonitoring = (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const originalJson = res.json;
 
-  // 攔截 JSON 回應來檢查快取狀態
+  // Interceptar respuesta JSON para verificar estado de caché
   res.json = function(body: any) {
     const duration = Date.now() - startTime;
 
-    // 檢查回應中是否有快取標記
+    // Verificar si hay marca de caché en la respuesta
     if (body?.pagination?.cached === true) {
       logger.debug(
         {
@@ -115,7 +115,7 @@ export const redisMonitoring = (req: Request, res: Response, next: NextFunction)
           cached: true,
           duration: `${duration}ms`
         },
-        'Cached response served'
+        'Respuesta servida desde caché'
       );
     }
 
@@ -126,27 +126,27 @@ export const redisMonitoring = (req: Request, res: Response, next: NextFunction)
 };
 
 /**
- * Redis 錯誤恢復中介軟體
- * 定期嘗試恢復 Redis 連接
+ * Middleware de recuperación de errores de Redis
+ * Intenta periódicamente recuperar la conexión Redis
  */
 let redisRecoveryAttempts = 0;
 const maxRecoveryAttempts = 5;
 
 export const redisRecovery = async (req: Request, res: Response, next: NextFunction) => {
-  // 定期檢查並嘗試恢復 Redis 連接
+  // Verificar periódicamente e intentar recuperar conexión Redis
   if (redisRecoveryAttempts < maxRecoveryAttempts) {
     try {
       const isAvailable = await redisService.isAvailable();
 
       if (isAvailable && (req as any).useMemoryCache) {
-        logger.info('Redis connection recovered, switching back from memory cache');
+        logger.info('Conexión Redis recuperada, volviendo desde caché en memoria');
         (req as any).useMemoryCache = false;
         redisRecoveryAttempts = 0;
       }
     } catch (error) {
       redisRecoveryAttempts++;
       if (redisRecoveryAttempts >= maxRecoveryAttempts) {
-        logger.warn('Max Redis recovery attempts reached');
+        logger.warn('Se alcanzó el máximo de intentos de recuperación de Redis');
       }
     }
   }
@@ -155,7 +155,7 @@ export const redisRecovery = async (req: Request, res: Response, next: NextFunct
 };
 
 /**
- * 組合中介軟體：完整的 Redis 錯誤處理和降級策略
+ * Middleware combinado: Manejo completo de errores y estrategia de degradación para Redis
  */
 export const redisResilienceMiddleware = [
   redisHealthCheck,
@@ -164,8 +164,8 @@ export const redisResilienceMiddleware = [
 ];
 
 /**
- * 快取中介軟體工廠函數
- * 為特定路由創建快取中介軟體
+ * Función factory de middleware de caché
+ * Crea middleware de caché para rutas específicas
  */
 export const createCacheMiddleware = (options: {
   key?: string | ((req: Request) => string);
@@ -175,20 +175,20 @@ export const createCacheMiddleware = (options: {
   return async (req: Request, res: Response, next: NextFunction) => {
     const { key, ttl, condition } = options;
 
-    // 檢查條件
+    // Verificar condición
     if (condition && !condition(req)) {
       return next();
     }
 
-    // 生成快取鍵
+    // Generar clave de caché
     const cacheKey = typeof key === 'function' ? key(req) : key || `${req.method}:${req.originalUrl}`;
 
     try {
-      // 嘗試從快取獲取資料
+      // Intentar obtener datos desde caché
       const cached = await cacheService.get(cacheKey);
 
       if (cached) {
-        logger.debug({ cacheKey }, 'Serving from cache');
+        logger.debug({ cacheKey }, 'Sirviendo desde caché');
 
         return res.json({
           ...cached,
@@ -197,13 +197,13 @@ export const createCacheMiddleware = (options: {
         });
       }
 
-      // 攔截回應來快取結果
+      // Interceptar respuesta para cachear resultado
       const originalJson = res.json;
       res.json = function(body: any) {
-        // 只有成功回應才快取
+        // Solo cachear respuestas exitosas
         if (res.statusCode >= 200 && res.statusCode < 300) {
           cacheService.set(cacheKey, body, ttl).catch(error => {
-            logger.warn({ err: error, cacheKey }, 'Failed to cache response');
+            logger.warn({ err: error, cacheKey }, 'Fallo al cachear respuesta');
           });
         }
 
@@ -211,8 +211,8 @@ export const createCacheMiddleware = (options: {
       };
 
     } catch (error) {
-      logger.warn({ err: error, cacheKey }, 'Cache middleware error');
-      // 快取失敗時繼續正常處理
+      logger.warn({ err: error, cacheKey }, 'Error en middleware de caché');
+      // Continuar procesamiento normal cuando falla el caché
     }
 
     next();
