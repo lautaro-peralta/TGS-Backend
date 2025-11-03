@@ -234,6 +234,11 @@ export class UserController {
         eligibleUsers = eligibleUsers.filter((user) => {
           const currentRoles = user.roles;
 
+          if (target === 'ADMIN') {
+            // For ADMIN role, exclude users who already have ADMIN role
+            return !currentRoles.includes(Role.ADMIN);
+          }
+
           if (target === 'AUTHORITY') {
             // AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, ADMIN
             // Also exclude users who already have AUTHORITY role
@@ -262,6 +267,14 @@ export class UserController {
           // For other roles, no filtering needed
           return true;
         });
+      } else {
+        // ──────────────────────────────────────────────────────────────────
+        // DEFAULT: Exclude users who already have ADMIN role
+        // This is the default behavior when no targetRole is specified
+        // ──────────────────────────────────────────────────────────────────
+        eligibleUsers = eligibleUsers.filter((user) =>
+          !user.roles.includes(Role.ADMIN)
+        );
       }
 
       // ────────────────────────────────────────────────────────────────────
@@ -745,6 +758,128 @@ export class UserController {
     } catch (err) {
       logger.error({ err }, 'Error completing profile');
       return ResponseUtil.internalError(res, 'Error completing profile', err);
+    }
+  }
+
+  /**
+   * Update personal information (phone, address)
+   */
+  async updatePersonalInfo(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // ────────────────────────────────────────────────────────────────────
+      // Extract authenticated user ID and update data
+      // ────────────────────────────────────────────────────────────────────
+      const { id } = (req as any).user;
+      const { phone, address } = req.body;
+
+      // ────────────────────────────────────────────────────────────────────
+      // Validate at least one field is provided
+      // ────────────────────────────────────────────────────────────────────
+      if (!phone && !address) {
+        return ResponseUtil.validationError(res, 'At least one field (phone or address) is required', [
+          { field: 'phone', message: 'Phone or address must be provided' },
+          { field: 'address', message: 'Phone or address must be provided' }
+        ]);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Fetch user from database
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { id }, { populate: ['person'] });
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User', id);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Check if user has personal information
+      // ────────────────────────────────────────────────────────────────────
+      if (!user.person) {
+        return ResponseUtil.error(
+          res,
+          'Profile must be completed first',
+          400
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Update person fields
+      // ────────────────────────────────────────────────────────────────────
+      const personEntity = (user.person as any)?.getEntity
+        ? (user.person as any).getEntity()
+        : (user.person as any);
+
+      if (phone) {
+        personEntity.phone = phone.trim();
+      }
+      if (address) {
+        personEntity.address = address.trim();
+      }
+
+      await em.flush();
+
+      // ────────────────────────────────────────────────────────────────────
+      // Also update related role entities (Distributor, Partner, Authority)
+      // since they inherit from BasePersonEntity and have their own copies
+      // ────────────────────────────────────────────────────────────────────
+      const dni = personEntity.dni;
+      if (dni) {
+        // Dynamically import role entities to avoid circular dependencies
+        const { Distributor } = await import('../../distributor/distributor.entity.js');
+        const { Partner } = await import('../../partner/partner.entity.js');
+        const { Authority } = await import('../../authority/authority.entity.js');
+
+        const updates: any = {};
+        if (phone) updates.phone = phone.trim();
+        if (address) updates.address = address.trim();
+
+        // Update Distributor if user has DISTRIBUTOR role
+        if (user.roles.includes(Role.DISTRIBUTOR)) {
+          const distributor = await em.findOne(Distributor, { dni });
+          if (distributor) {
+            em.assign(distributor, updates);
+            logger.info({ dni }, 'Updated Distributor personal info');
+          }
+        }
+
+        // Update Partner if user has PARTNER role
+        if (user.roles.includes(Role.PARTNER)) {
+          const partner = await em.findOne(Partner, { dni });
+          if (partner) {
+            em.assign(partner, updates);
+            logger.info({ dni }, 'Updated Partner personal info');
+          }
+        }
+
+        // Update Authority if user has AUTHORITY role
+        if (user.roles.includes(Role.AUTHORITY)) {
+          const authority = await em.findOne(Authority, { dni });
+          if (authority) {
+            em.assign(authority, updates);
+            logger.info({ dni }, 'Updated Authority personal info');
+          }
+        }
+
+        await em.flush();
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Refresh user entity to ensure person data is up-to-date
+      // ────────────────────────────────────────────────────────────────────
+      await em.refresh(user);
+
+      // ────────────────────────────────────────────────────────────────────
+      // Return updated user profile
+      // ────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Personal information updated successfully',
+        user.toDTO()
+      );
+    } catch (err) {
+      logger.error({ err }, 'Error updating personal information');
+      return ResponseUtil.internalError(res, 'Error updating personal information', err);
     }
   }
 }

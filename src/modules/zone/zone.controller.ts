@@ -90,9 +90,10 @@ export class ZoneController {
       // Extract and validate data
       // ──────────────────────────────────────────────────────────────────────
       const input = res.locals.validated.body;
-      const { name, isHeadquarters } = input as {
+      const { name, isHeadquarters, description } = input as {
         name: string;
         isHeadquarters?: boolean;
+        description?: string;
       };
 
       // ──────────────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ export class ZoneController {
       const newZone = em.create(Zone, {
         name: name,
         isHeadquarters: Boolean(isHeadquarters),
+        description: description, // ✅ Agregado
       });
       await em.persistAndFlush(newZone);
 
@@ -271,6 +273,11 @@ export class ZoneController {
         }
 
         zone.name = newName;
+      }
+
+      // ✅ Agregado manejo de description
+      if (input.description !== undefined) {
+        zone.description = input.description;
       }
 
       if (input.isHeadquarters !== undefined && input.isHeadquarters !== zone.isHeadquarters) {
