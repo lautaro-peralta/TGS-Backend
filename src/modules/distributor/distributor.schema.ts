@@ -54,6 +54,16 @@ export const createDistributorSchema = z.object({
   productsIds: z.array(z.number().int().positive()).optional(),
 
   zoneId: z.string().transform(Number),
+
+  /**
+   * Optional username for creating a user account.
+   */
+  username: z.string().min(3).optional(),
+
+  /**
+   * Optional password for creating a user account.
+   */
+  password: z.string().min(6).optional(),
 });
 
 /**

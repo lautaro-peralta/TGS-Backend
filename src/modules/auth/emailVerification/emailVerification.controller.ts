@@ -465,10 +465,10 @@ export class EmailVerificationController {
    * Reenvía verificación de email para usuarios no verificados (sin autenticación)
    * 
    * Este endpoint permite a usuarios que se registraron pero no han verificado su email
-   * solicitar un nuevo email de verificación usando solo su email.
-   * 
+   * solicitar un nuevo email de verificación usando su email o username.
+   *
    * VALIDACIONES:
-   * - Email debe existir en la base de datos
+   * - Email o username debe existir en la base de datos
    * - Usuario no debe tener email verificado
    * - Cooldown de 2 minutos entre reenvíos
    */
@@ -476,16 +476,26 @@ export class EmailVerificationController {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
-      const { email } = req.body;
+      // Email ya está validado por el schema de Zod (puede ser email o username)
+      const { email: emailOrUsername } = req.body;
 
       // ────────────────────────────────────────────────────────────────────
       // VALIDACIÓN: Usuario debe existir en la base de datos
+      // Buscar por email O username para mayor flexibilidad
       // ────────────────────────────────────────────────────────────────────
-      const user = await em.findOne(User, { email });
+      const user = await em.findOne(User, {
+        $or: [
+          { email: emailOrUsername },
+          { username: emailOrUsername }
+        ]
+      });
+
       if (!user) {
-        return ResponseUtil.notFound(res, 'User', email);
+        return ResponseUtil.notFound(res, 'User', emailOrUsername);
       }
+
+      // Usar el email real del usuario (importante cuando se provee username)
+      const email = user.email;
 
       // ────────────────────────────────────────────────────────────────────
       // VALIDACIÓN: Usuario no debe tener email verificado

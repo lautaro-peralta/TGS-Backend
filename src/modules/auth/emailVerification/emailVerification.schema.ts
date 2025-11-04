@@ -15,9 +15,14 @@ export const requestEmailVerificationSchema = z.object({
 
 /**
  * Schema para reenviar email de verificación automática
+ * Acepta tanto email como username para mayor flexibilidad
  */
 export const resendEmailVerificationSchema = z.object({
-  email: emailSchema,
+  email: z
+    .string()
+    .min(1, 'Email or username is required')
+    .max(255, 'Email or username cannot exceed 255 characters')
+    .trim(),
 });
 
 /**
