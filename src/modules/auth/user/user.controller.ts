@@ -201,7 +201,7 @@ export class UserController {
    * GET /api/users/verified?targetRole=AUTHORITY
    * GET /api/users/verified?targetRole=PARTNER
    * GET /api/users/verified?targetRole=DISTRIBUTOR
-   * Requires: ADMIN role
+   * Requires: ADMIN or PARTNER role
    */
   async getVerifiedUsers(req: Request, res: Response) {
     try {

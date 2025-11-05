@@ -239,9 +239,9 @@ export class SaleController {
 
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Find distributor (required)
+      // Find distributor (required) - Populate zone for bribe assignment
       // ──────────────────────────────────────────────────────────────────────
-      const distributor = await em.findOne(Distributor, { dni: String(distributorDni) });
+      const distributor = await em.findOne(Distributor, { dni: String(distributorDni) }, { populate: ['zone'] });
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', distributorDni);
       }
@@ -335,27 +335,46 @@ export class SaleController {
       // Handle illegal products and bribes
       // ──────────────────────────────────────────────────────────────────────
       if (isIllegalProduct) {
-        const authority = await em.findOne(
-          Authority,
-          { id: { $ne: null } },
-          { orderBy: { rank: 'asc' } }
-        );
+        // ✅ Buscar autoridad de la MISMA ZONA que el distribuidor
+        const distributorZoneId = distributor.zone?.id;
 
-        if (authority) {
-          newSale.authority = em.getReference(Authority, authority.id);
-
-          const percentage = Authority.rankToCommission(authority.rank) ?? 0;
-          const bribe = em.create(Bribe, {
-            authority,
-            amount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
-            sale: newSale,
-            creationDate: new Date(),
-            paid: false,
-          });
-
-          em.persist(bribe);
+        if (!distributorZoneId) {
+          logger.warn({
+            distributorDni: distributor.dni,
+            distributorName: distributor.name
+          }, 'Illegal product detected, but distributor has no zone assigned. Cannot assign bribe to authority.');
         } else {
-          logger.warn('Illegal product detected, but no authority is available.');
+          const authority = await em.findOne(
+            Authority,
+            { zone: distributorZoneId },  // ✅ FILTRO POR ZONA
+            { orderBy: { rank: 'asc' } }
+          );
+
+          if (authority) {
+            newSale.authority = em.getReference(Authority, authority.id);
+
+            const percentage = Authority.rankToCommission(authority.rank) ?? 0;
+            const bribe = em.create(Bribe, {
+              authority,
+              amount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
+              sale: newSale,
+              creationDate: new Date(),
+              paid: false,
+            });
+
+            em.persist(bribe);
+            logger.info({
+              authorityDni: authority.dni,
+              authorityName: authority.name,
+              zoneId: distributorZoneId,
+              bribeAmount: parseFloat((totalIllegalAmount * percentage).toFixed(2))
+            }, 'Bribe created and assigned to authority from distributor zone');
+          } else {
+            logger.warn({
+              zoneId: distributorZoneId,
+              distributorDni: distributor.dni
+            }, 'Illegal product detected, but no authority is available in distributor zone.');
+          }
         }
       }
 
