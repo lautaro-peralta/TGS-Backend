@@ -1,16 +1,16 @@
 // ============================================================================
 // IMPORTS - Dependencies
 // ============================================================================
-import { Router } from 'express';
+import { Router } from "express";
 
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
-import { payBribesSchema } from './bribe.schema.js';
-import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
-import { BribeController } from './bribe.controller.js';
-import { Role } from '../auth/user/user.entity.js';
+import { validateWithSchema } from "../../shared/middleware/validation.middleware.js";
+import { payBribesSchema } from "./bribe.schema.js";
+import { authMiddleware, rolesMiddleware } from "../auth/auth.middleware.js";
+import { BribeController } from "./bribe.controller.js";
+import { Role } from "../auth/user/user.entity.js";
 
 // ============================================================================
 // ROUTER - Bribe
@@ -28,12 +28,17 @@ const bribeController = new BribeController();
  * @access  Private (Admin only)
  */
 
-bribeRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.PARTNER]), bribeController.searchBribes);
 bribeRouter.get(
-  '/',
+  "/search",
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
-  bribeController.getAllBribes
+  bribeController.searchBribes,
+);
+bribeRouter.get(
+  "/",
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  bribeController.getAllBribes,
 );
 
 /**
@@ -42,10 +47,10 @@ bribeRouter.get(
  * @access  Private (Admin only)
  */
 bribeRouter.get(
-  '/:id',
+  "/:id",
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
-  bribeController.getOneBribeById
+  bribeController.getOneBribeById,
 );
 
 /**
@@ -54,11 +59,11 @@ bribeRouter.get(
  * @access  Private (Admin only)
  */
 bribeRouter.patch(
-  '/pay',
+  "/pay",
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: payBribesSchema }),
-  bribeController.payBribes
+  bribeController.payBribes,
 );
 
 /**
@@ -67,11 +72,11 @@ bribeRouter.patch(
  * @access  Private (Admin only)
  */
 bribeRouter.patch(
-  '/:id/pay',
+  "/:id/pay",
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: payBribesSchema }),
-  bribeController.payBribes
+  bribeController.payBribes,
 );
 
 /**
@@ -80,8 +85,8 @@ bribeRouter.patch(
  * @access  Private (Admin only)
  */
 bribeRouter.delete(
-  '/:id',
+  "/:id",
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
-  bribeController.deleteBribe
+  bribeController.deleteBribe,
 );

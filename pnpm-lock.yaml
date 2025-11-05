@@ -156,6 +156,9 @@ importers:
       nodemon:
         specifier: ^3.1.10
         version: 3.1.10
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -4811,6 +4814,11 @@ packages:
 
   present@0.0.3:
     resolution: {integrity: sha512-d0QMXYTKHuAO0n0IfI/x2lbNwybdNWjRQ08hQySzqMQ2M0gwh/IetTv2glkPJihFn+cMDYjK/BiVgcLcjsASgg==}
+
+  prettier@3.6.2:
+    resolution: {integrity: sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==}
+    engines: {node: '>=14'}
+    hasBin: true
 
   pretty-format@30.2.0:
     resolution: {integrity: sha512-9uBdv/B4EefsuAL+pWqueZyZS2Ba+LxfFeQ9DN14HU4bN8bhaxKdkpjpB6fs9+pSjIBu+FXQHImEg8j/Lw0+vA==}
@@ -12358,6 +12366,8 @@ snapshots:
       - supports-color
 
   present@0.0.3: {}
+
+  prettier@3.6.2: {}
 
   pretty-format@30.2.0:
     dependencies:
