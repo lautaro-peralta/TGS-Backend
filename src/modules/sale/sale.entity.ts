@@ -132,7 +132,7 @@ export class Sale extends BaseObjectEntity {
    *
    * @returns {object} The sale DTO.
    */
-  toDTO() {
+  toDTO(): any {
     return {
       id: this.id,
       description: this.description || null,

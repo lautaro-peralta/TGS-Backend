@@ -94,6 +94,18 @@ app.use(express.json({ limit: '10mb' }));      // Limit payload size
 // Cookie parsing
 app.use(cookieParser());
 
+// Serve static files (for Swagger customizations)
+app.use(express.static('public'));
+
+// Favicon handlers - serve SVG favicon
+app.get('/favicon.ico', (_req, res) => {
+  res.redirect('/favicon.svg');
+});
+
+app.get('/favicon.svg', (_req, res) => {
+  res.sendFile('favicon.svg', { root: 'public' });
+});
+
 // Request logging and monitoring middleware
 app.use((req, res, next) => {
   const start = Date.now();
@@ -152,7 +164,392 @@ app.use((req, res, next) => {
 app.use('/api-docs', swaggerUi.serve);
 app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'The Garrison System API',
-  customCss: '.swagger-ui .topbar { display: none }',
+  customCss: `
+    /* Hide default topbar */
+    .swagger-ui .topbar { display: none }
+
+    /* Modern, clean styles - Black, Light Blue, White palette */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f8f9fa;
+    }
+
+    .swagger-ui { max-width: 1400px; margin: 0 auto; }
+
+    /* Info section - clean white card */
+    .swagger-ui .info {
+      margin: 40px 0;
+      padding: 35px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      border-top: 4px solid #3498db;
+    }
+    .swagger-ui .info .title {
+      font-size: 42px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 20px;
+      letter-spacing: -0.5px;
+    }
+    .swagger-ui .info .description {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #2c3e50;
+    }
+    .swagger-ui .info .description h2 {
+      color: #1a1a1a;
+      font-size: 24px;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+      font-weight: 700;
+    }
+    .swagger-ui .info .description h3 {
+      color: #2c3e50;
+      font-size: 18px;
+      margin-top: 20px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .swagger-ui .info .description code {
+      background: #ecf0f1;
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: #3498db;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* Scheme container - sleek black with light blue accent */
+    .swagger-ui .scheme-container {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);
+      padding: 25px 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      border: 1px solid #3498db;
+    }
+
+    /* Servers label - bright white for visibility */
+    .swagger-ui .scheme-container label {
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 15px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Custom style for servers title */
+    .swagger-ui .servers-title {
+      color: #ffffff !important;
+    }
+
+    /* Server dropdown - white with blue accent */
+    .swagger-ui .scheme-container select {
+      background: #ffffff;
+      color: #1a1a1a;
+      border: 2px solid #3498db;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+      transition: all 0.3s ease;
+      margin-left: 12px;
+    }
+    .swagger-ui .scheme-container select:hover {
+      background: #3498db;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* Hide authorize button */
+    .swagger-ui .auth-wrapper {
+      display: none !important;
+    }
+
+    /* Filter input - light blue accent */
+    .swagger-ui .filter-container input {
+      border: 2px solid #dce4e9;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background: #ffffff;
+    }
+    .swagger-ui .filter-container input:focus {
+      border-color: #3498db;
+      box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
+      outline: none;
+      background: #ffffff;
+    }
+
+    /* Operation blocks - clean white cards */
+    .swagger-ui .opblock {
+      margin: 15px 0;
+      border-radius: 10px;
+      border: 2px solid #ecf0f1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .swagger-ui .opblock:hover {
+      border-color: #3498db;
+      box-shadow: 0 4px 16px rgba(52, 152, 219, 0.15);
+      transform: translateY(-2px);
+    }
+    .swagger-ui .opblock .opblock-summary-method {
+      min-width: 85px;
+      font-weight: 700;
+      border-radius: 6px;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    /* HTTP Method colors - keeping standard colors for clarity */
+    .swagger-ui .opblock.opblock-get .opblock-summary-method {
+      background: #3498db;
+    }
+    .swagger-ui .opblock.opblock-post .opblock-summary-method {
+      background: #27ae60;
+    }
+    .swagger-ui .opblock.opblock-put .opblock-summary-method {
+      background: #f39c12;
+    }
+    .swagger-ui .opblock.opblock-patch .opblock-summary-method {
+      background: #16a085;
+    }
+    .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+      background: #e74c3c;
+    }
+
+    .swagger-ui .opblock-tag {
+      font-size: 26px;
+      margin: 35px 0 15px 0;
+      font-weight: 700;
+      color: #1a1a1a;
+      border-left: 5px solid #3498db;
+      padding-left: 15px;
+      background: #ffffff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    /* Response/Request sections */
+    .swagger-ui .opblock-section {
+      background: #f8f9fa;
+    }
+
+    /* Try it out button - light blue */
+    .swagger-ui .btn.try-out__btn {
+      background: #3498db;
+      border-color: #3498db;
+      color: #ffffff;
+      border-radius: 8px;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 20px;
+    }
+    .swagger-ui .btn.try-out__btn:hover {
+      background: #2980b9;
+      border-color: #2980b9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+
+    /* Execute button - contrasting teal/green */
+    .swagger-ui .btn.execute {
+      background: #1abc9c;
+      border-color: #1abc9c;
+      color: #ffffff;
+      border-radius: 8px;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 20px;
+    }
+    .swagger-ui .btn.execute:hover {
+      background: #16a085;
+      border-color: #16a085;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(26, 188, 156, 0.3);
+    }
+
+    /* Cancel button */
+    .swagger-ui .btn.cancel {
+      background: #2c3e50;
+      border-color: #2c3e50;
+      color: #ffffff;
+    }
+    .swagger-ui .btn.cancel:hover {
+      background: #1a1a1a;
+      border-color: #1a1a1a;
+    }
+
+    /* Schemas section - estructura simple */
+    .swagger-ui section.models {
+      margin-top: 40px;
+      padding: 20px;
+      background: #ffffff;
+    }
+
+    /* Título de schemas */
+    .swagger-ui section.models h4,
+    .swagger-ui section.models h4 span {
+      font-size: 28px !important;
+      font-weight: 700 !important;
+      color: #1a1a1a !important;
+      margin: 0 0 20px 0 !important;
+      padding: 0 0 10px 0 !important;
+      border-bottom: 2px solid #1a1a1a !important;
+    }
+
+    /* Container de cada schema */
+    .swagger-ui section.models .model-container {
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      background: #ffffff;
+    }
+
+    /* Reset de modelo */
+    .swagger-ui .model-container .model-box {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Título del schema individual */
+    .swagger-ui .model-box > .model-toggle {
+      padding: 12px 16px !important;
+      background: #f5f5f5 !important;
+      border-bottom: 1px solid #ddd !important;
+      cursor: pointer !important;
+    }
+
+    .swagger-ui .model-toggle .model-title,
+    .swagger-ui .model-toggle .model-title span {
+      font-size: 16px !important;
+      font-weight: 600 !important;
+      color: #1a1a1a !important;
+      margin: 0 !important;
+    }
+
+    /* Contenido expandido - sin superposición */
+    .swagger-ui .model-container .model {
+      padding: 16px !important;
+      background: #ffffff !important;
+      margin: 0 !important;
+      clear: both !important;
+      overflow: visible !important;
+    }
+
+    .swagger-ui .model-container.model-open {
+      overflow: visible !important;
+    }
+
+    .swagger-ui .model-box .model {
+      border: none !important;
+    }
+
+    /* Tabla de propiedades */
+    .swagger-ui table.model {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin: 0 !important;
+    }
+
+    .swagger-ui table.model tbody tr {
+      border-bottom: 1px solid #eee !important;
+    }
+
+    .swagger-ui table.model tbody tr:last-child {
+      border-bottom: none !important;
+    }
+
+    .swagger-ui table.model tbody tr td {
+      padding: 10px 8px !important;
+      vertical-align: top !important;
+    }
+
+    /* Nombre de propiedad */
+    .swagger-ui table.model tbody tr td:first-child {
+      font-weight: 600 !important;
+      color: #1a1a1a !important;
+      width: 30% !important;
+    }
+
+    /* Tipo y descripción */
+    .swagger-ui table.model tbody tr td:nth-child(2) {
+      color: #333 !important;
+      width: 70% !important;
+    }
+
+    /* Badge de tipo */
+    .swagger-ui .prop-type {
+      padding: 2px 8px !important;
+      background: #3498db !important;
+      color: #fff !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      margin-right: 8px !important;
+    }
+
+    /* Asterisco requerido */
+    .swagger-ui .required {
+      color: #e74c3c !important;
+      margin-left: 4px !important;
+    }
+
+    /* Response tabs */
+    .swagger-ui .response-col_status {
+      color: #1a1a1a;
+      font-weight: 700;
+    }
+
+    /* Parameters table */
+    .swagger-ui table thead tr th {
+      color: #1a1a1a;
+      font-weight: 700;
+      border-bottom: 2px solid #3498db;
+    }
+
+    /* Links */
+    .swagger-ui a {
+      color: #3498db;
+      font-weight: 600;
+    }
+    .swagger-ui a:hover {
+      color: #2980b9;
+    }
+  `,
+  customfavIcon: '/favicon.svg',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    syntaxHighlight: {
+      activate: true,
+      theme: 'monokai'
+    },
+    tryItOutEnabled: true,
+    defaultModelsExpandDepth: 3,
+    defaultModelExpandDepth: 3,
+  },
+  customJs: ['/swagger-custom.js'],
 }));
 
 // Endpoint para obtener la especificación JSON
@@ -164,6 +561,11 @@ app.get('/api-docs.json', (_req, res) => {
 // ============================================================================
 // API ROUTES
 // ============================================================================
+
+// Root route - Serve landing page
+app.get('/', (_req, res) => {
+  res.sendFile('index.html', { root: 'public' });
+});
 
 // Health checks - Should be before other routes for proper monitoring
 app.use('/health', healthRouter);

@@ -46,6 +46,10 @@ export const createZoneSchema = z.object({
    */
   name: z.string().min(1, 'Zone name is required'),
   /**
+   * Description of the zone.
+   */
+  description: z.string().optional(),
+  /**
    * Indicates if the zone is a headquarters.
    * Defaults to false.
    */
@@ -58,5 +62,6 @@ export const createZoneSchema = z.object({
  */
 export const updateZoneSchema = z.object({
   name: z.string().min(1, 'Zone name is required').optional(),
+  description: z.string().optional(),
   isHeadquarters: z.boolean().optional(),
 });

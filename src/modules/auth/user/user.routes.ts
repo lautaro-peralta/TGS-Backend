@@ -23,16 +23,74 @@ const userController = new UserController();
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
- * @route   GET /api/users/me
- * @desc    Get authenticated user profile.
- * @access  Private
+ * @swagger
+ * /api/users/me:
+ *   get:
+ *     tags: [Users]
+ *     summary: Get current user profile
+ *     description: Retrieves the authenticated user's profile information
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
  */
 userRouter.get('/me', authMiddleware, userController.getUserProfile);
 
 /**
- * @route   PUT /api/users/me/complete-profile
- * @desc    Complete user profile with personal information.
- * @access  Private
+ * @swagger
+ * /api/users/me/complete-profile:
+ *   put:
+ *     tags: [Users]
+ *     summary: Complete user profile
+ *     description: Complete authenticated user's profile with personal information (DNI, phone, address)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - dni
+ *               - name
+ *               - phone
+ *               - address
+ *             properties:
+ *               dni:
+ *                 type: string
+ *                 minLength: 7
+ *                 maxLength: 10
+ *                 example: "12345678"
+ *               name:
+ *                 type: string
+ *                 example: "Thomas Shelby"
+ *               phone:
+ *                 type: string
+ *                 example: "+44 121 496 0000"
+ *               address:
+ *                 type: string
+ *                 example: "6 Watery Lane, Birmingham"
+ *     responses:
+ *       200:
+ *         description: Profile completed successfully
+ *       400:
+ *         description: Validation error or profile already completed
+ *       401:
+ *         description: Unauthorized
  */
 userRouter.put(
   '/me/complete-profile',
@@ -41,10 +99,59 @@ userRouter.put(
   userController.completeProfile
 );
 
+
+
 /**
- * @route   PUT /api/users/:id
- * @desc    Update user properties (emailVerified, isActive, roles, profileCompleteness).
- * @access  Private (Admin only)
+ * @swagger
+ * /api/users/{id}:
+ *   put:
+ *     tags: [Users]
+ *     summary: Update user properties (Admin only)
+ *     description: Updates user's verification status, email verification, active status, and roles
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User's ID
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isVerified:
+ *                 type: boolean
+ *                 example: true
+ *               emailVerified:
+ *                 type: boolean
+ *                 example: true
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *               roles:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [ADMIN, CLIENT, PARTNER, DISTRIBUTOR, AUTHORITY]
+ *                 example: ["CLIENT"]
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ *       404:
+ *         description: User not found
  */
 userRouter.put(
   '/:id',
@@ -55,9 +162,99 @@ userRouter.put(
 );
 
 /**
- * @route   PATCH /api/users/:id/role
- * @desc    Change user role.
- * @access  Private (Admin only)
+ * @swagger
+ * /api/users/me/personal-info:
+ *   patch:
+ *     tags: [Users]
+ *     summary: Update personal information
+ *     description: Updates authenticated user's personal information (phone and/or address). Requires profile to be completed first.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+44 121 496 0000"
+ *                 description: User's phone number
+ *               address:
+ *                 type: string
+ *                 example: "6 Watery Lane, Birmingham"
+ *                 description: User's address
+ *             minProperties: 1
+ *     responses:
+ *       200:
+ *         description: Personal information updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Personal information updated successfully"
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Validation error or profile not completed
+ *       401:
+ *         description: Unauthorized
+ */
+userRouter.patch(
+  '/me/personal-info',
+  authMiddleware,
+  userController.updatePersonalInfo
+);
+
+/**
+ * @swagger
+ * /api/users/{id}/role:
+ *   patch:
+ *     tags: [Users]
+ *     summary: Change user role (Admin only)
+ *     description: Updates a specific user's role in the system
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User's ID
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [ADMIN, CLIENT, PARTNER, DISTRIBUTOR, AUTHORITY]
+ *                 example: "PARTNER"
+ *     responses:
+ *       200:
+ *         description: User role updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ *       404:
+ *         description: User not found
  */
 userRouter.patch(
   '/:id/role',
@@ -65,6 +262,45 @@ userRouter.patch(
   rolesMiddleware([Role.ADMIN]),
   validateWithSchema(changeRoleSchema),
   userController.updateUserRoles
+);
+
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     tags: [Users]
+ *     summary: Get all users (Admin only)
+ *     description: Retrieves a list of all users in the system
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ * @route   GET /api/users/verified
+ * @desc    Get all verified users eligible for role conversion.
+ * @access  Private (Admin only)
+ */
+userRouter.get(
+  '/verified',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  userController.getVerifiedUsers
 );
 
 /**
@@ -80,9 +316,31 @@ userRouter.get(
 );
 
 /**
- * @route   GET /api/users/:identifier
- * @desc    Get user by id or username.
- * @access  Private (Admin only)
+ * @swagger
+ * /api/users/{identifier}:
+ *   get:
+ *     tags: [Users]
+ *     summary: Get user by ID or username (Admin only)
+ *     description: Retrieves a specific user by their ID or username
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User's ID (UUID) or username
+ *         example: "thomas_shelby"
+ *     responses:
+ *       200:
+ *         description: User found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ *       404:
+ *         description: User not found
  */
 userRouter.get(
   '/:identifier',

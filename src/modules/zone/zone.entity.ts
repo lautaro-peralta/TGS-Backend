@@ -41,6 +41,14 @@ export class Zone extends BaseObjectEntity {
   name!: string;
 
   /**
+   * Description of the zone.
+   *
+   * @type {string}
+   */
+  @Property({ nullable: true })
+  description?: string;
+
+  /**
    * Indicates if the zone is a headquarters.
    *
    * @type {boolean}
@@ -74,11 +82,13 @@ export class Zone extends BaseObjectEntity {
    *
    * @param {string} name - The name of the zone.
    * @param {boolean} isHeadquarters - Whether the zone is a headquarters.
+   * @param {string} description - Optional description of the zone.
    */
-  constructor(name: string, isHeadquarters: boolean) {
+  constructor(name: string, isHeadquarters: boolean, description?: string) {
     super();
     this.name = name;
     this.isHeadquarters = isHeadquarters;
+    this.description = description;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -94,6 +104,7 @@ export class Zone extends BaseObjectEntity {
     return {
       id: this.id,
       name: this.name,
+      description: this.description,
       isHeadquarters: this.isHeadquarters,
     };
   }
