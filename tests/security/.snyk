@@ -1,0 +1,25 @@
+# Snyk (https://snyk.io) policy file
+
+# Ignores
+# Use this section to ignore specific vulnerabilities (not recommended for production)
+# ignore:
+#   SNYK-JS-EXAMPLE-123456:
+#     - '*':
+#         reason: 'False positive or accepted risk'
+#         expires: '2025-12-31T00:00:00.000Z'
+
+# Patch
+# Use this section to patch vulnerabilities
+# patch: {}
+
+# Language settings
+version: v1.25.0
+
+# Exclude patterns
+exclude:
+  - tests/**
+  - dist/**
+  - coverage/**
+  - node_modules/**
+  - '*.test.ts'
+  - '*.spec.ts'

@@ -1,0 +1,144 @@
+# Gitleaks Configuration for TGS Backend
+# Documentation: https://github.com/gitleaks/gitleaks
+
+title = "TGS Backend - Secret Detection"
+
+[extend]
+# useDefault will extend the base configuration with all default gitleaks rules
+useDefault = true
+
+# Custom rules for TGS Backend specific patterns
+[[rules]]
+id = "tgs-jwt-secret"
+description = "TGS JWT Secret Key"
+regex = '''(?i)(jwt[_-]?secret|token[_-]?secret|access[_-]?secret)['":\s]*[=:]\s*['"][a-zA-Z0-9_\-\+\/]{32,}['"]'''
+tags = ["jwt", "secret", "tgs"]
+[rules.allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''docs/.*\.md$''',
+  '''tests/fixtures/.*'''
+]
+
+[[rules]]
+id = "tgs-database-password"
+description = "Database connection password"
+regex = '''(?i)(db[_-]?password|database[_-]?password|postgres[_-]?password)['":\s]*[=:]\s*['"][^'"]{8,}['"]'''
+tags = ["database", "password", "tgs"]
+[rules.allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''docker-compose\.yml$''',
+  '''tests/.*'''
+]
+
+[[rules]]
+id = "tgs-sendgrid-api-key"
+description = "SendGrid API Key"
+regex = '''SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}'''
+tags = ["sendgrid", "api-key", "tgs"]
+[rules.allowlist]
+paths = [
+  '''\.env\.example$'''
+]
+
+[[rules]]
+id = "tgs-redis-password"
+description = "Redis password"
+regex = '''(?i)(redis[_-]?password|redis[_-]?auth)['":\s]*[=:]\s*['"][^'"]{8,}['"]'''
+tags = ["redis", "password", "tgs"]
+[rules.allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''docker-compose\.yml$'''
+]
+
+[[rules]]
+id = "tgs-private-key"
+description = "Private key content"
+regex = '''-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'''
+tags = ["private-key", "tgs"]
+[rules.allowlist]
+paths = [
+  '''tests/fixtures/.*'''
+]
+
+[[rules]]
+id = "tgs-api-key-generic"
+description = "Generic API Key pattern"
+regex = '''(?i)api[_-]?key['":\s]*[=:]\s*['"][a-zA-Z0-9_\-]{20,}['"]'''
+tags = ["api-key", "tgs"]
+[rules.allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''docs/.*\.md$'''
+]
+
+[[rules]]
+id = "tgs-hardcoded-password"
+description = "Hardcoded password in code"
+regex = '''(?i)(password|passwd|pwd)['":\s]*[=:]\s*['"]((?!['"]).{8,})['"]'''
+tags = ["password", "hardcoded", "tgs"]
+[rules.allowlist]
+paths = [
+  '''\.env\.example$''',
+  '''tests/.*''',
+  '''docs/.*'''
+]
+regexes = [
+  '''password['":\s]*[=:]\s*['"]process\.env\.''',  # Allow process.env references
+  '''password['":\s]*[=:]\s*['"]config\.''',        # Allow config references
+  '''password['":\s]*[=:]\s*['"]\{\{.*\}\}['"]''', # Allow template variables
+  '''password['":\s]*[=:]\s*['"]<.*>['"]'''         # Allow placeholder patterns
+]
+
+# Global allowlist
+[allowlist]
+description = "Global allowlist for safe files and patterns"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.template$''',
+  '''package-lock\.json$''',
+  '''pnpm-lock\.yaml$''',
+  '''yarn\.lock$''',
+  '''^\.git/''',
+  '''node_modules/''',
+  '''dist/''',
+  '''coverage/''',
+  '''\.md$''',
+  '''\.txt$''',
+  '''tests/fixtures/''',
+  '''tests/__mocks__/''',
+  '''\.gitleaks\.toml$'''
+]
+
+# Common false positives
+regexes = [
+  '''example\.com''',
+  '''your-api-key-here''',
+  '''<api-key>''',
+  '''<<.*>>''',
+  '''\{\{.*\}\}''',
+  '''REPLACE_ME''',
+  '''CHANGE_THIS''',
+  '''YOUR_.*_HERE''',
+  '''test(ing)?''',
+  '''mock''',
+  '''fake''',
+  '''dummy'''
+]
+
+# Stop words that indicate examples or documentation
+stopwords = [
+  "example",
+  "sample",
+  "demo",
+  "test",
+  "mock",
+  "fake",
+  "dummy",
+  "placeholder",
+  "template",
+  "your-key-here",
+  "replace-me"
+]

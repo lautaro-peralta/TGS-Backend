@@ -1,0 +1,142 @@
+{
+  "name": "TGS Backend Security Configuration",
+  "description": "Security scanning configuration for SAST/DAST testing",
+  "version": "1.0.0",
+
+  "sast": {
+    "enabled": true,
+    "tools": [
+      "snyk",
+      "eslint-plugin-security"
+    ],
+    "scanPaths": [
+      "src/**/*.ts",
+      "src/**/*.js"
+    ],
+    "excludePaths": [
+      "node_modules/**",
+      "dist/**",
+      "tests/**",
+      "coverage/**"
+    ],
+    "rules": {
+      "severity": {
+        "critical": "error",
+        "high": "error",
+        "medium": "warning",
+        "low": "info"
+      },
+      "categories": [
+        "injection",
+        "broken-authentication",
+        "sensitive-data-exposure",
+        "xml-external-entities",
+        "broken-access-control",
+        "security-misconfiguration",
+        "xss",
+        "insecure-deserialization",
+        "vulnerable-components",
+        "insufficient-logging"
+      ]
+    }
+  },
+
+  "dast": {
+    "enabled": true,
+    "baseUrl": "http://localhost:3000",
+    "endpoints": [
+      "/api/auth/register",
+      "/api/auth/login",
+      "/api/auth/logout",
+      "/api/sales",
+      "/api/clients",
+      "/api/products"
+    ],
+    "tests": [
+      {
+        "name": "SQL Injection",
+        "type": "injection",
+        "payloads": [
+          "' OR '1'='1",
+          "1' UNION SELECT NULL--",
+          "'; DROP TABLE users--"
+        ]
+      },
+      {
+        "name": "XSS",
+        "type": "xss",
+        "payloads": [
+          "<script>alert('XSS')</script>",
+          "<img src=x onerror=alert('XSS')>",
+          "javascript:alert('XSS')"
+        ]
+      },
+      {
+        "name": "Command Injection",
+        "type": "injection",
+        "payloads": [
+          "; ls -la",
+          "| cat /etc/passwd",
+          "&& whoami"
+        ]
+      },
+      {
+        "name": "Path Traversal",
+        "type": "path-traversal",
+        "payloads": [
+          "../../../etc/passwd",
+          "..\\..\\..\\windows\\system32\\config\\sam",
+          "....//....//....//etc/passwd"
+        ]
+      }
+    ]
+  },
+
+  "dependencies": {
+    "enabled": true,
+    "checkOutdated": true,
+    "checkVulnerabilities": true,
+    "allowedLicenses": [
+      "MIT",
+      "Apache-2.0",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "ISC"
+    ],
+    "severityThreshold": "high"
+  },
+
+  "headers": {
+    "required": [
+      "X-Content-Type-Options",
+      "X-Frame-Options",
+      "X-XSS-Protection",
+      "Strict-Transport-Security",
+      "Content-Security-Policy"
+    ],
+    "forbidden": [
+      "X-Powered-By",
+      "Server"
+    ]
+  },
+
+  "authentication": {
+    "testCredentials": {
+      "username": "security-test-user",
+      "password": "SecurityTest123!"
+    },
+    "tests": [
+      "brute-force-protection",
+      "session-timeout",
+      "password-complexity",
+      "jwt-validation"
+    ]
+  },
+
+  "reporting": {
+    "format": "json",
+    "outputPath": "tests/security/reports",
+    "includeEvidence": true,
+    "generateHtml": true
+  }
+}
