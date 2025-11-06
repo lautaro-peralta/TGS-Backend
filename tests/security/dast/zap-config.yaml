@@ -1,0 +1,243 @@
+# OWASP ZAP Configuration for TGS Backend DAST
+# Documentation: https://www.zaproxy.org/docs/docker/
+
+# Environment configuration
+env:
+  # Context configuration
+  contexts:
+    - name: "TGS-Backend-API"
+      urls:
+        - "http://localhost:3000"
+      includePaths:
+        - "http://localhost:3000/api/.*"
+      excludePaths:
+        - "http://localhost:3000/api/health"
+        - "http://localhost:3000/api/docs.*"
+        - "http://localhost:3000/api/swagger.*"
+
+      # Authentication
+      authentication:
+        method: "json"
+        parameters:
+          loginUrl: "http://localhost:3000/api/auth/login"
+          loginRequestData: |
+            {
+              "identifier": "admin@test.com",
+              "password": "TestPassword123"
+            }
+        verification:
+          method: "response"
+          loggedInRegex: '\Q"accessToken"\E'
+          loggedOutRegex: '\Q"error"\E'
+
+      # Session management
+      sessionManagement:
+        method: "cookie"
+        parameters: {}
+
+      # Users for authentication
+      users:
+        - name: "admin-user"
+          credentials:
+            identifier: "admin@test.com"
+            password: "TestPassword123"
+        - name: "seller-user"
+          credentials:
+            identifier: "seller@test.com"
+            password: "TestPassword123"
+        - name: "viewer-user"
+          credentials:
+            identifier: "viewer@test.com"
+            password: "TestPassword123"
+
+      # Technology stack
+      technology:
+        exclude:
+          - "PHP"
+          - "Java"
+          - "C#"
+          - "Python"
+          - "Ruby"
+        include:
+          - "JavaScript"
+          - "Node.js"
+          - "Express"
+          - "PostgreSQL"
+          - "JSON"
+
+# Jobs configuration
+jobs:
+  # Passive scan configuration
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+      enableTags: false
+    rules:
+      - id: 10015  # Incomplete or No Cache-control Header Set
+        threshold: "medium"
+      - id: 10021  # X-Content-Type-Options Header Missing
+        threshold: "low"
+      - id: 10020  # X-Frame-Options Header Not Set
+        threshold: "medium"
+      - id: 10096  # Timestamp Disclosure
+        threshold: "low"
+      - id: 10109  # Modern Web Application
+        threshold: "info"
+
+  # Spider configuration (crawling)
+  - type: spider
+    parameters:
+      context: "TGS-Backend-API"
+      user: "admin-user"
+      url: "http://localhost:3000/api/"
+      maxDuration: 5  # minutes
+      maxDepth: 5
+      maxChildren: 10
+      acceptCookies: true
+      handleODataParametersVisited: false
+      parseComments: true
+      parseGit: false
+      parseRobotsTxt: false
+      parseSVNEntries: false
+      parseSitemapXml: false
+      postForm: true
+      processForm: true
+      requestWaitTime: 200  # milliseconds
+
+  # Active scan configuration
+  - type: activeScan
+    parameters:
+      context: "TGS-Backend-API"
+      user: "admin-user"
+      url: "http://localhost:3000/api/"
+      recurse: true
+      maxRuleDurationInMins: 5
+      maxScanDurationInMins: 30
+      delayInMs: 0
+      handleAntiCSRFTokens: true
+      inScopeOnly: true
+      scanHeadersAllRequests: true
+      threadPerHost: 2
+    policyDefinition:
+      defaultStrength: "medium"
+      defaultThreshold: "medium"
+      rules:
+        # SQL Injection
+        - id: 40018
+          name: "SQL Injection"
+          threshold: "low"
+          strength: "high"
+        # Cross Site Scripting (XSS)
+        - id: 40012
+          name: "Cross Site Scripting (Reflected)"
+          threshold: "low"
+          strength: "high"
+        - id: 40014
+          name: "Cross Site Scripting (Persistent)"
+          threshold: "low"
+          strength: "high"
+        - id: 40016
+          name: "Cross Site Scripting (Persistent) - Prime"
+          threshold: "low"
+          strength: "high"
+        - id: 40017
+          name: "Cross Site Scripting (Persistent) - Spider"
+          threshold: "low"
+          strength: "high"
+        # Path Traversal
+        - id: 6
+          name: "Path Traversal"
+          threshold: "low"
+          strength: "high"
+        # Remote File Inclusion
+        - id: 7
+          name: "Remote File Inclusion"
+          threshold: "medium"
+          strength: "medium"
+        # Server Side Include
+        - id: 40009
+          name: "Server Side Include"
+          threshold: "medium"
+          strength: "medium"
+        # CSRF
+        - id: 20012
+          name: "Anti CSRF Tokens Check"
+          threshold: "low"
+          strength: "high"
+        # Authentication bypass
+        - id: 10101
+          name: "Authentication Request Identified"
+          threshold: "low"
+          strength: "medium"
+        # Session fixation
+        - id: 40013
+          name: "Session Fixation"
+          threshold: "medium"
+          strength: "medium"
+        # Buffer Overflow
+        - id: 30001
+          name: "Buffer Overflow"
+          threshold: "medium"
+          strength: "medium"
+        # Format String Error
+        - id: 30002
+          name: "Format String Error"
+          threshold: "medium"
+          strength: "medium"
+        # Integer Overflow
+        - id: 30003
+          name: "Integer Overflow Error"
+          threshold: "medium"
+          strength: "medium"
+        # CRLF Injection
+        - id: 40003
+          name: "CRLF Injection"
+          threshold: "medium"
+          strength: "medium"
+        # NoSQL Injection
+        - id: 40033
+          name: "NoSQL Injection - MongoDB"
+          threshold: "low"
+          strength: "high"
+        # XXE
+        - id: 90019
+          name: "External XML Entity Attack"
+          threshold: "low"
+          strength: "high"
+        # Server Side Request Forgery
+        - id: 40046
+          name: "Server Side Request Forgery"
+          threshold: "medium"
+          strength: "medium"
+
+  # Report generation
+  - type: report
+    parameters:
+      template: "traditional-html"
+      reportDir: "tests/security/reports"
+      reportFile: "zap-dast-report"
+      reportTitle: "TGS Backend - DAST Security Report"
+      reportDescription: "OWASP ZAP Dynamic Application Security Testing Report for TGS Backend API"
+    risks:
+      - high
+      - medium
+      - low
+      - info
+
+# Alert filters
+alertFilters:
+  - ruleId: 10096  # Timestamp Disclosure - usually false positive
+    newRisk: "Info"
+  - ruleId: 10109  # Modern Web Application
+    newRisk: "Info"
+  - ruleId: 10015  # Incomplete or No Cache-control Header Set
+    newRisk: "Low"
+    url: "http://localhost:3000/api/auth/.*"  # Auth endpoints might not need caching
+
+# Risk thresholds for CI/CD
+thresholds:
+  high: 0      # Fail build if high risk vulnerabilities found
+  medium: 5    # Allow up to 5 medium risk vulnerabilities
+  low: 10      # Allow up to 10 low risk vulnerabilities
+  info: 999    # Unlimited info alerts
