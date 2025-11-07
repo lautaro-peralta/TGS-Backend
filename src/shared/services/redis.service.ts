@@ -1,5 +1,5 @@
 // ============================================================================
-// REDIS SERVICE - Servicio de conexión y operaciones Redis con fallbacks
+// REDIS SERVICE - Redis connection service and operations with fallbacks
 // ============================================================================
 
 import { createClient, RedisClientType } from 'redis';
@@ -24,13 +24,13 @@ export class RedisService {
       return;
     }
 
-    // Verificar si Redis está habilitado
+    // Check if Redis is enabled
     if (!env.REDIS_ENABLED) {
       logger.info('Redis is disabled, skipping connection');
       return;
     }
 
-    // Verificar que las variables de entorno de Redis estén definidas
+    // Check that Redis environment variables are defined
     if (!env.REDIS_HOST || env.REDIS_HOST === 'undefined') {
       logger.info('Redis host not configured, skipping connection');
       return;
@@ -54,7 +54,7 @@ export class RedisService {
         },
       });
 
-      // Manejar eventos de conexión
+      // Handle connection events
       this.client.on('connect', () => {
         logger.info('Redis client connecting...');
       });
@@ -75,10 +75,10 @@ export class RedisService {
         logger.warn('Redis connection ended');
       });
 
-      // Conectar
+      // Connect
       await this.client.connect();
 
-      // Verificar conexión con ping
+      // Verify connection with ping
       await this.client.ping();
 
       logger.info('Redis connection established successfully');
@@ -87,7 +87,7 @@ export class RedisService {
       this.isConnected = false;
       logger.error({ err: error }, 'Failed to connect to Redis');
 
-      // Lanzar error si Redis es requerido en producción
+      // Throw error if Redis is required in production
       if (env.NODE_ENV === 'production') {
         throw new Error('Redis connection is required in production environment');
       }
@@ -95,7 +95,7 @@ export class RedisService {
   }
 
   /**
-   * Obtiene el cliente Redis (conecta automáticamente si es necesario)
+   * Gets Redis client (automatically connects if necessary)
    */
   async getClient(): Promise<RedisClientType> {
     if (!this.client) {
@@ -110,10 +110,10 @@ export class RedisService {
   }
 
   /**
-   * Verifica si Redis está disponible
+   * Checks if Redis is available
    */
   async isAvailable(): Promise<boolean> {
-    // Si Redis está deshabilitado, siempre retornar false
+    // If Redis is disabled, always return false
     if (!env.REDIS_ENABLED || !env.REDIS_HOST || env.REDIS_HOST === 'undefined') {
       return false;
     }

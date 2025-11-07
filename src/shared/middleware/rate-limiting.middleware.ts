@@ -1,5 +1,5 @@
 // ============================================================================
-// DISTRIBUTED RATE LIMITING MIDDLEWARE - Middleware de limitación de tasa distribuida
+// DISTRIBUTED RATE LIMITING MIDDLEWARE - Distributed rate limiting middleware
 // ============================================================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -7,37 +7,37 @@ import logger from '../utils/logger.js';
 import { redisService } from '../services/redis.service.js';
 
 /**
- * Configuración de limitación de tasa con ventana deslizante
+ * Sliding window rate limiting configuration
  */
 interface SlidingWindowConfig {
-  windowMs: number;     // Tamaño de ventana (milisegundos)
-  maxRequests: number; // Número máximo de solicitudes en la ventana
-  keyGenerator?: (req: Request) => string; // Generador de clave personalizado
-  skipSuccessfulRequests?: boolean; // Si omitir solicitudes exitosas
-  skipFailedRequests?: boolean;     // Si omitir solicitudes fallidas
+  windowMs: number;     // Window size (milliseconds)
+  maxRequests: number; // Maximum number of requests in the window
+  keyGenerator?: (req: Request) => string; // Custom key generator
+  skipSuccessfulRequests?: boolean; // Whether to skip successful requests
+  skipFailedRequests?: boolean;     // Whether to skip failed requests
 }
 
 /**
- * Configuración de limitación de tasa con ventana fija
+ * Fixed window rate limiting configuration
  */
 interface FixedWindowConfig {
-  windowMs: number;     // Tamaño de ventana (milisegundos)
-  maxRequests: number; // Número máximo de solicitudes en la ventana
-  keyGenerator?: (req: Request) => string; // Generador de clave personalizado
+  windowMs: number;     // Window size (milliseconds)
+  maxRequests: number; // Maximum number of requests in the window
+  keyGenerator?: (req: Request) => string; // Custom key generator
 }
 
 /**
- * Configuración de limitación de tasa con bucket de tokens
+ * Token bucket rate limiting configuration
  */
 interface TokenBucketConfig {
-  capacity: number;    // Capacidad del bucket
-  refillRate: number;  // Número de tokens recargados por segundo
-  keyGenerator?: (req: Request) => string; // Generador de clave personalizado
+  capacity: number;    // Bucket capacity
+  refillRate: number;  // Number of tokens refilled per second
+  keyGenerator?: (req: Request) => string; // Custom key generator
 }
 
 /**
- * Middleware de limitación de tasa con ventana deslizante
- * Implementa limitación de tasa con ventana deslizante distribuida usando Redis
+ * Sliding window rate limiting middleware
+ * Implements distributed sliding window rate limiting using Redis
  */
 export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -46,16 +46,16 @@ export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
       const now = Date.now();
       const windowStart = now - config.windowMs;
 
-      // Obtener todas las marcas de tiempo de solicitudes en la ventana actual
+      // Get all request timestamps in the current window
       const requestTimes = await redisService.listRange(key, 0, -1);
 
-      // Filtrar solicitudes que están en la ventana actual
+      // Filter requests that are in the current window
       const validRequests = requestTimes.filter((timestamp: string) => {
         const time = parseInt(timestamp);
         return time > windowStart;
       });
 
-      // Verificar si se excede el límite
+      // Check if the limit is exceeded
       if (validRequests.length >= config.maxRequests) {
         logger.warn(
           {
@@ -65,27 +65,27 @@ export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
             limit: config.maxRequests,
             windowMs: config.windowMs,
           },
-          'Límite de tasa con ventana deslizante excedido'
+          'Sliding window rate limit exceeded'
         );
 
         return res.status(429).json({
           success: false,
-          message: 'Demasiadas solicitudes, por favor intente más tarde',
+          message: 'Too many requests, please try again later',
           code: 'RATE_LIMIT_EXCEEDED',
           retryAfter: Math.ceil(config.windowMs / 1000),
           requestId: req.requestId,
         });
       }
 
-      // Agregar marca de tiempo de solicitud actual
+      // Add current request timestamp
       await redisService.listPush(key, now.toString());
 
-      // Establecer tiempo de expiración como tamaño de ventana
+      // Set expiration time to window size
       await redisService.getClient().then(client =>
         client.expire(key, Math.ceil(config.windowMs / 1000))
       );
 
-      // Establecer encabezados de solicitudes restantes
+      // Set remaining requests headers
       res.set({
         'X-RateLimit-Limit': config.maxRequests.toString(),
         'X-RateLimit-Remaining': (config.maxRequests - validRequests.length - 1).toString(),
@@ -95,16 +95,16 @@ export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
       next();
 
     } catch (error) {
-      logger.error({ err: error, ip: req.ip }, 'Error en limitación de tasa con ventana deslizante');
-      // Si hay error de Redis, permitir que la solicitud continúe (estrategia de degradación)
+      logger.error({ err: error, ip: req.ip }, 'Error in sliding window rate limiting');
+      // If there's a Redis error, allow the request to continue (degradation strategy)
       next();
     }
   };
 };
 
 /**
- * Middleware de limitación de tasa con ventana fija
- * Implementa limitación de tasa con ventana fija distribuida usando Redis
+ * Fixed window rate limiting middleware
+ * Implements distributed fixed window rate limiting using Redis
  */
 export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -113,7 +113,7 @@ export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
       const now = Date.now();
       const windowKey = `${key}:${Math.floor(now / config.windowMs)}`;
 
-      // Obtener contador de solicitudes de la ventana actual
+      // Get request counter from the current window
       const currentCount = await redisService.get(windowKey);
 
       if (currentCount && parseInt(currentCount) >= config.maxRequests) {
@@ -124,29 +124,29 @@ export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
             requestCount: currentCount,
             limit: config.maxRequests,
           },
-          'Límite de tasa con ventana fija excedido'
+          'Fixed window rate limit exceeded'
         );
 
         return res.status(429).json({
           success: false,
-          message: 'Demasiadas solicitudes, por favor intente más tarde',
+          message: 'Too many requests, please try again later',
           code: 'RATE_LIMIT_EXCEEDED',
           retryAfter: Math.ceil(config.windowMs / 1000),
           requestId: req.requestId,
         });
       }
 
-      // Incrementar contador y establecer tiempo de expiración
+      // Increment counter and set expiration time
       const newCount = await redisService.increment(windowKey, 1);
 
       if (newCount === 1) {
-        // Primera vez estableciendo esta ventana, establecer tiempo de expiración
+        // First time setting this window, set expiration time
         await redisService.getClient().then(client =>
           client.expire(windowKey, Math.ceil(config.windowMs / 1000))
         );
       }
 
-      // Establecer encabezados
+      // Set headers
       res.set({
         'X-RateLimit-Limit': config.maxRequests.toString(),
         'X-RateLimit-Remaining': (config.maxRequests - (newCount || 0)).toString(),
@@ -156,24 +156,24 @@ export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
       next();
 
     } catch (error) {
-      logger.error({ err: error, ip: req.ip }, 'Error en limitación de tasa con ventana fija');
-      // Si hay error de Redis, permitir que la solicitud continúe (estrategia de degradación)
+      logger.error({ err: error, ip: req.ip }, 'Error in fixed window rate limiting');
+      // If there's a Redis error, allow the request to continue (degradation strategy)
       next();
     }
   };
 };
 
 /**
- * Middleware de limitación de tasa con bucket de tokens
- * Implementa limitación de tasa con bucket de tokens distribuida usando Redis
+ * Token bucket rate limiting middleware
+ * Implements distributed token bucket rate limiting using Redis
  */
 export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const key = config.keyGenerator ? config.keyGenerator(req) : getDefaultKey(req);
-      const now = Date.now() / 1000; // Convertir a segundos
+      const now = Date.now() / 1000; // Convert to seconds
 
-      // Obtener estado actual del bucket de tokens
+      // Get current token bucket state
       const bucketKey = `${key}:bucket`;
       const lastRefillKey = `${key}:lastRefill`;
 
@@ -181,14 +181,14 @@ export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
       let tokens = bucketData[0] ? parseFloat(bucketData[0]) : config.capacity;
       let lastRefill = bucketData[1] ? parseFloat(bucketData[1]) : now;
 
-      // Calcular número de tokens a recargar
+      // Calculate number of tokens to refill
       const timePassed = now - lastRefill;
       const tokensToAdd = Math.floor(timePassed * config.refillRate);
 
-      // Actualizar número de tokens (no exceder capacidad)
+      // Update number of tokens (do not exceed capacity)
       tokens = Math.min(config.capacity, tokens + tokensToAdd);
 
-      // Verificar si hay suficientes tokens
+      // Check if there are enough tokens
       if (tokens < 1) {
         logger.warn(
           {
@@ -198,26 +198,26 @@ export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
             capacity: config.capacity,
             refillRate: config.refillRate,
           },
-          'Límite de tasa con bucket de tokens excedido'
+          'Token bucket rate limit exceeded'
         );
 
         return res.status(429).json({
           success: false,
-          message: 'Demasiadas solicitudes, por favor intente más tarde',
+          message: 'Too many requests, please try again later',
           code: 'RATE_LIMIT_EXCEEDED',
           retryAfter: Math.ceil(1 / config.refillRate),
           requestId: req.requestId,
         });
       }
 
-      // Consumir un token y actualizar estado
+      // Consume one token and update state
       tokens -= 1;
       await redisService.mset([
         { key: bucketKey, value: tokens.toString() },
         { key: lastRefillKey, value: now.toString() },
       ]);
 
-      // Establecer encabezados
+      // Set headers
       res.set({
         'X-RateLimit-Limit': config.capacity.toString(),
         'X-RateLimit-Remaining': Math.floor(tokens).toString(),
@@ -227,16 +227,16 @@ export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
       next();
 
     } catch (error) {
-      logger.error({ err: error, ip: req.ip }, 'Error en limitación de tasa con bucket de tokens');
-      // Si hay error de Redis, permitir que la solicitud continúe (estrategia de degradación)
+      logger.error({ err: error, ip: req.ip }, 'Error in token bucket rate limiting');
+      // If there's a Redis error, allow the request to continue (degradation strategy)
       next();
     }
   };
 };
 
 /**
- * Middleware de limitación de tasa inteligente
- * Selecciona automáticamente la estrategia de limitación de tasa más adecuada según el tipo de solicitud
+ * Intelligent rate limiting middleware
+ * Automatically selects the most appropriate rate limiting strategy based on request type
  */
 export const intelligentRateLimit = (config: {
   default?: SlidingWindowConfig;
@@ -249,40 +249,40 @@ export const intelligentRateLimit = (config: {
     const path = req.path;
     const method = req.method;
 
-    // Seleccionar estrategia de limitación de tasa apropiada según ruta y método
+    // Select appropriate rate limiting strategy based on route and method
     if (path.includes('/auth/') || path.includes('/login') || path.includes('/register')) {
-      // Solicitudes relacionadas con autenticación usan limitación estricta con ventana deslizante
+      // Authentication-related requests use strict sliding window rate limiting
       return slidingWindowRateLimit(config.auth || {
-        windowMs: 15 * 60 * 1000, // 15 minutos
-        maxRequests: 5, // Máximo 5 solicitudes por 15 minutos
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxRequests: 5, // Maximum 5 requests per 15 minutes
       })(req, res, next);
 
     } else if (path.startsWith('/api/admin') || path.includes('/users')) {
-      // Solicitudes relacionadas con administración usan limitación con ventana fija
+      // Admin-related requests use fixed window rate limiting
       return fixedWindowRateLimit(config.admin || {
-        windowMs: 60 * 60 * 1000, // 1 hora
-        maxRequests: 100, // Máximo 100 solicitudes por hora
+        windowMs: 60 * 60 * 1000, // 1 hour
+        maxRequests: 100, // Maximum 100 requests per hour
       })(req, res, next);
 
     } else if (method === 'POST' && (path.includes('/upload') || path.includes('/import'))) {
-      // Solicitudes relacionadas con carga usan limitación con bucket de tokens
+      // Upload-related requests use token bucket rate limiting
       return tokenBucketRateLimit(config.upload || {
-        capacity: 10, // Capacidad del bucket: 10 solicitudes
-        refillRate: 0.1, // Recargar 0.1 tokens por segundo (1 token cada 10 segundos)
+        capacity: 10, // Bucket capacity: 10 requests
+        refillRate: 0.1, // Refill 0.1 tokens per second (1 token every 10 seconds)
       })(req, res, next);
 
     } else {
-      // Solicitudes API generales usan limitación predeterminada con ventana deslizante
+      // General API requests use default sliding window rate limiting
       return slidingWindowRateLimit(config.default || config.api || {
-        windowMs: 15 * 60 * 1000, // 15 minutos
-        maxRequests: 100, // Máximo 100 solicitudes por 15 minutos
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxRequests: 100, // Maximum 100 requests per 15 minutes
       })(req, res, next);
     }
   };
 };
 
 /**
- * Ejemplo de generador de clave personalizado
+ * Example of custom key generator
  */
 export const createKeyGenerator = (prefix: string, includeUser: boolean = false) => {
   return (req: Request) => {
@@ -297,25 +297,25 @@ export const createKeyGenerator = (prefix: string, includeUser: boolean = false)
 };
 
 /**
- * Generador de clave predeterminado
+ * Default key generator
  */
 function getDefaultKey(req: Request): string {
   return `rate_limit:${req.ip}:${req.method}:${req.path}`;
 }
 
 /**
- * Limpieza de datos de limitación de tasa expirados
- * Se recomienda ejecutar esta función periódicamente para limpiar datos antiguos de limitación de tasa
+ * Cleanup of expired rate limiting data
+ * It is recommended to run this function periodically to clean up old rate limiting data
  */
 export const cleanupRateLimitData = async (): Promise<void> => {
   try {
-    logger.info('Iniciando limpieza de datos de limitación de tasa');
+    logger.info('Starting rate limiting data cleanup');
 
-    // Aquí se puede implementar la lógica de limpieza
-    // Por ejemplo: eliminar claves antiguas que exceden cierto tiempo
+    // Here you can implement the cleanup logic
+    // For example: delete old keys that exceed a certain time
 
-    logger.info('Limpieza de datos de limitación de tasa completada');
+    logger.info('Rate limiting data cleanup completed');
   } catch (error) {
-    logger.error({ err: error }, 'Fallo en limpieza de datos de limitación de tasa');
+    logger.error({ err: error }, 'Failed to clean up rate limiting data');
   }
 };

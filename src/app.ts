@@ -408,7 +408,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       background: #ffffff;
     }
 
-    /* Título de schemas */
+    /* Schemas title */
     .swagger-ui section.models h4,
     .swagger-ui section.models h4 span {
       font-size: 28px !important;
@@ -419,20 +419,20 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       border-bottom: 2px solid #1a1a1a !important;
     }
 
-    /* Container de cada schema */
+    /* Container for each schema */
     .swagger-ui section.models .model-container {
       margin-bottom: 15px;
       border: 1px solid #ddd;
       background: #ffffff;
     }
 
-    /* Reset de modelo */
+    /* Model reset */
     .swagger-ui .model-container .model-box {
       padding: 0 !important;
       margin: 0 !important;
     }
 
-    /* Título del schema individual */
+    /* Individual schema title */
     .swagger-ui .model-box > .model-toggle {
       padding: 12px 16px !important;
       background: #f5f5f5 !important;
@@ -448,7 +448,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       margin: 0 !important;
     }
 
-    /* Contenido expandido - sin superposición */
+    /* Expanded content - no overlap */
     .swagger-ui .model-container .model {
       padding: 16px !important;
       background: #ffffff !important;
@@ -465,7 +465,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       border: none !important;
     }
 
-    /* Tabla de propiedades */
+    /* Properties table */
     .swagger-ui table.model {
       width: 100% !important;
       border-collapse: collapse !important;
@@ -485,20 +485,20 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
       vertical-align: top !important;
     }
 
-    /* Nombre de propiedad */
+    /* Property name */
     .swagger-ui table.model tbody tr td:first-child {
       font-weight: 600 !important;
       color: #1a1a1a !important;
       width: 30% !important;
     }
 
-    /* Tipo y descripción */
+    /* Type and description */
     .swagger-ui table.model tbody tr td:nth-child(2) {
       color: #333 !important;
       width: 70% !important;
     }
 
-    /* Badge de tipo */
+    /* Type badge */
     .swagger-ui .prop-type {
       padding: 2px 8px !important;
       background: #3498db !important;
@@ -552,7 +552,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
   customJs: ['/swagger-custom.js'],
 }));
 
-// Endpoint para obtener la especificación JSON
+// Endpoint to get the JSON specification
 app.get('/api-docs.json', (_req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);

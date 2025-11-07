@@ -229,7 +229,7 @@ Re-login requerido
 
   const options: swaggerJsdoc.Options = {
     definition: swaggerDefinition,
-    // Rutas donde están tus archivos con anotaciones
+    // Paths where your annotation files are located
     apis: [
       './src/modules/**/*.routes.ts',
       './src/modules/**/*.controller.ts',

@@ -111,19 +111,19 @@ export class AuthController {
       await em.persistAndFlush(newUser);
 
       // ────────────────────────────────────────────────────────────────────
-      // Verificación de email según modo (producción/desarrollo vs demo)
+      // Email verification based on mode (production/development vs demo)
       // ────────────────────────────────────────────────────────────────────
       if (env.EMAIL_VERIFICATION_REQUIRED) {
-        // MODO PRODUCCIÓN/DESARROLLO: Verificación obligatoria automática
+        // PRODUCTION/DEVELOPMENT MODE: Automatic mandatory verification
         try {
           const emailVerification = new EmailVerification(email);
           await em.persistAndFlush(emailVerification);
 
-          // Enviar email de verificación
+          // Send verification email
           const emailSent = await emailService.sendVerificationEmail(
             email,
             emailVerification.token,
-            username // Usar username como nombre temporal
+            username // Use username as temporary name
           );
 
           if (emailSent) {
@@ -156,7 +156,7 @@ export class AuthController {
             email
           }, 'Failed to create email verification after registration');
 
-          // Si falla la verificación, aún devolver éxito pero indicar que debe solicitar manualmente
+          // If verification fails, still return success but indicate manual request needed
           return ResponseUtil.created(res, 'User created successfully. Please request email verification manually.', {
             id: newUser.id,
             username: newUser.username,
@@ -169,7 +169,7 @@ export class AuthController {
           });
         }
       } else {
-        // MODO DEMO: Verificación opcional (el usuario puede verificar cuando quiera)
+        // DEMO MODE: Optional verification (user can verify when desired)
         logger.info({
           userId: newUser.id,
           email,
@@ -234,7 +234,7 @@ export class AuthController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Verificar que el email esté verificado (si está habilitado)
+      // Verify that email is verified (if enabled)
       // ────────────────────────────────────────────────────────────────────
       if (env.EMAIL_VERIFICATION_REQUIRED && !user.emailVerified) {
         logger.warn({

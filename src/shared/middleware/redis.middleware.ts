@@ -1,5 +1,5 @@
 // ============================================================================
-// REDIS MIDDLEWARE - Middleware de manejo de errores y estrategias de degradación
+// REDIS MIDDLEWARE - Error handling middleware and graceful degradation strategies
 // ============================================================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -8,16 +8,16 @@ import { redisService } from '../services/redis.service.js';
 import { cacheService } from '../services/cache.service.js';
 
 /**
- * Middleware de verificación de disponibilidad de Redis
- * Verifica el estado de Redis antes de procesar la solicitud, registra advertencia si no está disponible
+ * Redis availability verification middleware
+ * Checks Redis status before processing the request, logs warning if not available
  */
 export const redisHealthCheck = async (req: Request, res: Response, next: NextFunction) => {
-  // Verificar estado de Redis (no bloqueante)
+  // Check Redis status (non-blocking)
   const isRedisAvailable = await redisService.isAvailable().catch(() => false);
 
   if (!isRedisAvailable) {
     logger.debug('Redis no disponible, usando fallback a caché en memoria');
-    // Establecer marca en la solicitud indicando que se debe usar caché en memoria
+    // Set flag on request indicating memory cache should be used
     (req as any).useMemoryCache = true;
   }
 
@@ -25,23 +25,23 @@ export const redisHealthCheck = async (req: Request, res: Response, next: NextFu
 };
 
 /**
- * Middleware de manejo de errores de Redis
- * Envuelve operaciones de caché con manejo unificado de errores y estrategia de degradación
+ * Redis error handling middleware
+ * Wraps cache operations with unified error handling and degradation strategy
  */
 export const withRedisFallback = (operation: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Si la solicitud está marcada para usar caché en memoria, omitir operación de Redis
+      // If request is marked to use memory cache, skip Redis operation
       if ((req as any).useMemoryCache) {
         logger.debug(`Omitiendo ${operation} de Redis debido a no disponibilidad`);
         return next();
       }
 
-      // Intentar ejecutar el siguiente middleware o manejador de ruta
+      // Try to execute next middleware or route handler
       await next();
 
     } catch (error) {
-      // Verificar si es un error relacionado con Redis
+      // Check if it's a Redis-related error
       const isRedisError = (error as Error).message?.includes('Redis') ||
                           (error as Error).message?.includes('ECONNREFUSED') ||
                           (error as any).code === 'REDIS_ERROR';
@@ -49,10 +49,10 @@ export const withRedisFallback = (operation: string) => {
       if (isRedisError) {
         logger.warn({ err: error as Error, operation }, `${operation} de Redis falló, continuando con caché en memoria`);
 
-        // Establecer marca y continuar procesamiento
+        // Set flag and continue processing
         (req as any).useMemoryCache = true;
 
-        // Reintentar ejecución del manejador, esta vez usará caché en memoria
+        // Retry handler execution, this time will use memory cache
         try {
           await next();
         } catch (retryError) {
@@ -60,7 +60,7 @@ export const withRedisFallback = (operation: string) => {
           throw retryError;
         }
       } else {
-        // Error no relacionado con Redis, lanzar directamente
+        // Non-Redis error, throw directly
         throw error;
       }
     }
@@ -68,15 +68,15 @@ export const withRedisFallback = (operation: string) => {
 };
 
 /**
- * Middleware de invalidación de caché
- * Invalida automáticamente el caché relacionado después de actualizar datos
+ * Cache invalidation middleware
+ * Automatically invalidates related cache after updating data
  */
 export const invalidateCache = (patterns: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Primero ejecutar el procesamiento real de la solicitud
+    // First execute the actual request processing
     await next();
 
-    // Si la solicitud fue exitosa, invalidar el caché relacionado
+    // If request was successful, invalidate related cache
     if (res.statusCode >= 200 && res.statusCode < 300) {
       try {
         for (const pattern of patterns) {
@@ -87,7 +87,7 @@ export const invalidateCache = (patterns: string[]) => {
           logger.debug({ patterns }, 'Caché invalidado después de operación exitosa');
         }
       } catch (error) {
-        // El fallo en la invalidación de caché no debe afectar la funcionalidad principal
+        // Cache invalidation failure should not affect main functionality
         logger.warn({ err: error, patterns }, 'Fallo al invalidar patrones de caché');
       }
     }
@@ -95,18 +95,18 @@ export const invalidateCache = (patterns: string[]) => {
 };
 
 /**
- * Middleware de monitoreo de Redis
- * Registra tasa de aciertos de caché y métricas de rendimiento
+ * Redis monitoring middleware
+ * Logs cache hit rate and performance metrics
  */
 export const redisMonitoring = (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const originalJson = res.json;
 
-  // Interceptar respuesta JSON para verificar estado de caché
+  // Intercept JSON response to check cache status
   res.json = function(body: any) {
     const duration = Date.now() - startTime;
 
-    // Verificar si hay marca de caché en la respuesta
+    // Check if there's a cache flag in the response
     if (body?.pagination?.cached === true) {
       logger.debug(
         {
@@ -126,14 +126,14 @@ export const redisMonitoring = (req: Request, res: Response, next: NextFunction)
 };
 
 /**
- * Middleware de recuperación de errores de Redis
- * Intenta periódicamente recuperar la conexión Redis
+ * Redis error recovery middleware
+ * Periodically attempts to recover Redis connection
  */
 let redisRecoveryAttempts = 0;
 const maxRecoveryAttempts = 5;
 
 export const redisRecovery = async (req: Request, res: Response, next: NextFunction) => {
-  // Verificar periódicamente e intentar recuperar conexión Redis
+  // Periodically check and attempt to recover Redis connection
   if (redisRecoveryAttempts < maxRecoveryAttempts) {
     try {
       const isAvailable = await redisService.isAvailable();
@@ -155,7 +155,7 @@ export const redisRecovery = async (req: Request, res: Response, next: NextFunct
 };
 
 /**
- * Middleware combinado: Manejo completo de errores y estrategia de degradación para Redis
+ * Combined middleware: Complete error handling and degradation strategy for Redis
  */
 export const redisResilienceMiddleware = [
   redisHealthCheck,
@@ -164,8 +164,8 @@ export const redisResilienceMiddleware = [
 ];
 
 /**
- * Función factory de middleware de caché
- * Crea middleware de caché para rutas específicas
+ * Cache middleware factory function
+ * Creates cache middleware for specific routes
  */
 export const createCacheMiddleware = (options: {
   key?: string | ((req: Request) => string);
@@ -175,16 +175,16 @@ export const createCacheMiddleware = (options: {
   return async (req: Request, res: Response, next: NextFunction) => {
     const { key, ttl, condition } = options;
 
-    // Verificar condición
+    // Check condition
     if (condition && !condition(req)) {
       return next();
     }
 
-    // Generar clave de caché
+    // Generate cache key
     const cacheKey = typeof key === 'function' ? key(req) : key || `${req.method}:${req.originalUrl}`;
 
     try {
-      // Intentar obtener datos desde caché
+      // Try to get data from cache
       const cached = await cacheService.get(cacheKey);
 
       if (cached) {
@@ -197,10 +197,10 @@ export const createCacheMiddleware = (options: {
         });
       }
 
-      // Interceptar respuesta para cachear resultado
+      // Intercept response to cache result
       const originalJson = res.json;
       res.json = function(body: any) {
-        // Solo cachear respuestas exitosas
+        // Only cache successful responses
         if (res.statusCode >= 200 && res.statusCode < 300) {
           cacheService.set(cacheKey, body, ttl).catch(error => {
             logger.warn({ err: error, cacheKey }, 'Fallo al cachear respuesta');
@@ -212,7 +212,7 @@ export const createCacheMiddleware = (options: {
 
     } catch (error) {
       logger.warn({ err: error, cacheKey }, 'Error en middleware de caché');
-      // Continuar procesamiento normal cuando falla el caché
+      // Continue normal processing when cache fails
     }
 
     next();

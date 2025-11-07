@@ -30,14 +30,14 @@ export enum RequestStatus {
  * Additional data required for specific roles
  */
 export interface RoleRequestAdditionalData {
-  // Para DISTRIBUTOR
+  // For DISTRIBUTOR
   zoneId?: number;
   address?: string;
   productsIds?: number[];
-  
-  // Para AUTHORITY
+
+  // For AUTHORITY
   rank?: '0' | '1' | '2' | '3';
-  // authorityZoneId también usa zoneId
+  // authorityZoneId also uses zoneId
 }
 
 

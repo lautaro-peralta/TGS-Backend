@@ -1,5 +1,5 @@
 // ============================================================================
-// USER VERIFICATION ROUTES - Rutas para verificación de usuarios
+// USER VERIFICATION ROUTES - Routes for user verification
 // ============================================================================
 
 import { Router } from 'express';
@@ -10,7 +10,6 @@ import { validateWithSchema } from '../../../shared/middleware/validation.middle
 import {
   requestUserVerificationSchema,
   resendUserVerificationSchema,
-  verifyTokenParamSchema,
   emailParamSchema,
   getAllUserVerificationsQuerySchema,
   rejectUserVerificationSchema,
@@ -113,37 +112,6 @@ userVerificationRouter.post(
   '/resend',
   validateWithSchema({ body: resendUserVerificationSchema }),
   userVerificationController.resendVerification
-);
-
-/**
- * @swagger
- * /api/user-verification/verify/{token}:
- *   get:
- *     tags: [User Verification]
- *     summary: Verify user using token (DEPRECATED)
- *     description: This endpoint is kept for backward compatibility but user verification should be done manually by admin through /admin/approve/:email
- *     deprecated: true
- *     parameters:
- *       - in: path
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Verification token (deprecated)
- *         example: "550e8400-e29b-41d4-a716-446655440000"
- *     responses:
- *       200:
- *         description: User verified (deprecated)
- *       400:
- *         description: Invalid or expired token
- *       404:
- *         description: Verification not found
- */
-userVerificationRouter.get(
-  '/verify/:token',
-  validateWithSchema({ params: verifyTokenParamSchema }),
-  userVerificationController.verifyEmail
 );
 
 /**

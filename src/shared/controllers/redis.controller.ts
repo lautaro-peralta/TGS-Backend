@@ -1,5 +1,5 @@
 // ============================================================================
-// REDIS CONTROLLER - Controlador de operación y monitoreo de Redis
+// REDIS CONTROLLER - Redis operation and monitoring controller
 // ============================================================================
 
 import { Request, Response } from 'express';
@@ -9,13 +9,13 @@ import { ResponseUtil } from '../utils/response.util.js';
 import logger from '../utils/logger.js';
 
 /**
- * Controlador de administración de Redis
- * Proporciona funcionalidad de operación y monitoreo para servicios de Redis y caché
+ * Redis administration controller
+ * Provides operation and monitoring functionality for Redis and cache services
  */
 export class RedisController {
 
   /**
-   * Obtener estado del servicio Redis
+   * Get Redis service status
    */
   async getRedisStatus(req: Request, res: Response) {
     try {
@@ -33,7 +33,7 @@ export class RedisController {
   }
 
   /**
-   * Obtener estadísticas del servicio de caché
+   * Get cache service statistics
    */
   async getCacheStats(req: Request, res: Response) {
     try {
@@ -47,7 +47,7 @@ export class RedisController {
   }
 
   /**
-   * Limpiar todos los datos de caché
+   * Clear all cache data
    */
   async clearCache(req: Request, res: Response) {
     try {
@@ -66,7 +66,7 @@ export class RedisController {
   }
 
   /**
-   * Obtener valor de clave de caché específica
+   * Get specific cache key value
    */
   async getCacheKey(req: Request, res: Response) {
     try {
@@ -96,7 +96,7 @@ export class RedisController {
   }
 
   /**
-   * Establecer clave de caché
+   * Set cache key
    */
   async setCacheKey(req: Request, res: Response) {
     try {
@@ -125,7 +125,7 @@ export class RedisController {
   }
 
   /**
-   * Eliminar clave de caché específica
+   * Delete specific cache key
    */
   async deleteCacheKey(req: Request, res: Response) {
     try {
@@ -152,21 +152,21 @@ export class RedisController {
   }
 
   /**
-   * Obtener lista de claves de caché (soporta coincidencia de patrones)
+   * Get list of cache keys (supports pattern matching)
    */
   async listCacheKeys(req: Request, res: Response) {
     try {
       const { pattern = '*', limit = 100 } = req.query;
 
-      // Nota: Esta es una implementación simplificada
-      // En entorno de producción, puede necesitar implementar un mecanismo de enumeración de claves más complejo
+      // Note: This is a simplified implementation
+      // In production environment, you may need to implement a more complex key enumeration mechanism
       logger.warn({ pattern, limit }, 'Listado de claves de caché solicitado - esta es una implementación simplificada');
 
       return ResponseUtil.success(res, 'Listado de claves de caché completado', {
         pattern,
         limit: Number(limit),
         note: 'Esta es una implementación simplificada. Considere implementar un mecanismo de enumeración de claves más sofisticado para producción.',
-        availableKeys: 0, // Aquí debería implementarse la lógica real de enumeración de claves
+        availableKeys: 0, // Here should be implemented the real key enumeration logic
       });
     } catch (error) {
       logger.error({ err: error, pattern: req.query.pattern }, 'Error al listar claves de caché');
@@ -175,14 +175,14 @@ export class RedisController {
   }
 
   /**
-   * Obtener métricas de rendimiento de caché
+   * Get cache performance metrics
    */
   async getCacheMetrics(req: Request, res: Response) {
     try {
       const stats = await cacheService.getStats();
       const redisStats = stats.redis.connected ? await redisService.getStats() : null;
 
-      // Calcular tasa de aciertos de caché (si hay métricas disponibles)
+      // Calculate cache hit rate (if metrics available)
       const metrics = {
         redis: {
           connected: stats.redis.connected,
@@ -203,27 +203,27 @@ export class RedisController {
   }
 
   /**
-   * Probar funcionalidad de caché
+   * Test cache functionality
    */
   async testCache(req: Request, res: Response) {
     try {
       const { key = 'test', value = 'test_value', ttl = 60 } = req.body;
 
-      // Establecer datos de prueba
+      // Set test data
       const setSuccess = await cacheService.set(key, value, ttl);
 
       if (!setSuccess) {
         return ResponseUtil.error(res, 'Fallo al establecer datos de prueba de caché', 500);
       }
 
-      // Leer inmediatamente los datos de prueba
+      // Read test data immediately
       const retrievedValue = await cacheService.get(key);
 
       if (retrievedValue !== value) {
         return ResponseUtil.error(res, 'Prueba de caché falló: el valor recuperado no coincide', 500);
       }
 
-      // Eliminar datos de prueba
+      // Delete test data
       const deleteSuccess = await cacheService.delete(key);
 
       return ResponseUtil.success(res, 'Prueba de caché completada exitosamente', {
@@ -241,13 +241,13 @@ export class RedisController {
   }
 
   /**
-   * Obtener uso de memoria de caché
+   * Get cache memory usage
    */
   async getMemoryUsage(req: Request, res: Response) {
     try {
       const stats = await cacheService.getStats();
 
-      // Obtener estadísticas de memoria de Redis (si está disponible)
+      // Get Redis memory statistics (if available)
       let redisMemoryInfo = null;
       if (stats.redis.connected) {
         try {

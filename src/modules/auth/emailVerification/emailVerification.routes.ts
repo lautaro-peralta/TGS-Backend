@@ -1,5 +1,5 @@
 // ============================================================================
-// EMAIL VERIFICATION ROUTES - Rutas para verificación de emails
+// EMAIL VERIFICATION ROUTES - Routes for email verification
 // ============================================================================
 
 import { Router } from 'express';

@@ -107,21 +107,6 @@ export interface RoleRequestFilters extends EntityFilters {
 }
 
 /**
- * Error response interface (legacy - use ValidationErrorDetail)
- * @deprecated Use ValidationErrorDetail instead
- */
-export interface ValidationError {
-  field: string;
-  message: string;
-}
-
-export interface ApiError {
-  message: string;
-  errors?: ValidationError[];
-  requestId?: string;
-}
-
-/**
  * Pagination interface
  */
 export interface PaginationParams {

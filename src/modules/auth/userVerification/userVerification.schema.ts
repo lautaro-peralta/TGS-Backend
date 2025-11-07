@@ -1,5 +1,5 @@
 // ============================================================================
-// USER VERIFICATION SCHEMAS - Validación con Zod
+// USER VERIFICATION SCHEMAS - Zod validation schemas
 // ============================================================================
 
 import { z } from 'zod';
@@ -7,38 +7,28 @@ import { emailSchema, paginationSchema } from '../../../shared/schemas/common.sc
 import { UserVerificationStatus } from './userVerification.entity.js';
 
 /**
- * Schema para solicitar verificación de usuario
+ * Schema for requesting user verification
  */
 export const requestUserVerificationSchema = z.object({
   email: emailSchema,
 });
 
 /**
- * Schema para reenviar solicitud de verificación de usuario
+ * Schema for resending user verification request
  */
 export const resendUserVerificationSchema = z.object({
   email: emailSchema,
 });
 
 /**
- * Schema para validar el token en parámetros
- */
-export const verifyTokenParamSchema = z.object({
-  token: z
-    .string()
-    .uuid({ message: 'Invalid token format' })
-    .trim(),
-});
-
-/**
- * Schema para validar email en parámetros
+ * Schema for validating email in parameters
  */
 export const emailParamSchema = z.object({
   email: emailSchema,
 });
 
 /**
- * Schema para query params de listado de verificaciones de usuario (admin)
+ * Schema for query params of user verifications list (admin)
  */
 export const getAllUserVerificationsQuerySchema = paginationSchema.extend({
   status: z
@@ -54,7 +44,7 @@ export const getAllUserVerificationsQuerySchema = paginationSchema.extend({
 });
 
 /**
- * Schema para rechazar verificación de usuario (body)
+ * Schema for rejecting user verification (body)
  */
 export const rejectUserVerificationSchema = z.object({
   reason: z
@@ -65,11 +55,10 @@ export const rejectUserVerificationSchema = z.object({
 });
 
 /**
- * Tipos inferidos de los schemas
+ * Inferred types from schemas
  */
 export type RequestUserVerificationInput = z.infer<typeof requestUserVerificationSchema>;
 export type ResendUserVerificationInput = z.infer<typeof resendUserVerificationSchema>;
-export type VerifyTokenParam = z.infer<typeof verifyTokenParamSchema>;
 export type EmailParam = z.infer<typeof emailParamSchema>;
 export type GetAllUserVerificationsQuery = z.infer<typeof getAllUserVerificationsQuerySchema>;
 export type RejectUserVerificationInput = z.infer<typeof rejectUserVerificationSchema>;

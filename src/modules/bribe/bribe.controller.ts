@@ -72,7 +72,7 @@ export class BribeController {
         const { paid, date, type, endDate } = validated;
         const filters: BribeFilters = {};
 
-        // Si es PARTNER o AUTHORITY, filtrar solo sobornos de su autoridad
+        // If PARTNER or AUTHORITY, filter only bribes from their authority
         if (authorityId) {
           (filters as any).authority = authorityId;
         }
@@ -208,9 +208,9 @@ export class BribeController {
     
     const filters: any = {};
     
-    // Si es PARTNER o AUTHORITY, filtrar solo sobornos de su autoridad
+    // If PARTNER or AUTHORITY, filter only bribes from their authority
     if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
-      // Buscar authority por email del usuario (debe coincidir)
+      // Find authority by user email (must match)
       const authority = await em.findOne(Authority, { email: user.email });
       if (authority) {
         filters.authority = authority.id;
