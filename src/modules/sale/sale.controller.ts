@@ -239,9 +239,9 @@ export class SaleController {
 
     try {
       // ──────────────────────────────────────────────────────────────────────
-      // Find distributor (required)
+      // Find distributor (required) - Populate zone for bribe assignment
       // ──────────────────────────────────────────────────────────────────────
-      const distributor = await em.findOne(Distributor, { dni: String(distributorDni) });
+      const distributor = await em.findOne(Distributor, { dni: String(distributorDni) }, { populate: ['zone'] });
       if (!distributor) {
         return ResponseUtil.notFound(res, 'Distributor', distributorDni);
       }
@@ -335,27 +335,102 @@ export class SaleController {
       // Handle illegal products and bribes
       // ──────────────────────────────────────────────────────────────────────
       if (isIllegalProduct) {
-        const authority = await em.findOne(
-          Authority,
-          { id: { $ne: null } },
-          { orderBy: { rank: 'asc' } }
-        );
+        // ✅ Buscar autoridad de la MISMA ZONA que el distribuidor
+        const distributorZoneId = distributor.zone?.id;
 
-        if (authority) {
-          newSale.authority = em.getReference(Authority, authority.id);
-
-          const percentage = Authority.rankToCommission(authority.rank) ?? 0;
-          const bribe = em.create(Bribe, {
-            authority,
-            amount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
-            sale: newSale,
-            creationDate: new Date(),
-            paid: false,
-          });
-
-          em.persist(bribe);
+        if (!distributorZoneId) {
+          logger.warn({
+            distributorDni: distributor.dni,
+            distributorName: distributor.name
+          }, 'Illegal product detected, but distributor has no zone assigned. Cannot assign bribe to authority.');
         } else {
-          logger.warn('Illegal product detected, but no authority is available.');
+          // ✅ Buscar TODAS las autoridades de la zona
+          const authoritiesInZone = await em.find(
+            Authority,
+            { zone: distributorZoneId }
+          );
+
+          let selectedAuthority: Authority | null = null;
+
+          if (authoritiesInZone.length > 0) {
+            // Contar sobornos asignados para cada autoridad
+            const authoritiesWithCounts = await Promise.all(
+              authoritiesInZone.map(async (auth) => {
+                const bribeCount = await em.count(Bribe, { authority: auth.id });
+                return { authority: auth, bribeCount };
+              })
+            );
+
+            // Encontrar el mínimo de sobornos
+            const minBribes = Math.min(...authoritiesWithCounts.map(a => a.bribeCount));
+
+            // Filtrar autoridades con el mínimo de sobornos
+            const candidatesWithMinBribes = authoritiesWithCounts.filter(
+              a => a.bribeCount === minBribes
+            );
+
+            // Ordenar por rango ascendente (menor rango = mayor prioridad)
+            candidatesWithMinBribes.sort((a, b) => a.authority.rank - b.authority.rank);
+
+            // Encontrar el menor rango entre los candidatos
+            const minRank = candidatesWithMinBribes[0].authority.rank;
+
+            // Filtrar solo las autoridades con el menor rango
+            const finalCandidates = candidatesWithMinBribes.filter(
+              a => a.authority.rank === minRank
+            );
+
+            // Seleccionar: si hay una sola, esa; si hay varias, random
+            if (finalCandidates.length === 1) {
+              selectedAuthority = finalCandidates[0].authority;
+              logger.info({
+                authorityDni: selectedAuthority.dni,
+                authorityName: selectedAuthority.name,
+                bribeCount: finalCandidates[0].bribeCount,
+                rank: selectedAuthority.rank,
+                selectionMethod: 'único con mínimo sobornos y menor rango'
+              }, 'Authority selected: only one with minimum bribes and lowest rank');
+            } else {
+              // Selección random entre las que tienen el mismo mínimo de sobornos y menor rango
+              const randomIndex = Math.floor(Math.random() * finalCandidates.length);
+              selectedAuthority = finalCandidates[randomIndex].authority;
+              logger.info({
+                authorityDni: selectedAuthority.dni,
+                authorityName: selectedAuthority.name,
+                bribeCount: finalCandidates[randomIndex].bribeCount,
+                rank: selectedAuthority.rank,
+                totalCandidates: finalCandidates.length,
+                selectionMethod: 'random entre empate (mismo sobornos y rango)'
+              }, 'Authority selected: random among authorities with same bribes and rank');
+            }
+          }
+
+          if (selectedAuthority) {
+            const authority = selectedAuthority;
+            newSale.authority = em.getReference(Authority, authority.id);
+
+            const percentage = Authority.rankToCommission(authority.rank) ?? 0;
+            const bribe = em.create(Bribe, {
+              authority,
+              amount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
+              sale: newSale,
+              creationDate: new Date(),
+              paid: false,
+            });
+
+            em.persist(bribe);
+            logger.info({
+              authorityDni: authority.dni,
+              authorityName: authority.name,
+              zoneId: distributorZoneId,
+              bribeAmount: parseFloat((totalIllegalAmount * percentage).toFixed(2))
+            }, 'Bribe created and assigned to authority from distributor zone');
+          } else {
+            logger.warn({
+              zoneId: distributorZoneId,
+              distributorDni: distributor.dni
+            }, 'Illegal product detected, but no authority is available in distributor zone.');
+          }
         }
       }
 

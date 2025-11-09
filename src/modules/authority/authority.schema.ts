@@ -73,6 +73,16 @@ export const createAuthoritySchema = z.object({
    * ID of the zone the authority belongs to.
    */
   zoneId: z.string().transform(Number),
+
+  /**
+   * Optional username for creating a user account.
+   */
+  username: z.string().min(3).optional(),
+
+  /**
+   * Optional password for creating a user account.
+   */
+  password: z.string().min(6).optional(),
 });
 
 /**

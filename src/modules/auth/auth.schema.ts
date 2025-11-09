@@ -35,13 +35,18 @@ export const registerSchema = z.object({
 /**
  * Zod schema for user login.
  * Uses professional validation schemas for consistent data handling.
+ * Accepts either email or username for flexible authentication.
  */
 export const loginSchema = z.object({
   /**
-   * User's email address.
-   * Professional email validation for login security.
+   * User's email address or username.
+   * Accepts either format for flexible login.
    */
-  email: emailSchema,
+  email: z
+    .string()
+    .min(1, 'Email or username is required')
+    .max(255, 'Email or username cannot exceed 255 characters')
+    .trim(),
 
   /**
    * User's password.
