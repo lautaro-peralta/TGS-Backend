@@ -19,3 +19,6 @@ healthRouter.get('/ready', healthController.readiness);
 
 // Kubernetes liveness probe
 healthRouter.get('/live', healthController.liveness);
+
+// Email service debug (temporary)
+healthRouter.get('/email-debug', healthController.emailDebug);

@@ -8,6 +8,7 @@ import logger from '../utils/logger.js';
 import { env } from '../../config/env.js';
 import { redisService } from '../services/redis.service.js';
 import { cacheService } from '../services/cache.service.js';
+import { emailService } from '../services/email.service.js';
 
 /**
  * Health check controller with comprehensive system status
@@ -172,5 +173,60 @@ export class HealthController {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
     });
+  }
+
+  /**
+   * Email service debug - Temporary endpoint to check email configuration
+   */
+  async emailDebug(req: Request, res: Response) {
+    try {
+      const emailStats = emailService.getStats();
+      const testEmail = req.query.test as string;
+
+      const response: any = {
+        success: true,
+        timestamp: new Date().toISOString(),
+        emailService: {
+          enabled: emailStats.enabled,
+          configured: emailStats.configured,
+          provider: emailStats.provider,
+          hasCredentials: emailStats.hasCredentials,
+          hasSendGridCredentials: emailStats.hasSendGridCredentials,
+        },
+        environment: {
+          nodeEnv: env.NODE_ENV,
+          emailVerificationRequired: env.EMAIL_VERIFICATION_REQUIRED,
+          hasSendGridApiKey: !!process.env.SENDGRID_API_KEY,
+          hasSendGridFrom: !!process.env.SENDGRID_FROM,
+          hasSmtpUser: !!process.env.SMTP_USER,
+          hasSmtpPass: !!process.env.SMTP_PASS,
+          frontendUrl: process.env.FRONTEND_URL,
+        }
+      };
+
+      // Send test email if requested
+      if (testEmail && emailStats.enabled) {
+        logger.info({ testEmail }, 'Sending test email');
+        const emailSent = await emailService.sendVerificationEmail(
+          testEmail,
+          'test-token-' + Date.now(),
+          'Test User'
+        );
+        response.testEmail = {
+          to: testEmail,
+          sent: emailSent,
+        };
+      }
+
+      return res.status(200).json(response);
+    } catch (error) {
+      logger.error({ err: error }, 'Email debug check failed');
+
+      return res.status(500).json({
+        success: false,
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Email debug failed',
+      });
+    }
   }
 }
