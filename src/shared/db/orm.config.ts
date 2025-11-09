@@ -16,6 +16,16 @@ export default {
   port: parseInt(process.env.DB_PORT || (isDocker ? '5432' : '5432')),
   highlighter: new SqlHighlighter(),
   debug: process.env.NODE_ENV === 'development',
+
+  // ============================================================================
+  // SSL CONFIGURATION (for cloud databases like Neon.tech)
+  // ============================================================================
+  // Enable SSL in production for secure connections to cloud PostgreSQL
+  driverOptions: process.env.NODE_ENV === 'production' ? {
+    connection: {
+      ssl: { rejectUnauthorized: false }
+    }
+  } : undefined,
   
   // ============================================================================
   // CONNECTION POOL CONFIGURATION
