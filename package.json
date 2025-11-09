@@ -12,7 +12,8 @@
     "start:prod": "cross-env NODE_ENV=production node ./dist/server.js",
     "clean": "pnpm exec rimraf dist",
     "type-check": "tsc --noEmit",
-    "test:sendgrid": "cross-env NODE_ENV=development tsx scripts/test-sendgrid.js"
+    "test:sendgrid": "cross-env NODE_ENV=development tsx scripts/test-sendgrid.js",
+    "schema:create": "node scripts/create-schema.mjs"
   },
   "engines": {
     "node": ">=18"
