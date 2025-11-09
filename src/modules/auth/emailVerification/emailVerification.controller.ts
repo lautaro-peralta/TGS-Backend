@@ -477,15 +477,24 @@ export class EmailVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.body;
+      const { email: emailOrUsername } = req.body;
 
       // ────────────────────────────────────────────────────────────────────
       // VALIDATION: User must exist in the database
       // ────────────────────────────────────────────────────────────────────
-      const user = await em.findOne(User, { email });
+      const user = await em.findOne(User, {
+        $or: [
+          { email: emailOrUsername },
+          { username: emailOrUsername }
+        ]
+      });
+
       if (!user) {
-        return ResponseUtil.notFound(res, 'User', email);
+        return ResponseUtil.notFound(res, 'User', emailOrUsername);
       }
+
+      // Usar el email real del usuario (importante cuando se provee username)
+      const email = user.email;
 
       // ────────────────────────────────────────────────────────────────────
       // VALIDATION: User must not have verified email

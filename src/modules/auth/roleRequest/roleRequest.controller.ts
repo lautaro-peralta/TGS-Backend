@@ -489,6 +489,10 @@ export class RoleRequestController {
           if (roleRequest.requestedRole === Role.AUTHORITY) {
             // AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, and ADMIN
             // Remove ALL of them if present
+            const rolesToRemove = requestUser.roles.filter(
+              (r: Role) => [Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
+            );
+
             requestUser.roles = requestUser.roles.filter(
               (r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
             );
@@ -497,21 +501,49 @@ export class RoleRequestController {
             logger.info(
               `Removed all incompatible roles (PARTNER, DISTRIBUTOR, ADMIN) when approving AUTHORITY for user ${requestUser.id}`
             );
+
+            // 🔥 FIX: Delete role records from database tables
+            try {
+              for (const roleToRemove of rolesToRemove) {
+                await deleteRoleRecordForRoleChange(em, roleToRemove, requestUser.person);
+              }
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+              logger.error({ err }, 'Error deleting old role records');
+              return ResponseUtil.error(
+                res,
+                `Failed to remove old role records: ${errorMessage}`,
+                500
+              );
+            }
           } else {
             // Normal role swap - remove only the specified role
             requestUser.roles = requestUser.roles.filter(
               (r: Role) => r !== roleRequest.roleToRemove
             );
             requestUser.roles.push(roleRequest.requestedRole);
+
+            // 🔥 FIX: Delete role record from database table
+            try {
+              await deleteRoleRecordForRoleChange(em, roleRequest.roleToRemove!, requestUser.person);
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+              logger.error({ err }, 'Error deleting old role record');
+              return ResponseUtil.error(
+                res,
+                `Failed to remove old ${roleRequest.roleToRemove} record: ${errorMessage}`,
+                500
+              );
+            }
           }
 
           try {
             await createRoleRecordForApproval(em, roleRequest, requestUser);
           } catch (err) {
-            const errorMessage = err instanceof Error 
-              ? err.message 
+            const errorMessage = err instanceof Error
+              ? err.message
               : 'Unknown error occurred';
-            
+
             logger.error({ err }, 'Error creating role record');
             return ResponseUtil.error(
               res,
@@ -758,4 +790,72 @@ async function createAuthorityRecord(
 
   await em.persistAndFlush(authority);
   logger.info(`✅ Authority created successfully with DNI: ${person.dni}`);
+}
+
+/**
+ * 🔥 FIX: Deletes a role record from the corresponding database table when a role is removed.
+ * This maintains data integrity by ensuring users don't remain in role tables after role changes.
+ *
+ * @param em - Entity manager
+ * @param roleToRemove - The role being removed (PARTNER, DISTRIBUTOR, or AUTHORITY)
+ * @param person - The person entity with DNI identifier
+ */
+async function deleteRoleRecordForRoleChange(
+  em: any,
+  roleToRemove: Role,
+  person: any
+): Promise<void> {
+  if (!person) {
+    logger.warn('Cannot delete role record: person data is missing');
+    return;
+  }
+
+  const dni = person.dni;
+  logger.info(`🗑️ Deleting ${roleToRemove} record for DNI: ${dni}`);
+
+  switch (roleToRemove) {
+    case Role.PARTNER: {
+      const { Partner } = await import('../../partner/partner.entity.js');
+      const partner = await em.findOne(Partner, { dni });
+      if (partner) {
+        await em.removeAndFlush(partner);
+        logger.info(`✅ Partner record deleted for DNI: ${dni}`);
+      } else {
+        logger.warn(`⚠️ Partner record not found for DNI: ${dni}, skipping deletion`);
+      }
+      break;
+    }
+
+    case Role.DISTRIBUTOR: {
+      const { Distributor } = await import('../../distributor/distributor.entity.js');
+      const distributor = await em.findOne(Distributor, { dni });
+      if (distributor) {
+        await em.removeAndFlush(distributor);
+        logger.info(`✅ Distributor record deleted for DNI: ${dni}`);
+      } else {
+        logger.warn(`⚠️ Distributor record not found for DNI: ${dni}, skipping deletion`);
+      }
+      break;
+    }
+
+    case Role.AUTHORITY: {
+      const { Authority } = await import('../../authority/authority.entity.js');
+      const authority = await em.findOne(Authority, { dni });
+      if (authority) {
+        await em.removeAndFlush(authority);
+        logger.info(`✅ Authority record deleted for DNI: ${dni}`);
+      } else {
+        logger.warn(`⚠️ Authority record not found for DNI: ${dni}, skipping deletion`);
+      }
+      break;
+    }
+
+    case Role.ADMIN:
+      // ADMIN role doesn't have a separate table, only exists in user.roles array
+      logger.info(`ℹ️ ADMIN role has no separate table, skipping deletion`);
+      break;
+
+    default:
+      logger.warn(`⚠️ No deletion logic for role: ${roleToRemove}`);
+  }
 }

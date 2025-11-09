@@ -225,9 +225,14 @@ export class AuthController {
       const { email, password } = req.body;
 
       // ────────────────────────────────────────────────────────────────────
-      // Find user and verify credentials
+      // Find user by email OR username for flexible authentication
       // ────────────────────────────────────────────────────────────────────
-      const user = await em.findOne(User, { email });
+      const user = await em.findOne(User, {
+        $or: [
+          { email },
+          { username: email } // 'email' field can contain username
+        ]
+      });
 
       if (!user || !(await argon2.verify(user.password, password))) {
         return ResponseUtil.unauthorized(res, 'Invalid credentials');
@@ -242,18 +247,18 @@ export class AuthController {
           email: user.email
         }, 'User attempted login without email verification');
 
-        return ResponseUtil.error(
-          res,
-          'Email verification required. Please check your email and verify your account before logging in.',
-          403,
-          [
+        return res.status(403).json({
+          message: 'Email verification required. Please check your email and verify your account before logging in.',
+          errors: [
             {
               field: 'emailVerified',
               message: 'Email verification is required to access your account',
               code: 'EMAIL_VERIFICATION_REQUIRED'
             }
-          ]
-        );
+          ],
+          // Include email so frontend can use it for resending verification
+          email: user.email
+        });
       }
 
       // ────────────────────────────────────────────────────────────────────
