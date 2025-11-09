@@ -21,11 +21,11 @@ const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3000),
 
-  // Database Configuration - Docker-aware defaults
-  DB_HOST: z.string().default(isDocker ? 'mysql' : 'localhost'),
-  DB_PORT: z.coerce.number().default(isDocker ? 3306 : 3307),
-  DB_USER: z.string().default('dsw'),
-  DB_PASSWORD: z.string().default('dsw'),
+  // Database Configuration (PostgreSQL) - Docker-aware defaults
+  DB_HOST: z.string().default(isDocker ? 'postgres' : 'localhost'),
+  DB_PORT: z.coerce.number().default(5432), // PostgreSQL uses port 5432
+  DB_USER: z.string().default('postgres'),
+  DB_PASSWORD: z.string().default('postgres'),
   DB_NAME: z.string().default('tpdesarrollo'),
 
   // JWT Secret - Must be at least 32 characters

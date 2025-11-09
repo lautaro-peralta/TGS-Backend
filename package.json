@@ -5,6 +5,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "start": "node ./dist/server.js",
     "start:dev": "cross-env NODE_ENV=development tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/server.js\"",
     "start:demo": "cross-env APP_MODE=demo NODE_ENV=development tsc-watch --noClear -p ./tsconfig.json --onSuccess \"node ./dist/server.js\"",
     "build": "tsc -p ./tsconfig.json",
@@ -12,6 +13,9 @@
     "clean": "pnpm exec rimraf dist",
     "type-check": "tsc --noEmit",
     "test:sendgrid": "cross-env NODE_ENV=development tsx scripts/test-sendgrid.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": [],
   "author": "",
