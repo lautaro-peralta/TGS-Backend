@@ -18,14 +18,14 @@ const emailConfigSchema = z.object({
   port: z.coerce.number().default(587),
   secure: z.coerce.boolean().default(false),
   auth: z.object({
-    user: z.string(),
-    pass: z.string(),
+    user: z.string().optional().default(''),
+    pass: z.string().optional().default(''),
   }),
-  from: z.email().default('noreply@tgs-system.com'),
+  from: z.string().email().default('noreply@tgs-system.com'),
 
   // SendGrid configuration (for production)
   sendgridApiKey: z.string().optional(),
-  sendgridFrom: z.email().optional(),
+  sendgridFrom: z.string().email().optional(),
 });
 
 type EmailConfig = z.infer<typeof emailConfigSchema>;
