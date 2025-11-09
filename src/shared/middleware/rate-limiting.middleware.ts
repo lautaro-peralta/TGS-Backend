@@ -1,5 +1,5 @@
 // ============================================================================
-// DISTRIBUTED RATE LIMITING MIDDLEWARE - 分散式率導限制中介軟體
+// DISTRIBUTED RATE LIMITING MIDDLEWARE - Distributed rate limiting middleware
 // ============================================================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -7,37 +7,37 @@ import logger from '../utils/logger.js';
 import { redisService } from '../services/redis.service.js';
 
 /**
- * 滑動視窗率導限制配置
+ * Sliding window rate limiting configuration
  */
 interface SlidingWindowConfig {
-  windowMs: number;     // 視窗大小（毫秒）
-  maxRequests: number; // 視窗內最大請求數
-  keyGenerator?: (req: Request) => string; // 自訂鍵生成器
-  skipSuccessfulRequests?: boolean; // 是否略過成功請求
-  skipFailedRequests?: boolean;     // 是否略過失敗請求
+  windowMs: number;     // Window size (milliseconds)
+  maxRequests: number; // Maximum number of requests in the window
+  keyGenerator?: (req: Request) => string; // Custom key generator
+  skipSuccessfulRequests?: boolean; // Whether to skip successful requests
+  skipFailedRequests?: boolean;     // Whether to skip failed requests
 }
 
 /**
- * 固定視窗率導限制配置
+ * Fixed window rate limiting configuration
  */
 interface FixedWindowConfig {
-  windowMs: number;     // 視窗大小（毫秒）
-  maxRequests: number; // 視窗內最大請求數
-  keyGenerator?: (req: Request) => string; // 自訂鍵生成器
+  windowMs: number;     // Window size (milliseconds)
+  maxRequests: number; // Maximum number of requests in the window
+  keyGenerator?: (req: Request) => string; // Custom key generator
 }
 
 /**
- * 令牌桶率導限制配置
+ * Token bucket rate limiting configuration
  */
 interface TokenBucketConfig {
-  capacity: number;    // 桶容量
-  refillRate: number;  // 每秒補充令牌數
-  keyGenerator?: (req: Request) => string; // 自訂鍵生成器
+  capacity: number;    // Bucket capacity
+  refillRate: number;  // Number of tokens refilled per second
+  keyGenerator?: (req: Request) => string; // Custom key generator
 }
 
 /**
- * 滑動視窗率導限制中介軟體
- * 使用 Redis 實現分散式滑動視窗率導限制
+ * Sliding window rate limiting middleware
+ * Implements distributed sliding window rate limiting using Redis
  */
 export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -46,16 +46,16 @@ export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
       const now = Date.now();
       const windowStart = now - config.windowMs;
 
-      // 取得當前視窗內的所有請求時間戳
+      // Get all request timestamps in the current window
       const requestTimes = await redisService.listRange(key, 0, -1);
 
-      // 過濾出在當前視窗內的請求
+      // Filter requests that are in the current window
       const validRequests = requestTimes.filter((timestamp: string) => {
         const time = parseInt(timestamp);
         return time > windowStart;
       });
 
-      // 檢查是否超過限制
+      // Check if the limit is exceeded
       if (validRequests.length >= config.maxRequests) {
         logger.warn(
           {
@@ -77,15 +77,15 @@ export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
         });
       }
 
-      // 添加當前請求時間戳
+      // Add current request timestamp
       await redisService.listPush(key, now.toString());
 
-      // 設定過期時間為視窗大小
+      // Set expiration time to window size
       await redisService.getClient().then(client =>
         client.expire(key, Math.ceil(config.windowMs / 1000))
       );
 
-      // 設定剩餘請求數的標頭
+      // Set remaining requests headers
       res.set({
         'X-RateLimit-Limit': config.maxRequests.toString(),
         'X-RateLimit-Remaining': (config.maxRequests - validRequests.length - 1).toString(),
@@ -95,16 +95,16 @@ export const slidingWindowRateLimit = (config: SlidingWindowConfig) => {
       next();
 
     } catch (error) {
-      logger.error({ err: error, ip: req.ip }, 'Sliding window rate limit error');
-      // 如果 Redis 錯誤，允許請求繼續（降級策略）
+      logger.error({ err: error, ip: req.ip }, 'Error in sliding window rate limiting');
+      // If there's a Redis error, allow the request to continue (degradation strategy)
       next();
     }
   };
 };
 
 /**
- * 固定視窗率導限制中介軟體
- * 使用 Redis 實現分散式固定視窗率導限制
+ * Fixed window rate limiting middleware
+ * Implements distributed fixed window rate limiting using Redis
  */
 export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -113,7 +113,7 @@ export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
       const now = Date.now();
       const windowKey = `${key}:${Math.floor(now / config.windowMs)}`;
 
-      // 取得當前視窗的請求計數
+      // Get request counter from the current window
       const currentCount = await redisService.get(windowKey);
 
       if (currentCount && parseInt(currentCount) >= config.maxRequests) {
@@ -136,17 +136,17 @@ export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
         });
       }
 
-      // 遞增計數器並設定過期時間
+      // Increment counter and set expiration time
       const newCount = await redisService.increment(windowKey, 1);
 
       if (newCount === 1) {
-        // 第一次設定這個視窗，設定過期時間
+        // First time setting this window, set expiration time
         await redisService.getClient().then(client =>
           client.expire(windowKey, Math.ceil(config.windowMs / 1000))
         );
       }
 
-      // 設定標頭
+      // Set headers
       res.set({
         'X-RateLimit-Limit': config.maxRequests.toString(),
         'X-RateLimit-Remaining': (config.maxRequests - (newCount || 0)).toString(),
@@ -156,24 +156,24 @@ export const fixedWindowRateLimit = (config: FixedWindowConfig) => {
       next();
 
     } catch (error) {
-      logger.error({ err: error, ip: req.ip }, 'Fixed window rate limit error');
-      // 如果 Redis 錯誤，允許請求繼續（降級策略）
+      logger.error({ err: error, ip: req.ip }, 'Error in fixed window rate limiting');
+      // If there's a Redis error, allow the request to continue (degradation strategy)
       next();
     }
   };
 };
 
 /**
- * 令牌桶率導限制中介軟體
- * 使用 Redis 實現分散式令牌桶率導限制
+ * Token bucket rate limiting middleware
+ * Implements distributed token bucket rate limiting using Redis
  */
 export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const key = config.keyGenerator ? config.keyGenerator(req) : getDefaultKey(req);
-      const now = Date.now() / 1000; // 轉換為秒
+      const now = Date.now() / 1000; // Convert to seconds
 
-      // 取得當前令牌桶狀態
+      // Get current token bucket state
       const bucketKey = `${key}:bucket`;
       const lastRefillKey = `${key}:lastRefill`;
 
@@ -181,14 +181,14 @@ export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
       let tokens = bucketData[0] ? parseFloat(bucketData[0]) : config.capacity;
       let lastRefill = bucketData[1] ? parseFloat(bucketData[1]) : now;
 
-      // 計算應該補充的令牌數量
+      // Calculate number of tokens to refill
       const timePassed = now - lastRefill;
       const tokensToAdd = Math.floor(timePassed * config.refillRate);
 
-      // 更新令牌數量（不超過容量）
+      // Update number of tokens (do not exceed capacity)
       tokens = Math.min(config.capacity, tokens + tokensToAdd);
 
-      // 檢查是否有足夠的令牌
+      // Check if there are enough tokens
       if (tokens < 1) {
         logger.warn(
           {
@@ -210,14 +210,14 @@ export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
         });
       }
 
-      // 消耗一個令牌並更新狀態
+      // Consume one token and update state
       tokens -= 1;
       await redisService.mset([
         { key: bucketKey, value: tokens.toString() },
         { key: lastRefillKey, value: now.toString() },
       ]);
 
-      // 設定標頭
+      // Set headers
       res.set({
         'X-RateLimit-Limit': config.capacity.toString(),
         'X-RateLimit-Remaining': Math.floor(tokens).toString(),
@@ -227,16 +227,16 @@ export const tokenBucketRateLimit = (config: TokenBucketConfig) => {
       next();
 
     } catch (error) {
-      logger.error({ err: error, ip: req.ip }, 'Token bucket rate limit error');
-      // 如果 Redis 錯誤，允許請求繼續（降級策略）
+      logger.error({ err: error, ip: req.ip }, 'Error in token bucket rate limiting');
+      // If there's a Redis error, allow the request to continue (degradation strategy)
       next();
     }
   };
 };
 
 /**
- * 智慧型率導限制中介軟體
- * 根據不同請求類型自動選擇最適合的率導限制策略
+ * Intelligent rate limiting middleware
+ * Automatically selects the most appropriate rate limiting strategy based on request type
  */
 export const intelligentRateLimit = (config: {
   default?: SlidingWindowConfig;
@@ -249,40 +249,40 @@ export const intelligentRateLimit = (config: {
     const path = req.path;
     const method = req.method;
 
-    // 根據路徑和方法選擇適當的率導限制策略
+    // Select appropriate rate limiting strategy based on route and method
     if (path.includes('/auth/') || path.includes('/login') || path.includes('/register')) {
-      // 認證相關請求使用嚴格的滑動視窗限制
+      // Authentication-related requests use strict sliding window rate limiting
       return slidingWindowRateLimit(config.auth || {
-        windowMs: 15 * 60 * 1000, // 15分鐘
-        maxRequests: 5, // 每15分鐘最多5個請求
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxRequests: 5, // Maximum 5 requests per 15 minutes
       })(req, res, next);
 
     } else if (path.startsWith('/api/admin') || path.includes('/users')) {
-      // 管理相關請求使用固定視窗限制
+      // Admin-related requests use fixed window rate limiting
       return fixedWindowRateLimit(config.admin || {
-        windowMs: 60 * 60 * 1000, // 1小時
-        maxRequests: 100, // 每小時最多100個請求
+        windowMs: 60 * 60 * 1000, // 1 hour
+        maxRequests: 100, // Maximum 100 requests per hour
       })(req, res, next);
 
     } else if (method === 'POST' && (path.includes('/upload') || path.includes('/import'))) {
-      // 上傳相關請求使用令牌桶限制
+      // Upload-related requests use token bucket rate limiting
       return tokenBucketRateLimit(config.upload || {
-        capacity: 10, // 桶容量為10個請求
-        refillRate: 0.1, // 每秒補充0.1個令牌（每10秒補充1個）
+        capacity: 10, // Bucket capacity: 10 requests
+        refillRate: 0.1, // Refill 0.1 tokens per second (1 token every 10 seconds)
       })(req, res, next);
 
     } else {
-      // 一般 API 請求使用預設滑動視窗限制
+      // General API requests use default sliding window rate limiting
       return slidingWindowRateLimit(config.default || config.api || {
-        windowMs: 15 * 60 * 1000, // 15分鐘
-        maxRequests: 100, // 每15分鐘最多100個請求
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxRequests: 100, // Maximum 100 requests per 15 minutes
       })(req, res, next);
     }
   };
 };
 
 /**
- * 自訂鍵生成器範例
+ * Example of custom key generator
  */
 export const createKeyGenerator = (prefix: string, includeUser: boolean = false) => {
   return (req: Request) => {
@@ -297,25 +297,25 @@ export const createKeyGenerator = (prefix: string, includeUser: boolean = false)
 };
 
 /**
- * 預設鍵生成器
+ * Default key generator
  */
 function getDefaultKey(req: Request): string {
   return `rate_limit:${req.ip}:${req.method}:${req.path}`;
 }
 
 /**
- * 清理過期的率導限制資料
- * 建議定期執行此函數來清理舊的率導限制資料
+ * Cleanup of expired rate limiting data
+ * It is recommended to run this function periodically to clean up old rate limiting data
  */
 export const cleanupRateLimitData = async (): Promise<void> => {
   try {
-    logger.info('Starting rate limit data cleanup');
+    logger.info('Starting rate limiting data cleanup');
 
-    // 這裡可以實作清理邏輯
-    // 例如：刪除超過一定時間的舊鍵
+    // Here you can implement the cleanup logic
+    // For example: delete old keys that exceed a certain time
 
-    logger.info('Rate limit data cleanup completed');
+    logger.info('Rate limiting data cleanup completed');
   } catch (error) {
-    logger.error({ err: error }, 'Rate limit data cleanup failed');
+    logger.error({ err: error }, 'Failed to clean up rate limiting data');
   }
 };

@@ -1,5 +1,5 @@
 // ============================================================================
-// EMAIL VERIFICATION SCHEMAS - Validación con Zod
+// EMAIL VERIFICATION SCHEMAS - Zod validation schemas
 // ============================================================================
 
 import { z } from 'zod';

@@ -16,12 +16,12 @@ import { paginationSchema } from '../../../shared/schemas/common.schema.js';
 
 
 const additionalDataSchema = z.object({
-  // Para DISTRIBUTOR
+  // For DISTRIBUTOR
   zoneId: z.number().positive().int().optional(),
   address: z.string().min(1).max(500).optional(),
   productsIds: z.array(z.number().positive().int()).optional(),
-  
-  // Para AUTHORITY
+
+  // For AUTHORITY
   rank: z.enum(['0', '1', '2', '3']).optional(),
 }).optional();
 /**

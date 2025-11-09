@@ -658,7 +658,7 @@ export class RoleRequestController {
 }
 
 // ============================================================================
-// ✅ HELPER FUNCTIONS - FUERA DE LA CLASE
+// ✅ HELPER FUNCTIONS - OUTSIDE THE CLASS
 // ============================================================================
 
 async function createRoleRecordForApproval(

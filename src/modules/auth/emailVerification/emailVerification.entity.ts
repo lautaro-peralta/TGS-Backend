@@ -1,5 +1,5 @@
 // ============================================================================
-// EMAIL VERIFICATION ENTITY - Entidad para verificación automática de email
+// EMAIL VERIFICATION ENTITY - Entity for automatic email verification
 // ============================================================================
 
 import { Entity, PrimaryKey, Property } from '@mikro-orm/core';

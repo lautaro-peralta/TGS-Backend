@@ -1,5 +1,5 @@
 // ============================================================================
-// CUSTOM ERRORS - Clases de errores personalizadas para manejo consistente
+// CUSTOM ERRORS - Custom error classes for consistent error handling
 // ============================================================================
 
 import { ValidationErrorDetail } from '../types/common.types.js';
@@ -133,7 +133,7 @@ export class InternalServerError extends AppError {
   ) {
     super(message, 500, true, undefined, 'INTERNAL_SERVER_ERROR', requestId);
 
-    // Si hay un error original, lo guardamos para debugging
+    // If there's an original error, save it for debugging
     if (originalError) {
       (this as any).originalError = originalError;
     }
@@ -220,7 +220,7 @@ export class ErrorFactory {
     let message = 'Database operation failed';
     let dbCode = error.code || error.errno?.toString();
 
-    // Mapeo de códigos de error comunes de MySQL
+    // Mapping of common MySQL error codes
     switch (dbCode) {
       case 'ER_DUP_ENTRY':
         message = 'Duplicate entry detected';

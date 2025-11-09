@@ -1,5 +1,5 @@
 // ============================================================================
-// USER VERIFICATION ENTITY - Entidad para solicitudes de verificación de usuario
+// USER VERIFICATION ENTITY - Entity for user verification requests
 // ============================================================================
 
 import { Entity, PrimaryKey, Property, ManyToOne, EntityDTO } from '@mikro-orm/core';
@@ -106,7 +106,7 @@ export class UserVerification {
   incrementAttempts(): void {
     this.attempts++;
 
-    // Si se exceden los intentos máximos, marcar como expirado
+    // If maximum attempts exceeded, mark as expired
     if (this.attempts >= this.maxAttempts) {
       this.markAsExpired();
     }

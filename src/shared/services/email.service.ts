@@ -1,19 +1,19 @@
 // ============================================================================
-// EMAIL SERVICE - Servicio de envío de emails con plantillas profesionales
+// EMAIL SERVICE - Email sending service with professional templates
 // ============================================================================
 
 import nodemailer, { Transporter } from 'nodemailer';
 import { z } from 'zod';
 import logger from '../utils/logger.js';
 
-// SendGrid para producción - Usamos Web API (más eficiente que SMTP)
+// SendGrid for production - We use Web API (more efficient than SMTP)
 import sgMail from '@sendgrid/mail';
 
 /**
- * Configuración de envío de emails
+ * Email sending configuration
  */
 const emailConfigSchema = z.object({
-  // Configuración SMTP (para desarrollo con Mailtrap)
+  // SMTP configuration (for development with Mailtrap)
   host: z.string().default('smtp.gmail.com'),
   port: z.coerce.number().default(587),
   secure: z.coerce.boolean().default(false),
@@ -23,7 +23,7 @@ const emailConfigSchema = z.object({
   }),
   from: z.email().default('noreply@tgs-system.com'),
 
-  // Configuración SendGrid (para producción)
+  // SendGrid configuration (for production)
   sendgridApiKey: z.string().optional(),
   sendgridFrom: z.email().optional(),
 });
@@ -31,7 +31,7 @@ const emailConfigSchema = z.object({
 type EmailConfig = z.infer<typeof emailConfigSchema>;
 
 /**
- * Plantillas de email disponibles
+ * Available email templates
  */
 export enum EmailTemplate {
   VERIFICATION = 'verification',
@@ -41,7 +41,7 @@ export enum EmailTemplate {
 }
 
 /**
- * Servicio de envío de emails con soporte para plantillas y configuración profesional
+ * Email sending service with support for templates and professional configuration
  */
 export class EmailService {
   private transporter: Transporter | null = null;
@@ -50,11 +50,11 @@ export class EmailService {
   private useSendGrid: boolean = false;
 
   /**
-   * Inicializa el servicio de email
+   * Initializes the email service
    */
   async initialize(config?: Partial<EmailConfig>): Promise<void> {
     try {
-      // Usar configuración proporcionada o variables de entorno
+      // Use provided configuration or environment variables
       const emailConfig = {
         host: config?.host || process.env.SMTP_HOST || 'smtp.gmail.com',
         port: config?.port || Number(process.env.SMTP_PORT) || 587,
@@ -68,40 +68,40 @@ export class EmailService {
         sendgridFrom: config?.sendgridFrom || process.env.SENDGRID_FROM,
       };
 
-      // Validar configuración
+      // Validate configuration
       this.config = emailConfigSchema.parse(emailConfig);
 
-      // Determinar si usar SendGrid (producción con API key) o SMTP (desarrollo)
+      // Determine whether to use SendGrid (production with API key) or SMTP (development)
       this.useSendGrid = !!(
         process.env.NODE_ENV === 'production' &&
         this.config.sendgridApiKey &&
         this.config.sendgridFrom
       );
 
-      // Inicializar el proveedor de email adecuado
+      // Initialize the appropriate email provider
       if (this.useSendGrid) {
-        // Configurar SendGrid para producción
+        // Configure SendGrid for production
         sgMail.setApiKey(this.config.sendgridApiKey!);
         this.isEnabled = true;
         logger.info('SendGrid email service initialized for production');
       } else if (this.config.auth.user && this.config.auth.pass) {
-        // Configurar SMTP (Mailtrap para desarrollo)
+        // Configure SMTP (Mailtrap for development)
         this.transporter = nodemailer.createTransport({
           host: this.config.host,
           port: this.config.port,
           secure: this.config.secure,
           auth: this.config.auth,
           tls: {
-            rejectUnauthorized: false, // Para desarrollo
+            rejectUnauthorized: false, // For development
           },
         });
 
-        // Verificar conexión (opcional en desarrollo)
+        // Verify connection (optional in development)
         try {
           await this.transporter.verify();
           this.isEnabled = true;
 
-          // Log diferente si EMAIL_VERIFICATION_REQUIRED está deshabilitado
+          // Different log if EMAIL_VERIFICATION_REQUIRED is disabled
           const verificationRequired = process.env.EMAIL_VERIFICATION_REQUIRED !== 'false';
           if (verificationRequired) {
             logger.info('SMTP email service initialized and verified successfully');
@@ -109,14 +109,14 @@ export class EmailService {
             logger.info('SMTP email service initialized (demo mode - verification emails will be sent but not required)');
           }
         } catch (verifyError) {
-          // En desarrollo, continuar sin fallar si la verificación falla
+          // In development, continue without failing if verification fails
           if (process.env.NODE_ENV === 'development') {
             logger.warn('Email service configured but verification failed (continuing in dev mode)');
-            this.isEnabled = true; // Permitir continuar en desarrollo
+            this.isEnabled = true; // Allow to continue in development
           } else {
             logger.error({ err: verifyError }, 'Email service verification failed');
             this.isEnabled = false;
-            throw verifyError; // Fallar en producción si no se puede verificar
+            throw verifyError; // Fail in production if cannot verify
           }
         }
       } else {
@@ -128,7 +128,7 @@ export class EmailService {
       logger.error({ err: error }, 'Failed to initialize email service');
       this.isEnabled = false;
       
-      // Solo lanzar error en producción
+      // Only throw error in production
       if (process.env.NODE_ENV === 'production') {
         throw error;
       }
@@ -136,7 +136,7 @@ export class EmailService {
   }
 
   /**
-   * Envía un email usando una plantilla
+   * Sends an email using a template
    */
   async sendEmail(
     to: string,
@@ -158,7 +158,7 @@ export class EmailService {
       const from = options?.from || (this.useSendGrid ? this.config!.sendgridFrom! : this.config!.from);
 
       if (this.useSendGrid) {
-        // Usar SendGrid para producción
+        // Use SendGrid for production
         const msg = {
           to,
           from,
@@ -179,13 +179,13 @@ export class EmailService {
         return true;
 
       } else if (this.transporter) {
-        // Usar SMTP para desarrollo
+        // Use SMTP for development
         const mailOptions = {
           from,
           to,
           subject,
           html: templateData.html,
-          text: templateData.text, // Versión de texto plano
+          text: templateData.text, // Plain text version
         };
 
         const result = await this.transporter.sendMail(mailOptions);
@@ -217,7 +217,7 @@ export class EmailService {
   }
 
   /**
-   * Envía email de verificación de cuenta
+   * Sends account verification email
    */
   async sendVerificationEmail(
     email: string,
@@ -230,12 +230,12 @@ export class EmailService {
       userName: userName || 'Usuario',
       verificationUrl,
       token: verificationToken,
-      expiresIn: '15 minutos', // Actualizado de 24 horas
+      expiresIn: '15 minutes', // Updated from 24 hours
     });
   }
 
   /**
-   * Envía email de bienvenida después de verificación
+   * Sends welcome email after verification
    */
   async sendWelcomeEmail(
     email: string,
@@ -248,7 +248,7 @@ export class EmailService {
   }
 
   /**
-   * Envía notificación a administradores sobre nueva verificación
+   * Sends notification to administrators about new verification
    */
   async sendAdminNotification(
     adminEmail: string,
@@ -265,7 +265,7 @@ export class EmailService {
   }
 
   /**
-   * Obtiene los datos de plantilla para un tipo específico
+   * Gets template data for a specific type
    */
   private async getTemplateData(
     template: EmailTemplate,
@@ -287,7 +287,7 @@ export class EmailService {
   }
 
   /**
-   * Plantilla de verificación de email
+   * Email verification template
    */
   private getVerificationTemplate(data: any) {
     const subject = 'Verifica tu dirección de email - GarrSYS';
@@ -549,7 +549,7 @@ export class EmailService {
   }
 
   /**
-   * Plantilla de bienvenida
+   * Welcome template
    */
   private getWelcomeTemplate(data: any) {
     const subject = '¡Bienvenido a GarrSYS!';
@@ -824,7 +824,7 @@ export class EmailService {
   }
 
   /**
-   * Plantilla de notificación para administradores
+   * Admin notification template
    */
   private getAdminNotificationTemplate(data: any) {
     const subject = `Nueva solicitud de verificación - ${data.clientName}`;
@@ -1147,14 +1147,14 @@ export class EmailService {
   }
 
   /**
-   * Verifica si el servicio de email está disponible
+   * Checks if the email service is available
    */
   isAvailable(): boolean {
     return this.isEnabled && this.transporter !== null;
   }
 
   /**
-   * Obtiene estadísticas del servicio de email
+   * Gets email service statistics
    */
   getStats() {
     return {
@@ -1167,5 +1167,5 @@ export class EmailService {
   }
 }
 
-// Instancia singleton
+// Singleton instance
 export const emailService = new EmailService();
