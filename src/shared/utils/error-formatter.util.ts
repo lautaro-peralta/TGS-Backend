@@ -1,5 +1,5 @@
 // ============================================================================
-// ERROR FORMATTER UTILITY - Utilidades para formateo y manejo de errores
+// ERROR FORMATTER UTILITY - Utilities for error formatting and handling
 // ============================================================================
 
 import { Response } from 'express';
@@ -7,12 +7,12 @@ import { AppError, ValidationError, NotFoundError, ConflictError, ForbiddenError
 import { ValidationErrorDetail } from '../types/common.types.js';
 
 /**
- * Utilidad para formatear respuestas de error de manera consistente
+ * Utility for formatting error responses consistently
  */
 export class ErrorFormatter {
 
   /**
-   * Crea una respuesta de error formateada
+   * Creates a formatted error response
    */
   static formatErrorResponse(
     error: AppError,
@@ -35,7 +35,7 @@ export class ErrorFormatter {
       }),
     };
 
-    // Headers adicionales para errores específicos
+    // Additional headers for specific errors
     if (error.statusCode === 429) {
       res.set('Retry-After', '60');
     }
@@ -48,7 +48,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea errores de validación desde diferentes formatos
+   * Creates validation errors from different formats
    */
   static createValidationErrors(
     errors: Array<{ field: string; message: string; code?: string }> | string[]
@@ -65,7 +65,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea un error de validación desde errores simples
+   * Creates a validation error from simple errors
    */
   static createValidationError(
     field: string,
@@ -80,7 +80,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea múltiples errores de validación desde un mapa
+   * Creates multiple validation errors from a map
    */
   static createValidationErrorsFromMap(
     errorMap: Record<string, string>
@@ -93,7 +93,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea un error de "no encontrado" formateado
+   * Creates a formatted "not found" error
    */
   static createNotFoundError(
     resource: string,
@@ -104,7 +104,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea un error de conflicto formateado
+   * Creates a formatted conflict error
    */
   static createConflictError(
     message: string,
@@ -115,7 +115,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea un error de prohibido formateado
+   * Creates a formatted forbidden error
    */
   static createForbiddenError(
     message?: string,
@@ -125,7 +125,7 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea un error interno formateado
+   * Creates a formatted internal error
    */
   static createInternalError(
     message?: string,
@@ -136,26 +136,26 @@ export class ErrorFormatter {
   }
 
   /**
-   * Verifica si un error es operacional (no es un bug de programación)
+   * Checks if an error is operational (not a programming bug)
    */
   static isOperationalError(error: Error): boolean {
     if (error instanceof AppError) {
       return error.isOperational;
     }
 
-    // Para errores estándar, asumir que son operacionales si tienen un stack trace razonable
+    // For standard errors, assume they are operational if they have a reasonable stack trace
     return !!(error.stack && error.message);
   }
 
   /**
-   * Obtiene el código de estado HTTP apropiado para un error
+   * Gets the appropriate HTTP status code for an error
    */
   static getStatusCode(error: Error | AppError): number {
     if (error instanceof AppError) {
       return error.statusCode;
     }
 
-    // Mapeo de errores estándar a códigos HTTP
+    // Mapping of standard errors to HTTP codes
     if (error.name === 'ValidationError') return 400;
     if (error.name === 'UnauthorizedError') return 401;
     if (error.name === 'ForbiddenError') return 403;
@@ -165,18 +165,18 @@ export class ErrorFormatter {
   }
 
   /**
-   * Formatea errores de base de datos para respuestas HTTP
+   * Formats database errors for HTTP responses
    */
   static formatDatabaseError(
     error: any,
     requestId?: string
   ): AppError {
-    // Si ya es un error personalizado, devolverlo
+    // If it's already a custom error, return it
     if (error instanceof AppError) {
       return error;
     }
 
-    // Crear error basado en el código de error de la base de datos
+    // Create error based on database error code
     if (error.code || error.errno) {
       return new InternalServerError(
         'Database operation failed',
@@ -185,7 +185,7 @@ export class ErrorFormatter {
       );
     }
 
-    // Error genérico
+    // Generic error
     return new InternalServerError(
       error.message || 'Unknown database error',
       error,
@@ -194,25 +194,25 @@ export class ErrorFormatter {
   }
 
   /**
-   * Crea un mensaje de error amigable para el usuario final
+   * Creates a user-friendly error message for the end user
    */
   static createUserFriendlyMessage(error: AppError): string {
-    // Para errores de validación, usar el mensaje específico
+    // For validation errors, use the specific message
     if (error instanceof ValidationError) {
       return 'Los datos proporcionados no son válidos. Por favor, verifica la información e intenta nuevamente.';
     }
 
-    // Para errores de no encontrado
+    // For not found errors
     if (error instanceof NotFoundError) {
       return error.message;
     }
 
-    // Para errores de conflicto
+    // For conflict errors
     if (error instanceof ConflictError) {
       return 'Ya existe un registro con estos datos. Por favor, verifica la información.';
     }
 
-    // Para errores de autorización
+    // For authorization errors
     if (error.statusCode === 401) {
       return 'Debes iniciar sesión para acceder a esta función.';
     }
@@ -221,18 +221,18 @@ export class ErrorFormatter {
       return 'No tienes permisos suficientes para realizar esta acción.';
     }
 
-    // Para errores internos, mensaje genérico
+    // For internal errors, generic message
     if (error.statusCode >= 500) {
       return 'Ha ocurrido un error interno. Por favor, intenta nuevamente más tarde.';
     }
 
-    // Mensaje por defecto
+    // Default message
     return error.message || 'Ha ocurrido un error inesperado.';
   }
 }
 
 /**
- * Decorador para manejar errores en métodos de controlador automáticamente
+ * Decorator to automatically handle errors in controller methods
  */
 export function HandleErrors(target: any, propertyName: string, descriptor: PropertyDescriptor) {
   const method = descriptor.value;
@@ -245,7 +245,7 @@ export function HandleErrors(target: any, propertyName: string, descriptor: Prop
     } catch (error) {
       const requestId = req.requestId || 'unknown';
 
-      // Log del error
+      // Log the error
       console.error(`Error in ${target.constructor.name}.${propertyName}:`, {
         error,
         requestId,
@@ -253,10 +253,10 @@ export function HandleErrors(target: any, propertyName: string, descriptor: Prop
         method: req.method,
       });
 
-      // Crear error formateado
+      // Create formatted error
       const appError = ErrorFormatter.formatDatabaseError(error, requestId);
 
-      // Enviar respuesta de error
+      // Send error response
       return ErrorFormatter.formatErrorResponse(appError, res, requestId);
     }
   };

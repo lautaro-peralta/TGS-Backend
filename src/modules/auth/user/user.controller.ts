@@ -20,8 +20,13 @@ import logger from '../../../shared/utils/logger.js';
 // ============================================================================
 
 /**
- * Validates that roles are compatible.
- * AUTHORITY role is incompatible with PARTNER, DISTRIBUTOR, and ADMIN.
+ * Validates that roles are compatible according to business rules.
+ *
+ * Business Rules:
+ * 1. PARTNER can be combined with DISTRIBUTOR or ADMIN, but NOT with AUTHORITY
+ * 2. DISTRIBUTOR can be combined with PARTNER or ADMIN, but NOT with AUTHORITY
+ * 3. AUTHORITY cannot be combined with PARTNER, DISTRIBUTOR, or ADMIN
+ * 4. ADMIN when assigned alone, removes all other roles (handled separately)
  *
  * @param roles - Array of roles to validate
  * @returns Error message if roles are incompatible, null otherwise
@@ -32,16 +37,40 @@ function validateRoleCompatibility(roles: Role[]): string | null {
   const hasDistributor = roles.includes(Role.DISTRIBUTOR);
   const hasAdmin = roles.includes(Role.ADMIN);
 
+  // Rule 1: AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, and ADMIN
   if (hasAuthority && (hasPartner || hasDistributor || hasAdmin)) {
     const incompatibleRoles = [];
     if (hasPartner) incompatibleRoles.push('PARTNER');
     if (hasDistributor) incompatibleRoles.push('DISTRIBUTOR');
     if (hasAdmin) incompatibleRoles.push('ADMIN');
 
-    return `AUTHORITY role is incompatible with: ${incompatibleRoles.join(', ')}`;
+    return `AUTHORITY role is incompatible with: ${incompatibleRoles.join(', ')}. AUTHORITY cannot be combined with business roles.`;
   }
 
+  // Rule 2: PARTNER cannot be combined with AUTHORITY (already covered above)
+  // Rule 3: DISTRIBUTOR cannot be combined with AUTHORITY (already covered above)
+
   return null;
+}
+
+/**
+ * Processes role assignment with special rules.
+ * - If ADMIN is being assigned, it clears all other roles and keeps only ADMIN
+ * - Otherwise, validates role compatibility
+ *
+ * @param newRoles - Array of roles being assigned
+ * @returns Processed roles array (may be modified if ADMIN is assigned)
+ */
+function processRoleAssignment(newRoles: Role[]): Role[] {
+  const hasAdmin = newRoles.includes(Role.ADMIN);
+
+  // Special rule: If ADMIN is being assigned, remove all other roles
+  if (hasAdmin) {
+    logger.info('ADMIN role detected in assignment - clearing all other roles');
+    return [Role.ADMIN, Role.USER]; // Keep only ADMIN and USER (base role)
+  }
+
+  return newRoles;
 }
 
 // ============================================================================
@@ -138,7 +167,8 @@ export class UserController {
   async getAllUsers(req: Request, res: Response) {
     try {
       const em = orm.em.fork();
-      const users = await em.find(User, {});
+      
+      const users = await em.find(User, {}, { populate: ['person'] });
 
       return ResponseUtil.success(
         res,
@@ -147,6 +177,117 @@ export class UserController {
       );
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error getting users', err);
+    }
+  }
+
+/**
+   * Retrieves all verified users eligible for role conversion (Admin only)
+   *
+   * Returns users that meet ALL criteria:
+   * - isVerified = true (verified by admin)
+   * - profileCompleteness = 100 (complete personal data)
+   * - hasPersonalInfo = true (all person fields filled)
+   *
+   * Optional filtering by target role to ensure role compatibility:
+   * - If targetRole=AUTHORITY: excludes users with PARTNER, DISTRIBUTOR, ADMIN, or AUTHORITY roles
+   * - If targetRole=PARTNER: excludes users with AUTHORITY role or users who already are PARTNER
+   * - If targetRole=DISTRIBUTOR: excludes users with AUTHORITY role or users who already are DISTRIBUTOR
+   *
+   * @param req - Express request with optional targetRole query param
+   * @param res - Express response
+   * @returns 200 with array of verified user DTOs
+   *
+   * @example
+   * GET /api/users/verified?targetRole=AUTHORITY
+   * GET /api/users/verified?targetRole=PARTNER
+   * GET /api/users/verified?targetRole=DISTRIBUTOR
+   * Requires: ADMIN role
+   */
+  async getVerifiedUsers(req: Request, res: Response) {
+    try {
+      const em = orm.em.fork();
+      const { targetRole } = req.query;
+
+      // ────────────────────────────────────────────────────────────────────
+      // Fetch verified users with complete profiles
+      // ────────────────────────────────────────────────────────────────────
+      const users = await em.find(
+        User,
+        {
+          isVerified: true,
+          profileCompleteness: 100,
+        },
+        { populate: ['person'] }
+      );
+
+      // ────────────────────────────────────────────────────────────────────
+      // Filter users with complete personal information
+      // ────────────────────────────────────────────────────────────────────
+      let eligibleUsers = users.filter((u) => u.hasPersonalInfo);
+
+      // ────────────────────────────────────────────────────────────────────
+      // Filter by role compatibility if targetRole is provided
+      // ────────────────────────────────────────────────────────────────────
+      if (targetRole) {
+        const target = String(targetRole).toUpperCase();
+
+        eligibleUsers = eligibleUsers.filter((user) => {
+          const currentRoles = user.roles;
+
+          if (target === 'ADMIN') {
+            // For ADMIN role, exclude users who already have ADMIN role
+            return !currentRoles.includes(Role.ADMIN);
+          }
+
+          if (target === 'AUTHORITY') {
+            // AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, ADMIN
+            // Also exclude users who already have AUTHORITY role
+            const hasIncompatible =
+              currentRoles.includes(Role.PARTNER) ||
+              currentRoles.includes(Role.DISTRIBUTOR) ||
+              currentRoles.includes(Role.ADMIN) ||
+              currentRoles.includes(Role.AUTHORITY);
+            return !hasIncompatible;
+          }
+
+          if (target === 'PARTNER') {
+            // PARTNER is incompatible with AUTHORITY
+            // Also exclude users who already have PARTNER role
+            return !currentRoles.includes(Role.AUTHORITY) &&
+                   !currentRoles.includes(Role.PARTNER);
+          }
+
+          if (target === 'DISTRIBUTOR') {
+            // DISTRIBUTOR is incompatible with AUTHORITY
+            // Also exclude users who already have DISTRIBUTOR role
+            return !currentRoles.includes(Role.AUTHORITY) &&
+                   !currentRoles.includes(Role.DISTRIBUTOR);
+          }
+
+          // For other roles, no filtering needed
+          return true;
+        });
+      } else {
+        // ──────────────────────────────────────────────────────────────────
+        // DEFAULT: Exclude users who already have ADMIN role
+        // This is the default behavior when no targetRole is specified
+        // ──────────────────────────────────────────────────────────────────
+        eligibleUsers = eligibleUsers.filter((user) =>
+          !user.roles.includes(Role.ADMIN)
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Return eligible users
+      // ────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Verified users obtained successfully',
+        eligibleUsers.map((u) => u.toDTO())
+      );
+    } catch (err) {
+      logger.error({ err }, 'Error getting verified users');
+      return ResponseUtil.internalError(res, 'Error getting verified users', err);
     }
   }
 
@@ -253,10 +394,15 @@ export class UserController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Validate role compatibility
+      // Validate and process role assignment
       // ────────────────────────────────────────────────────────────────────
       if (!user.roles.includes(role)) {
-        const newRoles = [...user.roles, role];
+        let newRoles = [...user.roles, role];
+
+        // Process roles (ADMIN assignment clears other roles)
+        newRoles = processRoleAssignment(newRoles);
+
+        // Validate role compatibility
         const validationError = validateRoleCompatibility(newRoles);
         if (validationError) {
           return ResponseUtil.validationError(res, validationError, [
@@ -267,7 +413,7 @@ export class UserController {
         // ──────────────────────────────────────────────────────────────────
         // ADMIN role requires complete personal information
         // ──────────────────────────────────────────────────────────────────
-        if (role === Role.ADMIN && !user.hasPersonalInfo) {
+        if (newRoles.includes(Role.ADMIN) && !user.hasPersonalInfo) {
           return ResponseUtil.validationError(
             res,
             'User must complete personal information before being promoted to ADMIN',
@@ -281,13 +427,20 @@ export class UserController {
         }
 
         // ──────────────────────────────────────────────────────────────────
-        // Add role
+        // Assign processed roles
         // ──────────────────────────────────────────────────────────────────
-        user.roles.push(role);
+        user.roles = newRoles;
         await em.flush();
+
+        const message = role === Role.ADMIN
+          ? 'ADMIN role assigned - all other roles have been removed'
+          : 'Role added successfully';
+
+        logger.info({ userId: user.id, newRoles, requestedRole: role }, message);
+
         return ResponseUtil.success(
           res,
-          'Role added successfully',
+          message,
           user.toDTO()
         );
       }
@@ -436,10 +589,14 @@ export class UserController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Validate role compatibility if roles are being updated
+      // Validate and process role assignment if roles are being updated
       // ────────────────────────────────────────────────────────────────────
       if (updates.roles !== undefined) {
-        const validationError = validateRoleCompatibility(updates.roles);
+        // Process roles (ADMIN assignment clears other roles)
+        const processedRoles = processRoleAssignment(updates.roles);
+
+        // Validate role compatibility
+        const validationError = validateRoleCompatibility(processedRoles);
         if (validationError) {
           return ResponseUtil.validationError(res, validationError, [
             { field: 'roles', message: validationError }
@@ -449,7 +606,7 @@ export class UserController {
         // ──────────────────────────────────────────────────────────────────
         // ADMIN role requires complete personal information
         // ──────────────────────────────────────────────────────────────────
-        if (updates.roles.includes(Role.ADMIN) && !user.hasPersonalInfo) {
+        if (processedRoles.includes(Role.ADMIN) && !user.hasPersonalInfo) {
           return ResponseUtil.validationError(
             res,
             'User must complete personal information before being promoted to ADMIN',
@@ -461,6 +618,9 @@ export class UserController {
             ]
           );
         }
+
+        // Store processed roles for later assignment
+        updates.roles = processedRoles;
       }
 
       // ────────────────────────────────────────────────────────────────────
@@ -477,6 +637,7 @@ export class UserController {
       }
       if (updates.roles !== undefined) {
         user.roles = updates.roles;
+        logger.info({ userId: user.id, newRoles: updates.roles }, 'User roles updated');
       }
 
       // ────────────────────────────────────────────────────────────────────
@@ -597,6 +758,128 @@ export class UserController {
     } catch (err) {
       logger.error({ err }, 'Error completing profile');
       return ResponseUtil.internalError(res, 'Error completing profile', err);
+    }
+  }
+
+  /**
+   * Update personal information (phone, address)
+   */
+  async updatePersonalInfo(req: Request, res: Response) {
+    const em = orm.em.fork();
+
+    try {
+      // ────────────────────────────────────────────────────────────────────
+      // Extract authenticated user ID and update data
+      // ────────────────────────────────────────────────────────────────────
+      const { id } = (req as any).user;
+      const { phone, address } = req.body;
+
+      // ────────────────────────────────────────────────────────────────────
+      // Validate at least one field is provided
+      // ────────────────────────────────────────────────────────────────────
+      if (!phone && !address) {
+        return ResponseUtil.validationError(res, 'At least one field (phone or address) is required', [
+          { field: 'phone', message: 'Phone or address must be provided' },
+          { field: 'address', message: 'Phone or address must be provided' }
+        ]);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Fetch user from database
+      // ────────────────────────────────────────────────────────────────────
+      const user = await em.findOne(User, { id }, { populate: ['person'] });
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User', id);
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Check if user has personal information
+      // ────────────────────────────────────────────────────────────────────
+      if (!user.person) {
+        return ResponseUtil.error(
+          res,
+          'Profile must be completed first',
+          400
+        );
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Update person fields
+      // ────────────────────────────────────────────────────────────────────
+      const personEntity = (user.person as any)?.getEntity
+        ? (user.person as any).getEntity()
+        : (user.person as any);
+
+      if (phone) {
+        personEntity.phone = phone.trim();
+      }
+      if (address) {
+        personEntity.address = address.trim();
+      }
+
+      await em.flush();
+
+      // ────────────────────────────────────────────────────────────────────
+      // Also update related role entities (Distributor, Partner, Authority)
+      // since they inherit from BasePersonEntity and have their own copies
+      // ────────────────────────────────────────────────────────────────────
+      const dni = personEntity.dni;
+      if (dni) {
+        // Dynamically import role entities to avoid circular dependencies
+        const { Distributor } = await import('../../distributor/distributor.entity.js');
+        const { Partner } = await import('../../partner/partner.entity.js');
+        const { Authority } = await import('../../authority/authority.entity.js');
+
+        const updates: any = {};
+        if (phone) updates.phone = phone.trim();
+        if (address) updates.address = address.trim();
+
+        // Update Distributor if user has DISTRIBUTOR role
+        if (user.roles.includes(Role.DISTRIBUTOR)) {
+          const distributor = await em.findOne(Distributor, { dni });
+          if (distributor) {
+            em.assign(distributor, updates);
+            logger.info({ dni }, 'Updated Distributor personal info');
+          }
+        }
+
+        // Update Partner if user has PARTNER role
+        if (user.roles.includes(Role.PARTNER)) {
+          const partner = await em.findOne(Partner, { dni });
+          if (partner) {
+            em.assign(partner, updates);
+            logger.info({ dni }, 'Updated Partner personal info');
+          }
+        }
+
+        // Update Authority if user has AUTHORITY role
+        if (user.roles.includes(Role.AUTHORITY)) {
+          const authority = await em.findOne(Authority, { dni });
+          if (authority) {
+            em.assign(authority, updates);
+            logger.info({ dni }, 'Updated Authority personal info');
+          }
+        }
+
+        await em.flush();
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // Refresh user entity to ensure person data is up-to-date
+      // ────────────────────────────────────────────────────────────────────
+      await em.refresh(user);
+
+      // ────────────────────────────────────────────────────────────────────
+      // Return updated user profile
+      // ────────────────────────────────────────────────────────────────────
+      return ResponseUtil.success(
+        res,
+        'Personal information updated successfully',
+        user.toDTO()
+      );
+    } catch (err) {
+      logger.error({ err }, 'Error updating personal information');
+      return ResponseUtil.internalError(res, 'Error updating personal information', err);
     }
   }
 }

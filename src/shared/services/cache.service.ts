@@ -1,5 +1,5 @@
 // ============================================================================
-// CACHE SERVICE - Servicio de caching multicapa con Redis y fallbacks
+// CACHE SERVICE - Multi-layer caching service with Redis and fallbacks
 // ============================================================================
 
 import { redisService } from './redis.service.js';
@@ -9,30 +9,30 @@ import logger from '../utils/logger.js';
  * Configuración de TTL para diferentes tipos de datos
  */
 export const CACHE_TTL = {
-  // Datos que cambian frecuentemente
-  SESSION: 15 * 60, // 15 minutos
-  USER_DATA: 30 * 60, // 30 minutos
+  // Frequently changing data
+  SESSION: 15 * 60, // 15 minutes
+  USER_DATA: 30 * 60, // 30 minutes
 
-  // Datos semi-estáticos
-  PRODUCT_LIST: 60 * 60, // 1 hora
-  CLIENT_LIST: 60 * 60, // 1 hora
-  AUTHORITY_LIST: 60 * 60, // 1 hora
+  // Semi-static data
+  PRODUCT_LIST: 60 * 60, // 1 hour
+  CLIENT_LIST: 60 * 60, // 1 hour
+  AUTHORITY_LIST: 60 * 60, // 1 hour
 
-  // Datos estáticos o que cambian raramente
-  ZONE_LIST: 4 * 60 * 60, // 4 horas
-  SYSTEM_CONFIG: 24 * 60 * 60, // 24 horas
+  // Static or rarely changing data
+  ZONE_LIST: 4 * 60 * 60, // 4 hours
+  SYSTEM_CONFIG: 24 * 60 * 60, // 24 hours
 
-  // Datos muy estáticos
-  VALIDATION_RULES: 7 * 24 * 60 * 60, // 7 días
+  // Very static data
+  VALIDATION_RULES: 7 * 24 * 60 * 60, // 7 days
 
-  // Cache de respuestas HTTP
-  API_RESPONSE: 5 * 60, // 5 minutos
+  // HTTP response cache
+  API_RESPONSE: 5 * 60, // 5 minutes
 
-  // Cache de búsquedas frecuentes
-  SEARCH_RESULTS: 10 * 60, // 10 minutos
+  // Frequent search cache
+  SEARCH_RESULTS: 10 * 60, // 10 minutes
 
-  // Cache de métricas
-  METRICS: 60, // 1 minuto
+  // Metrics cache
+  METRICS: 60, // 1 minute
 } as const;
 
 /**
@@ -46,7 +46,7 @@ export class CacheService {
    * Obtiene un valor del cache con estrategia de fallback
    */
   async get<T>(key: string): Promise<T | null> {
-    // Intentar obtener de Redis primero
+    // Try to get from Redis first
     try {
       const redisValue = await redisService.get(key);
       if (redisValue) {
@@ -57,7 +57,7 @@ export class CacheService {
       logger.warn({ err: error, key }, 'Redis cache miss');
     }
 
-    // Fallback a memoria
+    // Fallback to memory
     const memoryValue = this.getFromMemory<T>(key);
     if (memoryValue !== null) {
       logger.debug({ key, source: 'memory' }, 'Cache hit from memory');
@@ -74,7 +74,7 @@ export class CacheService {
   async set<T>(key: string, value: T, ttl: number = CACHE_TTL.API_RESPONSE): Promise<boolean> {
     const serializedValue = JSON.stringify(value);
 
-    // Intentar establecer en Redis
+    // Try to set in Redis
     let redisSuccess = false;
     try {
       redisSuccess = await redisService.set(key, serializedValue, ttl);
@@ -82,7 +82,7 @@ export class CacheService {
       logger.warn({ err: error, key }, 'Failed to set value in Redis');
     }
 
-    // Siempre establecer en memoria como fallback
+    // Always set in memory as fallback
     this.setInMemory(key, value, ttl);
 
     return redisSuccess;
@@ -105,7 +105,7 @@ export class CacheService {
       logger.warn({ err: error }, 'Failed to set multiple values in Redis');
     }
 
-    // Siempre establecer en memoria como fallback
+    // Always set in memory as fallback
     items.forEach(item => {
       this.setInMemory(item.key, item.value, item.ttl || CACHE_TTL.API_RESPONSE);
     });
@@ -117,7 +117,7 @@ export class CacheService {
    * Obtiene múltiples valores del cache
    */
   async mget<T>(keys: string[]): Promise<Array<T | null>> {
-    // Intentar obtener de Redis primero
+    // Try to get from Redis first
     try {
       const redisValues = await redisService.mget(keys);
       const results: Array<T | null> = [];
@@ -126,7 +126,7 @@ export class CacheService {
         if (redisValues[i]) {
           results.push(JSON.parse(redisValues[i]!) as T);
         } else {
-          // Fallback a memoria para claves no encontradas en Redis
+          // Fallback to memory for keys not found in Redis
           const memoryValue = this.getFromMemory<T>(keys[i]);
           results.push(memoryValue);
         }
@@ -136,7 +136,7 @@ export class CacheService {
     } catch (error) {
       logger.warn({ err: error, keys }, 'Failed to get multiple values from Redis, using memory fallback');
 
-      // Fallback completo a memoria
+      // Complete fallback to memory
       return keys.map(key => this.getFromMemory(key));
     }
   }
@@ -147,14 +147,14 @@ export class CacheService {
   async delete(key: string): Promise<boolean> {
     let success = false;
 
-    // Eliminar de Redis
+    // Delete from Redis
     try {
       success = await redisService.delete(key) || success;
     } catch (error) {
       logger.warn({ err: error, key }, 'Failed to delete from Redis');
     }
 
-    // Eliminar de memoria
+    // Delete from memory
     this.deleteFromMemory(key);
 
     return success;
@@ -166,14 +166,14 @@ export class CacheService {
   async clear(): Promise<boolean> {
     let success = false;
 
-    // Limpiar Redis
+    // Clear Redis
     try {
       success = await redisService.flushAll();
     } catch (error) {
       logger.warn({ err: error }, 'Failed to flush Redis');
     }
 
-    // Limpiar memoria
+    // Clear memory
     this.memoryCache.clear();
 
     return success;
@@ -209,13 +209,13 @@ export class CacheService {
   ): Promise<T> {
     const cacheKey = `search:${searchKey}`;
 
-    // Verificar cache
+    // Check cache
     const cached = await this.get<T>(cacheKey);
     if (cached) {
       return cached;
     }
 
-    // Ejecutar búsqueda y cachear resultado
+    // Execute search and cache result
     const result = await searchFn();
     await this.set(cacheKey, result, ttl);
 
@@ -231,7 +231,7 @@ export class CacheService {
     responseFn: () => Promise<T>,
     ttl: number = CACHE_TTL.API_RESPONSE
   ): Promise<T> {
-    // Crear clave de cache basada en endpoint y parámetros
+    // Create cache key based on endpoint and parameters
     const paramsStr = Object.entries(params)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}:${value}`)
@@ -305,13 +305,13 @@ export class CacheService {
       return null;
     }
 
-    // Verificar expiración
+    // Check expiration
     if (Date.now() > entry.expiry) {
       this.memoryCache.delete(key);
       return null;
     }
 
-    // Incrementar contador de hits
+    // Increment hit counter
     entry.hits++;
 
     return entry.value as T;
@@ -321,7 +321,7 @@ export class CacheService {
    * Establece valor en memoria (método privado)
    */
   private setInMemory<T>(key: string, value: T, ttl: number): void {
-    // Limpiar entradas expiradas si nos acercamos al límite
+    // Clean expired entries if approaching limit
     if (this.memoryCache.size >= this.maxMemoryEntries) {
       this.cleanupExpiredEntries();
     }
@@ -362,5 +362,5 @@ export class CacheService {
   }
 }
 
-// Instancia singleton
+// Singleton instance
 export const cacheService = new CacheService();

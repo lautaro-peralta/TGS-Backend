@@ -94,7 +94,7 @@ export class ShelbyCouncilController {
 
       // Check if relationship already exists
       const exists = await em.findOne(ShelbyCouncil, {
-        partner: partner.dni,
+        partner: partner.id,
         decision: decision.id,
       });
       if (exists) {

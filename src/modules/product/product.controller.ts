@@ -9,6 +9,7 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Product } from './product.entity.js';
 import { Detail } from '../sale/detail.entity.js';
+import { Distributor } from '../distributor/distributor.entity.js';
 import {
   createProductSchema,
   updateProductSchema,
@@ -130,7 +131,27 @@ export class ProductController {
         isIllegal: validatedData.isIllegal ?? false
         });
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Associate distributors if provided
+      // ──────────────────────────────────────────────────────────────────────
+      if (validatedData.distributorsIds && validatedData.distributorsIds.length > 0) {
+        const distributors = await em.find(Distributor, {
+          dni: { $in: validatedData.distributorsIds }
+        });
+
+        if (distributors.length > 0) {
+          for (const dist of distributors) {
+            product.distributors.add(dist);
+          }
+        }
+      }
+
       await em.persistAndFlush(product);
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Populate distributors for response
+      // ──────────────────────────────────────────────────────────────────────
+      await em.populate(product, ['distributors', 'distributors.zone']);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -181,6 +202,7 @@ export class ProductController {
       em,
       buildFilters: () => ({}),
       orderBy: { description: 'ASC' } as any,
+      populate: ['distributors', 'distributors.zone'] as any,
     });
   }
 

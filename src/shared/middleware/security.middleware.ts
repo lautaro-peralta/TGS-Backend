@@ -1,5 +1,5 @@
 // ============================================================================
-// SECURITY MIDDLEWARE - Middleware avanzado de seguridad para protección contra amenazas comunes
+// SECURITY MIDDLEWARE - Advanced security middleware for protection against common threats
 // ============================================================================
 
 import helmet from 'helmet';
@@ -8,11 +8,11 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger.js';
 
 /**
- * Configuración de seguridad Helmet con estándares de producción
+ * Helmet security configuration with production standards
  */
 export const securityHeaders = helmet({
   // ──────────────────────────────────────────────────────────────────────
-  // Content Security Policy (CSP) - Protección contra XSS
+  // Content Security Policy (CSP) - XSS Protection
   // ──────────────────────────────────────────────────────────────────────
   contentSecurityPolicy: {
     directives: {
@@ -28,51 +28,51 @@ export const securityHeaders = helmet({
   },
 
   // ──────────────────────────────────────────────────────────────────────
-  // HTTP Strict Transport Security (HSTS) - Fuerza HTTPS
+  // HTTP Strict Transport Security (HSTS) - Forces HTTPS
   // ──────────────────────────────────────────────────────────────────────
   hsts: {
-    maxAge: 31536000, // 1 año
+    maxAge: 31536000, // 1 year
     includeSubDomains: true,
     preload: true,
   },
 
   // ──────────────────────────────────────────────────────────────────────
-  // Protección contra ataques XSS
+  // Protection against XSS attacks
   // ──────────────────────────────────────────────────────────────────────
   noSniff: true, // X-Content-Type-Options: nosniff
   xssFilter: true, // X-XSS-Protection
 
   // ──────────────────────────────────────────────────────────────────────
-  // Protección contra clickjacking
+  // Protection against clickjacking
   // ──────────────────────────────────────────────────────────────────────
   frameguard: {
     action: 'deny' // X-Frame-Options: DENY
   },
 
   // ──────────────────────────────────────────────────────────────────────
-  // Protección contra exposición de información
+  // Protection against information exposure
   // ──────────────────────────────────────────────────────────────────────
-  hidePoweredBy: true, // Oculta X-Powered-By
+  hidePoweredBy: true, // Hides X-Powered-By
   referrerPolicy: {
     policy: 'strict-origin-when-cross-origin'
   },
 });
 
 /**
- * Rate limiting general para la API
+ * General rate limiting for the API
  */
 export const generalRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // límite de 100 requests por ventana
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit of 100 requests per window
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later',
     code: 'RATE_LIMIT_EXCEEDED',
   },
-  standardHeaders: true, // Retorna rate limit info en headers `RateLimit-*`
-  legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
+  standardHeaders: true, // Returns rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disables `X-RateLimit-*` headers
   skip: (req: Request) => {
-    // Skip rate limiting para health checks
+    // Skip rate limiting for health checks
     return req.path === '/health' || req.path.startsWith('/health/');
   },
   handler: (req: Request, res: Response) => {
@@ -96,11 +96,11 @@ export const generalRateLimit = rateLimit({
 });
 
 /**
- * Rate limiting estricto para autenticación
+ * Strict rate limiting for authentication
  */
 export const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Solo 5 intentos de login por ventana
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Only 5 login attempts per window
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later',
@@ -109,7 +109,7 @@ export const authRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req: Request) => {
-    // Skip para endpoints no relacionados con auth
+    // Skip for endpoints not related to auth
     return !req.path.includes('/auth/');
   },
   handler: (req: Request, res: Response) => {
@@ -132,11 +132,11 @@ export const authRateLimit = rateLimit({
 });
 
 /**
- * Rate limiting para operaciones sensibles (admin, creación masiva)
+ * Rate limiting for sensitive operations (admin, bulk creation)
  */
 export const sensitiveRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 10, // Solo 10 operaciones sensibles por hora
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Only 10 sensitive operations per hour
   message: {
     success: false,
     message: 'Too many sensitive operations, please contact support if needed',
@@ -145,7 +145,7 @@ export const sensitiveRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req: Request) => {
-    // Aplicar solo a rutas sensibles
+    // Apply only to sensitive routes
     const sensitivePaths = ['/api/admin', '/api/users'];
     return !sensitivePaths.some(path => req.path.startsWith(path));
   },
@@ -170,23 +170,23 @@ export const sensitiveRateLimit = rateLimit({
 });
 
 /**
- * Protección contra contaminación de parámetros HTTP (HPP)
- * Previene ataques donde múltiples parámetros con el mismo nombre pueden causar comportamiento inesperado
+ * Protection against HTTP Parameter Pollution (HPP)
+ * Prevents attacks where multiple parameters with the same name can cause unexpected behavior
  */
 export const hppProtection = (req: Request, res: Response, next: NextFunction) => {
-  // Crear una copia limpia de query parameters
+  // Create a clean copy of query parameters
   const cleanQuery: any = {};
 
   for (const [key, value] of Object.entries(req.query)) {
     if (Array.isArray(value)) {
-      // Si es un array, tomar solo el último valor (comportamiento más predecible)
+      // If it's an array, take only the last value (more predictable behavior)
       cleanQuery[key] = value[value.length - 1];
     } else {
       cleanQuery[key] = value;
     }
   }
 
-  // Reemplazar los query parameters originales (crear nueva referencia)
+  // Replace the original query parameters (create new reference)
   Object.setPrototypeOf(req.query, Object.getPrototypeOf(cleanQuery));
   Object.keys(cleanQuery).forEach(key => {
     (req.query as any)[key] = cleanQuery[key];
@@ -196,11 +196,11 @@ export const hppProtection = (req: Request, res: Response, next: NextFunction) =
 };
 
 /**
- * Middleware para sanitización avanzada de entrada
- * Protección contra ataques de inyección SQL y otros vectores comunes
+ * Middleware for advanced input sanitization
+ * Protection against SQL injection attacks and other common vectors
  */
 export const inputSanitization = (req: Request, res: Response, next: NextFunction) => {
-  // Sanitizar parámetros de consulta (crear copia modificable)
+  // Sanitize query parameters (create modifiable copy)
   const originalQuery = req.query;
   const sanitizedQuery = { ...originalQuery };
 
@@ -210,20 +210,20 @@ export const inputSanitization = (req: Request, res: Response, next: NextFunctio
     }
   }
 
-  // Reemplazar los query parameters originales
+  // Replace the original query parameters
   Object.setPrototypeOf(originalQuery, Object.getPrototypeOf(sanitizedQuery));
   Object.keys(sanitizedQuery).forEach(key => {
     (originalQuery as any)[key] = sanitizedQuery[key];
   });
 
-  // Sanitizar parámetros de ruta
+  // Sanitize route parameters
   for (const [key, value] of Object.entries(req.params)) {
     if (typeof value === 'string') {
       (req.params as any)[key] = sanitizeInput(value);
     }
   }
 
-  // Sanitizar cuerpo de la solicitud (para POST/PUT/PATCH)
+  // Sanitize request body (for POST/PUT/PATCH)
   if (req.body && typeof req.body === 'object') {
     req.body = sanitizeObject(req.body);
   }
@@ -232,7 +232,7 @@ export const inputSanitization = (req: Request, res: Response, next: NextFunctio
 };
 
 /**
- * Función para sanitizar strings contra ataques comunes
+ * Function to sanitize strings against common attacks
  */
 function sanitizeInput(input: string): string {
   if (typeof input !== 'string') return input;
@@ -260,7 +260,7 @@ function sanitizeInput(input: string): string {
     .trim();
 }
 /**
- * Función recursiva para sanitizar objetos anidados
+ * Recursive function to sanitize nested objects
  */
 function sanitizeObject(obj: any): any {
   if (typeof obj === 'string') {
@@ -274,7 +274,7 @@ function sanitizeObject(obj: any): any {
   if (obj && typeof obj === 'object') {
     const sanitized: any = {};
     for (const [key, value] of Object.entries(obj)) {
-      // Sanitizar claves también
+      // Sanitize keys too
       const sanitizedKey = sanitizeInput(key);
       sanitized[sanitizedKey] = sanitizeObject(value);
     }
@@ -285,17 +285,17 @@ function sanitizeObject(obj: any): any {
 }
 
 /**
- * Middleware para detectar actividades sospechosas
- * Protección avanzada contra múltiples vectores de ataque
+ * Middleware to detect suspicious activities
+ * Advanced protection against multiple attack vectors
  */
 export const securityMonitor = (req: Request, res: Response, next: NextFunction) => {
   const suspiciousPatterns = {
-    // SQL Injection - Específico para MySQL
+    // SQL Injection - MySQL specific
     sqlInjection: [
       /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION)\b)/i,
       /('|(\\')|(;)|(\|\|)|(\band\b|\bor\b))/i,
-      /(\-\-|\#|\/\*|\*\/)/, // Comentarios SQL
-      /(\bINTO\s+OUTFILE\b|\bLOAD_FILE\b)/i, // Funciones peligrosas de MySQL
+      /(\-\-|\#|\/\*|\*\/)/, // SQL comments
+      /(\bINTO\s+OUTFILE\b|\bLOAD_FILE\b)/i, // Dangerous MySQL functions
     ],
 
     // XSS (Cross-Site Scripting)
@@ -318,21 +318,21 @@ export const securityMonitor = (req: Request, res: Response, next: NextFunction)
 
     // Command Injection
     commandInjection: [
-      /(\||;|&|\$\(|\`)/, // Caracteres de ejecución de comandos
+      /(\||;|&|\$\(|\`)/, // Command execution characters
       /(\b(cat|ls|dir|type|echo|wget|curl|nc|netcat)\b)/i,
     ],
 
-    // NoSQL Injection (aunque usamos MySQL, prevenir ataques genéricos)
+    // NoSQL Injection (even though we use MySQL, prevent generic attacks)
     nosqlInjection: [
       /(\$where|\$ne|\$gt|\$lt|\$regex)/i,
       /(\.find\(|\.findOne\(|\.aggregate\(|\.update\(|\.remove\(|\.delete\(|\.drop\(|\.create\(|\.insert\(|\.save\()/i,
     ],
 
-    // Otros ataques comunes
+    // Other common attacks
     other: [
       /eval\s*\(/i,
       /function\s*\(/i,
-      /<[^>]*>/g, // Tags HTML/XML
+      /<[^>]*>/g, // HTML/XML tags
       /\balert\s*\(/i,
       /\bconfirm\s*\(/i,
       /\bprompt\s*\(/i,
@@ -347,7 +347,7 @@ export const securityMonitor = (req: Request, res: Response, next: NextFunction)
 
   const detectedThreats: string[] = [];
 
-  // Verificar cada categoría de amenaza
+  // Check each threat category
   Object.entries(suspiciousPatterns).forEach(([category, patterns]) => {
     patterns.forEach(pattern => {
       if (pattern.test(combinedInput)) {
@@ -372,7 +372,7 @@ export const securityMonitor = (req: Request, res: Response, next: NextFunction)
       `Suspicious request pattern detected: ${detectedThreats.join(', ')}`
     );
 
-    // Para ataques críticos, bloquear inmediatamente
+    // For critical attacks, block immediately
     const criticalThreats = ['sqlInjection', 'commandInjection'];
     if (criticalThreats.some(threat => detectedThreats.includes(threat))) {
       return res.status(400).json({
@@ -384,7 +384,7 @@ export const securityMonitor = (req: Request, res: Response, next: NextFunction)
     }
   }
 
-  // Monitoreo adicional para ataques de fuerza bruta
+  // Additional monitoring for brute force attacks
   if (req.path.includes('/auth/login') && req.method === 'POST') {
     const clientIp = req.ip || req.socket?.remoteAddress || 'unknown';
     const loginAttempts = getClientLoginAttempts(clientIp);
@@ -404,8 +404,8 @@ export const securityMonitor = (req: Request, res: Response, next: NextFunction)
 };
 
 /**
- * Función auxiliar para rastrear intentos de login por IP
- * En producción, esto debería usar Redis o base de datos
+ * Helper function to track login attempts by IP
+ * In production, this should use Redis or a database
  */
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 
@@ -413,7 +413,7 @@ function getClientLoginAttempts(ip: string): number {
   const now = Date.now();
   const clientData = loginAttempts.get(ip);
 
-  if (!clientData || now - clientData.lastAttempt > 15 * 60 * 1000) { // 15 minutos
+  if (!clientData || now - clientData.lastAttempt > 15 * 60 * 1000) { // 15 minutes
     loginAttempts.set(ip, { count: 1, lastAttempt: now });
     return 1;
   }
@@ -424,7 +424,7 @@ function getClientLoginAttempts(ip: string): number {
 }
 
 /**
- * Middleware para validar origen de solicitud (adicional a CORS)
+ * Middleware to validate request origin (additional to CORS)
  */
 export const originValidation = (req: Request, res: Response, next: NextFunction) => {
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
@@ -453,13 +453,13 @@ export const originValidation = (req: Request, res: Response, next: NextFunction
 };
 
 /**
- * Configuración CORS mejorada con seguridad adicional
+ * Enhanced CORS configuration with additional security
  */
 export const secureCors = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
 
-    // Permitir requests sin origin (como mobile apps o curl)
+    // Allow requests without origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.some(allowed => origin.includes(allowed))) {
@@ -473,22 +473,22 @@ export const secureCors = {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['X-Total-Count', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
-  maxAge: 86400, // 24 horas
+  maxAge: 86400, // 24 hours
 };
 
 /**
- * Middleware compuesto para seguridad completa
+ * Composite middleware for complete security
  */
 export const securityMiddleware = [
-  securityHeaders,           // Headers de seguridad
-  //originValidation,         // Validación de origen
-  securityMonitor,          // Monitoreo de seguridad
-  inputSanitization,        // Sanitización básica
-  hppProtection,            // Protección HPP
+  securityHeaders,           // Security headers
+  //originValidation,         // Origin validation
+  securityMonitor,          // Security monitoring
+  inputSanitization,        // Basic sanitization
+  hppProtection,            // HPP protection
 ];
 
 /**
- * Función para aplicar rate limiting específico a rutas
+ * Function to apply route-specific rate limiting
  */
 export const createRouteRateLimit = (
   windowMs: number,

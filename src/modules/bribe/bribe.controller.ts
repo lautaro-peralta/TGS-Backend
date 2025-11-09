@@ -16,6 +16,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchBribesSchema } from './bribe.schema.js';
 import { BribeFilters } from '../../shared/types/common.types.js';
+import { User, Role } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // CONTROLLER - Bribe
@@ -49,12 +50,32 @@ export class BribeController {
     const validated = validateQueryParams(req, res, searchBribesSchema);
     if (!validated) return; // Validation failed, response already sent
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Get authenticated user and check if PARTNER or AUTHORITY role
+    // ──────────────────────────────────────────────────────────────────────
+    const userId = (req as any).user?.id;
+    const user = userId ? await em.findOne(User, { id: userId }, { populate: ['person'] }) : null;
+
+    // Get authority if user is PARTNER or AUTHORITY (do this before buildFilters)
+    let authorityId: string | number | undefined;
+    if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
+      const authority = await em.findOne(Authority, { email: user.email });
+      if (authority) {
+        authorityId = authority.id;
+      }
+    }
+
     return searchEntityWithPagination(req, res, Bribe, {
       entityName: 'bribe',
       em,
       buildFilters: () => {
         const { paid, date, type, endDate } = validated;
         const filters: BribeFilters = {};
+
+        // If PARTNER or AUTHORITY, filter only bribes from their authority
+        if (authorityId) {
+          (filters as any).authority = authorityId;
+        }
 
         // Filter by payment status
         if (paid !== undefined) {
@@ -179,11 +200,28 @@ export class BribeController {
   async getAllBribes(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    // Use searchEntityWithPagination with empty filters
+    // ──────────────────────────────────────────────────────────────────────
+    // Get authenticated user and check if PARTNER or AUTHORITY role
+    // ──────────────────────────────────────────────────────────────────────
+    const userId = (req as any).user?.id;
+    const user = userId ? await em.findOne(User, { id: userId }, { populate: ['person'] }) : null;
+    
+    const filters: any = {};
+    
+    // If PARTNER or AUTHORITY, filter only bribes from their authority
+    if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
+      // Find authority by user email (must match)
+      const authority = await em.findOne(Authority, { email: user.email });
+      if (authority) {
+        filters.authority = authority.id;
+      }
+    }
+
+    // Use searchEntityWithPagination with filters
     return searchEntityWithPagination(req, res, Bribe, {
       entityName: 'bribe',
       em,
-      buildFilters: () => ({}), // No filters, return all
+      buildFilters: () => filters,
       populate: ['authority', 'sale'] as any,
       orderBy: { creationDate: 'DESC' } as any,
     });
@@ -224,6 +262,22 @@ export class BribeController {
 
       if (!bribe) {
         return ResponseUtil.notFound(res, 'Bribe', id);
+      }
+
+      // ──────────────────────────────────────────────────────────────────────
+      // Check access if user is PARTNER or AUTHORITY
+      // ──────────────────────────────────────────────────────────────────────
+      const userId = (req as any).user?.id;
+      const user = userId ? await em.findOne(User, { id: userId }, { populate: ['person'] }) : null;
+      
+      if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
+        const authority = await em.findOne(Authority, { email: user.email });
+        if (authority) {
+          const bribeAuthority = await em.findOne(Authority, { id: (bribe.authority as any).id });
+          if (!bribeAuthority || bribeAuthority.id !== authority.id) {
+            return ResponseUtil.error(res, 'Access denied: You can only view bribes from your authority', 403);
+          }
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────────

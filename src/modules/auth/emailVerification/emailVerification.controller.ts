@@ -1,5 +1,5 @@
 // ============================================================================
-// EMAIL VERIFICATION CONTROLLER - Controlador para verificación de emails
+// EMAIL VERIFICATION CONTROLLER - Controller for email verification
 // ============================================================================
 
 import { Request, Response } from 'express';
@@ -15,35 +15,35 @@ import { User } from '../user/user.entity.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 
 /**
- * Controlador para manejar verificación automática de email
- * 
- * Este sistema es el clásico "click en el link del email" para verificar
- * que el usuario tiene acceso al email proporcionado.
- * 
- * Es DIFERENTE de UserVerification (verificación manual por admin).
+ * Controller for handling automatic email verification
+ *
+ * This system is the classic "click the link in the email" to verify
+ * that the user has access to the provided email address.
+ *
+ * This is DIFFERENT from UserVerification (manual verification by admin).
  */
 export class EmailVerificationController {
 
   /**
-   * Solicita verificación de usuario con todos sus datos personales
-   * 
-   * El usuario debe tener información personal completa (BasePersonEntity)
-   * antes de poder solicitar la verificación.
-   * 
-   * VALIDACIONES DE SEGURIDAD:
-   * - Usuario debe estar autenticado
-   * - Solo puede solicitar verificación para su propio email
-   * - Solo usuarios con emailVerified: false pueden solicitar
+   * Requests user verification with all personal data
+   *
+   * The user must have complete personal information (BasePersonEntity)
+   * before requesting verification.
+   *
+   * SECURITY VALIDATIONS:
+   * - User must be authenticated
+   * - Can only request verification for their own email
+   * - Only users with emailVerified: false can request
    */
   async requestVerification(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.body;
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Usuario debe estar autenticado
+      // VALIDATION: User must be authenticated
       // ────────────────────────────────────────────────────────────────────
       const user = (req as any).user;
       if (!user || !user.id) {
@@ -62,7 +62,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Solo puede solicitar verificación para su propio email
+      // VALIDATION: Can only request verification for their own email
       // ────────────────────────────────────────────────────────────────────
       const currentUser = await em.findOne(User, { id: user.id });
       if (!currentUser) {
@@ -102,7 +102,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Solo usuarios con emailVerified: false pueden solicitar
+      // VALIDATION: Only users with emailVerified: false can request
       // ────────────────────────────────────────────────────────────────────
       if (currentUser.emailVerified) {
         return ResponseUtil.error(
@@ -119,16 +119,16 @@ export class EmailVerificationController {
         );
       }
 
-      // Verificar que existe información personal del usuario
+      // Verify that user's personal information exists
       const person = await em.findOne('BasePersonEntity', { email });
       if (!person) {
         return ResponseUtil.notFound(res, 'Person', email);
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Usuarios con roles no-base ya deberían estar verificados
+      // VALIDATION: Users with non-base roles should already be verified
       // ────────────────────────────────────────────────────────────────────
-        // Si el usuario tiene roles diferentes a USER, ya debería estar verificado
+        // If user has roles other than USER, they should already be verified
       const hasNonBaseRoles = currentUser.roles.some(role => role !== 'USER');
         if (hasNonBaseRoles) {
           logger.warn({ 
@@ -151,19 +151,19 @@ export class EmailVerificationController {
           );
         }
 
-      // Verificar si ya existe una solicitud pendiente
+      // Check if pending verification request already exists
       const existingVerification = await em.findOne(EmailVerification, {
         email,
         status: EmailVerificationStatus.PENDING,
       });
 
       if (existingVerification) {
-        // Si existe y no ha expirado, verificar si han pasado 2 minutos
+        // If exists and not expired, check if 2 minutes have passed
         if (existingVerification.isValid()) {
           const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-          
+
           if (existingVerification.createdAt > twoMinutesAgo) {
-            // Menos de 2 minutos, devolver error con tiempo restante
+            // Less than 2 minutes, return error with remaining time
             const timeRemaining = Math.ceil((existingVerification.createdAt.getTime() + 2 * 60 * 1000 - Date.now()) / 1000 / 60);
             return ResponseUtil.error(
               res,
@@ -178,28 +178,28 @@ export class EmailVerificationController {
               ]
             );
           } else {
-            // Han pasado 2 minutos, marcar la anterior como expirada
-            logger.info({ 
-              email, 
+            // 2 minutes have passed, mark previous as expired
+            logger.info({
+              email,
               previousVerificationId: existingVerification.id,
-              createdAt: existingVerification.createdAt 
+              createdAt: existingVerification.createdAt
             }, 'Previous verification request expired due to new request after 2 minutes');
-            
+
             existingVerification.markAsExpired();
             await em.flush();
           }
         } else {
-          // Si ya había expirado, eliminarla
+          // If already expired, remove it
           await em.removeAndFlush(existingVerification);
         }
       }
 
-      // Crear nueva solicitud de verificación
+      // Create new verification request
       const verification = new EmailVerification(email);
       em.persist(verification);
       await em.flush();
 
-      // Enviar email de notificación al usuario
+      // Send verification notification email to user
       const emailSent = await emailService.sendVerificationEmail(
         email,
         verification.token,
@@ -208,14 +208,14 @@ export class EmailVerificationController {
 
       if (!emailSent) {
         logger.warn({ email }, 'Failed to send verification notification email');
-        // No fallar la solicitud si el email no se puede enviar
+        // Don't fail the request if email cannot be sent
       }
 
-      // Cachear la solicitud para evitar spam (2 minutos de cooldown)
+      // Cache request to prevent spam (2 minutes cooldown)
       await cacheService.set(
         `verification_request:${email}`,
         { requested: true, timestamp: Date.now() },
-        2 * 60 // 2 minutos de cooldown
+        2 * 60 // 2 minutes cooldown
       );
 
       return ResponseUtil.created(res, 'User verification request submitted successfully', {
@@ -232,26 +232,26 @@ export class EmailVerificationController {
   }
 
   /**
-   * Verifica el token de verificación (flujo oficial automático por enlace)
-   * 
-   * Este endpoint confirma la verificación del email utilizando el token
-   * enviado por correo. No requiere intervención de administradores.
+   * Verifies the verification token (official automatic flow via link)
+   *
+   * This endpoint confirms email verification using the token
+   * sent via email. Does not require administrator intervention.
    */
   async verifyEmail(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Token ya está validado por el schema de Zod
+      // Token is already validated by Zod schema
       const { token } = req.params;
 
-      // Buscar la solicitud de verificación
+      // Find verification request
       const verification = await em.findOne(EmailVerification, { token });
 
       if (!verification) {
         return ResponseUtil.notFound(res, 'Verification request', token);
       }
 
-      // Verificar que sea válida
+      // Verify that it's valid
       if (!verification.isValid()) {
         if (verification.status === EmailVerificationStatus.EXPIRED) {
           logger.warn({ 
@@ -296,11 +296,11 @@ export class EmailVerificationController {
         }
       }
 
-      // Marcar como verificada
+      // Mark as verified
       verification.markAsVerified();
 
       // ────────────────────────────────────────────────────────────────────
-      // Actualizar User.emailVerified = true
+      // Update User.emailVerified = true
       // ────────────────────────────────────────────────────────────────────
       const user = await em.findOne(User, { email: verification.email });
       if (user) {
@@ -319,14 +319,14 @@ export class EmailVerificationController {
 
       await em.flush();
 
-      // Buscar la información personal del usuario para enviar email de bienvenida
+      // Find user's personal information to send welcome email
       const person = await em.findOne('BasePersonEntity', { email: verification.email });
 
       if (person) {
-        // Enviar email de bienvenida
+        // Send welcome email
         await emailService.sendWelcomeEmail(verification.email, (person as any).name);
 
-        // Invalidar cache relacionado con el usuario
+        // Invalidate user-related cache
         await cacheService.invalidateUserCache((person as any).dni);
       }
 
@@ -342,21 +342,21 @@ export class EmailVerificationController {
   }
 
   /**
-   * Reenvía notificación de solicitud de verificación
-   * 
-   * VALIDACIONES DE SEGURIDAD:
-   * - Usuario debe estar autenticado
-   * - Solo puede reenviar verificación para su propio email
+   * Resends verification request notification
+   *
+   * SECURITY VALIDATIONS:
+   * - User must be authenticated
+   * - Can only resend verification for their own email
    */
   async resendVerification(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.body;
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Usuario debe estar autenticado
+      // VALIDATION: User must be authenticated
       // ────────────────────────────────────────────────────────────────────
       const user = (req as any).user;
       if (!user || !user.id) {
@@ -375,7 +375,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Solo puede reenviar verificación para su propio email
+      // VALIDATION: Can only resend verification for their own email
       // ────────────────────────────────────────────────────────────────────
       const currentUser = await em.findOne(User, { id: user.id });
       if (!currentUser) {
@@ -414,7 +414,7 @@ export class EmailVerificationController {
         );
       }
 
-      // Verificar cooldown de reenvío (2 minutos)
+      // Verify resend cooldown (2 minutes)
       const cooldownKey = `verification_request:${email}`;
       const cooldownData = await cacheService.get(cooldownKey);
 
@@ -422,20 +422,20 @@ export class EmailVerificationController {
         return ResponseUtil.error(res, 'Please wait 2 minutes before requesting another verification', 429);
       }
 
-      // Buscar información personal del usuario
+      // Find user's personal information
       const person = await em.findOne('BasePersonEntity', { email });
       if (!person) {
         return ResponseUtil.notFound(res, 'Person', email);
       }
 
-      // Buscar verificación existente
+      // Find existing verification
       const verification = await em.findOne(EmailVerification, {
         email,
         status: EmailVerificationStatus.PENDING,
       });
 
       if (verification && verification.isValid()) {
-        // Reenviar notificación existente
+        // Resend existing notification
         const emailSent = await emailService.sendVerificationEmail(
           email,
           verification.token,
@@ -443,7 +443,7 @@ export class EmailVerificationController {
         );
 
         if (emailSent) {
-          // Actualizar cooldown (2 minutos)
+          // Update cooldown (2 minutes)
           await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 2 * 60);
 
           return ResponseUtil.success(res, 'Verification request resent successfully');
@@ -451,7 +451,7 @@ export class EmailVerificationController {
           return ResponseUtil.internalError(res, 'Failed to send verification notification');
         }
       } else {
-        // Crear nueva verificación
+        // Create new verification
         return this.requestVerification(req, res);
       }
 
@@ -462,25 +462,25 @@ export class EmailVerificationController {
   }
 
   /**
-   * Reenvía verificación de email para usuarios no verificados (sin autenticación)
-   * 
-   * Este endpoint permite a usuarios que se registraron pero no han verificado su email
-   * solicitar un nuevo email de verificación usando solo su email.
-   * 
-   * VALIDACIONES:
-   * - Email debe existir en la base de datos
-   * - Usuario no debe tener email verificado
-   * - Cooldown de 2 minutos entre reenvíos
+   * Resends email verification for unverified users (without authentication)
+   *
+   * This endpoint allows users who registered but haven't verified their email
+   * to request a new verification email using only their email address.
+   *
+   * VALIDATIONS:
+   * - Email must exist in the database
+   * - User must not have verified email
+   * - 2-minute cooldown between resends
    */
   async resendVerificationForUnverified(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.body;
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Usuario debe existir en la base de datos
+      // VALIDATION: User must exist in the database
       // ────────────────────────────────────────────────────────────────────
       const user = await em.findOne(User, { email });
       if (!user) {
@@ -488,7 +488,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Usuario no debe tener email verificado
+      // VALIDATION: User must not have verified email
       // ────────────────────────────────────────────────────────────────────
       if (user.emailVerified) {
         return ResponseUtil.error(
@@ -506,7 +506,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // VALIDACIÓN: Verificar cooldown de reenvío (2 minutos)
+      // VALIDATION: Verify resend cooldown (2 minutes)
       // ────────────────────────────────────────────────────────────────────
       const cooldownKey = `verification_request:${email}`;
       const cooldownData = await cacheService.get(cooldownKey);
@@ -516,7 +516,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Buscar verificación existente
+      // Find existing verification
       // ────────────────────────────────────────────────────────────────────
       const existingVerification = await em.findOne(EmailVerification, {
         email,
@@ -524,15 +524,15 @@ export class EmailVerificationController {
       });
 
       if (existingVerification && existingVerification.isValid()) {
-        // Reenviar notificación existente
+        // Resend existing notification
         const emailSent = await emailService.sendVerificationEmail(
           email,
           existingVerification.token,
-          user.username // Usar username como nombre temporal
+          user.username // Use username as temporary name
         );
 
         if (emailSent) {
-          // Actualizar cooldown (2 minutos)
+          // Update cooldown (2 minutes)
           await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 2 * 60);
 
           return ResponseUtil.success(res, 'Verification email resent successfully');
@@ -540,12 +540,12 @@ export class EmailVerificationController {
           return ResponseUtil.internalError(res, 'Failed to send verification notification');
         }
       } else {
-        // Crear nueva verificación
+        // Create new verification
         const verification = new EmailVerification(email);
         em.persist(verification);
         await em.flush();
 
-        // Enviar email de verificación
+        // Send verification email
         const emailSent = await emailService.sendVerificationEmail(
           email,
           verification.token,
@@ -553,7 +553,7 @@ export class EmailVerificationController {
         );
 
         if (emailSent) {
-          // Cachear la solicitud para evitar spam (2 minutos de cooldown)
+          // Cache request to prevent spam (2 minutes cooldown)
           await cacheService.set(cooldownKey, { requested: true, timestamp: Date.now() }, 2 * 60);
 
           return ResponseUtil.success(res, 'New verification email sent successfully');
@@ -569,16 +569,16 @@ export class EmailVerificationController {
   }
 
   /**
-   * Obtiene el estado de verificación de un usuario por email
+   * Gets the verification status of a user by email
    */
   async getVerificationStatus(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.params;
 
-      // Buscar verificaciones para este email
+      // Find verifications for this email
       const verifications = await em.find(EmailVerification, { email }, {
         orderBy: { createdAt: 'DESC' },
         limit: 1,
@@ -605,16 +605,16 @@ export class EmailVerificationController {
   }
 
   /**
-   * Cancela una solicitud de verificación de usuario (admin only)
+   * Cancels a user verification request (admin only)
    */
   async cancelVerification(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.params;
 
-      // Buscar verificación pendiente
+      // Find pending verification
       const verification = await em.findOne(EmailVerification, {
         email,
         status: EmailVerificationStatus.PENDING,
@@ -624,11 +624,11 @@ export class EmailVerificationController {
         return ResponseUtil.notFound(res, 'Pending verification request', email);
       }
 
-      // Marcar como expirada
+      // Mark as expired
       verification.markAsExpired();
       await em.flush();
 
-      // Limpiar cache de cooldown
+      // Clear cooldown cache
       await cacheService.delete(`verification_request:${email}`);
 
       return ResponseUtil.success(res, 'User verification request cancelled successfully');
@@ -640,7 +640,7 @@ export class EmailVerificationController {
   }
 
   /**
-   * Obtiene todas las solicitudes de verificación de usuario (admin only)
+   * Gets all user verification requests (admin only)
    */
   async getAllVerifications(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -690,28 +690,28 @@ export class EmailVerificationController {
   }
 
   /**
-   * Aprueba una solicitud de verificación de usuario (admin only)
-   * 
-   * Este proceso verifica toda la información del usuario:
-   * - Datos personales completos (DNI, nombre, email, teléfono, dirección)
-   * - Email único y no duplicado
-   * - DNI único en el sistema
-   * 
-   * Validaciones automáticas:
-   * - Verifica que no exista otro usuario con el mismo email verificado
-   * - Verifica que no exista otro usuario con el mismo DNI
-   * - Actualiza User.emailVerified = true
-   * - Recalcula profileCompleteness del usuario
+   * Approves a user verification request (admin only)
+   *
+   * This process verifies all user information:
+   * - Complete personal data (DNI, name, email, phone, address)
+   * - Unique and non-duplicated email
+   * - Unique DNI in the system
+   *
+   * Automatic validations:
+   * - Verifies that no other user exists with the same verified email
+   * - Verifies that no other user exists with the same DNI
+   * - Updates User.emailVerified = true
+   * - Recalculates user's profileCompleteness
    */
   async approveVerification(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.params;
 
       // ────────────────────────────────────────────────────────────────────
-      // 1. Buscar la solicitud de verificación pendiente
+      // 1. Find the pending verification request
       // ────────────────────────────────────────────────────────────────────
       const verification = await em.findOne(EmailVerification, {
         email,
@@ -723,7 +723,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 2. Buscar el usuario asociado a este email
+      // 2. Find the user associated with this email
       // ────────────────────────────────────────────────────────────────────
       const user = await em.findOne(User, { email });
 
@@ -737,7 +737,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 3. VALIDACIÓN: Verificar que el usuario no esté ya verificado
+      // 3. VALIDATION: Verify that the user is not already verified
       // ────────────────────────────────────────────────────────────────────
       if (user.isVerified) {
         logger.warn({ email, userId: user.id }, 'Attempt to verify already verified user');
@@ -749,7 +749,7 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 4. Buscar información personal del usuario
+      // 4. Find user's personal information
       // ────────────────────────────────────────────────────────────────────
       const person = await em.findOne(BasePersonEntity, { email });
 
@@ -763,11 +763,11 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 5. VALIDACIÓN CRÍTICA: Verificar DNI duplicado
+      // 5. CRITICAL VALIDATION: Verify duplicate DNI
       // ────────────────────────────────────────────────────────────────────
       const duplicateDNI = await em.findOne(BasePersonEntity, {
         dni: person.dni,
-        email: { $ne: email }, // Excluir el email actual
+        email: { $ne: email }, // Exclude current email
       });
 
       if (duplicateDNI) {
@@ -779,8 +779,8 @@ export class EmailVerificationController {
           }, 
           'Duplicate DNI detected during verification'
         );
-        
-        // Marcar como expirada
+
+        // Mark as expired
         verification.markAsExpired();
         await em.flush();
 
@@ -799,12 +799,12 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 6. VALIDACIÓN: Verificar usuario duplicado verificado con mismo email
+      // 6. VALIDATION: Verify duplicate verified user with same email
       // ────────────────────────────────────────────────────────────────────
       const duplicateVerifiedUser = await em.findOne(User, {
         email,
         isVerified: true,
-        id: { $ne: user.id }, // Excluir el usuario actual
+        id: { $ne: user.id }, // Exclude current user
       });
 
       if (duplicateVerifiedUser) {
@@ -832,32 +832,32 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 7. APROBAR: Actualizar User.isVerified
+      // 7. APPROVE: Update User.isVerified
       // ────────────────────────────────────────────────────────────────────
       user.isVerified = true;
 
       // ────────────────────────────────────────────────────────────────────
-      // 8. Recalcular profileCompleteness
+      // 8. Recalculate profileCompleteness
       // ────────────────────────────────────────────────────────────────────
       user.updateProfileCompleteness();
 
       // ────────────────────────────────────────────────────────────────────
-      // 9. Marcar verificación como completada
+      // 9. Mark verification as completed
       // ────────────────────────────────────────────────────────────────────
       verification.markAsVerified();
 
       // ────────────────────────────────────────────────────────────────────
-      // 10. Persistir todos los cambios
+      // 10. Persist all changes
       // ────────────────────────────────────────────────────────────────────
       await em.flush();
 
       // ────────────────────────────────────────────────────────────────────
-      // 11. Enviar email de bienvenida al usuario
+      // 11. Send welcome email to user
       // ────────────────────────────────────────────────────────────────────
       await emailService.sendWelcomeEmail(email, person.name);
 
       // ────────────────────────────────────────────────────────────────────
-      // 12. Invalidar cache relacionado
+      // 12. Invalidate related cache
       // ────────────────────────────────────────────────────────────────────
       await cacheService.invalidateUserCache(person.dni);
       await cacheService.delete(`verification_request:${email}`);
@@ -890,21 +890,21 @@ export class EmailVerificationController {
   }
 
   /**
-   * Rechaza una solicitud de verificación de usuario (admin only)
-   * 
-   * El rechazo permite al usuario corregir su información y volver a solicitar
-   * la verificación. El cooldown se elimina para permitir el reintento inmediato.
+   * Rejects a user verification request (admin only)
+   *
+   * Rejection allows the user to correct their information and request
+   * verification again. The cooldown is removed to allow immediate retry.
    */
   async rejectVerification(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
-      // Email ya está validado por el schema de Zod
+      // Email is already validated by Zod schema
       const { email } = req.params;
-      const { reason } = req.body; // Motivo opcional del rechazo
+      const { reason } = req.body; // Optional reason for rejection
 
       // ────────────────────────────────────────────────────────────────────
-      // 1. Buscar la solicitud de verificación pendiente
+      // 1. Find the pending verification request
       // ────────────────────────────────────────────────────────────────────
       const verification = await em.findOne(EmailVerification, {
         email,
@@ -916,22 +916,22 @@ export class EmailVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 2. Marcar verificación como expirada
+      // 2. Mark verification as expired
       // ────────────────────────────────────────────────────────────────────
       verification.markAsExpired();
       await em.flush();
 
       // ────────────────────────────────────────────────────────────────────
-      // 3. Limpiar cache de cooldown para permitir nueva solicitud
+      // 3. Clear cooldown cache to allow new request
       // ────────────────────────────────────────────────────────────────────
       await cacheService.delete(`verification_request:${email}`);
 
       // ────────────────────────────────────────────────────────────────────
-      // 4. (Opcional) Enviar email de notificación de rechazo al usuario
+      // 4. (Optional) Send rejection notification email to user
       // ────────────────────────────────────────────────────────────────────
       const person = await em.findOne(BasePersonEntity, { email });
       if (person && reason) {
-        // TODO: Implementar emailService.sendRejectionEmail si se necesita
+        // TODO: Implement emailService.sendRejectionEmail if needed
         logger.info({ email, reason }, 'User verification rejected - notification not sent');
       }
 
