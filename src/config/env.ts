@@ -1,8 +1,12 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load the correct file according to NODE_ENV (default: development)
-config({ path: `.env.${process.env.NODE_ENV ?? 'development'}` });
+// Load .env file only in development/test, not in production
+// In production (Render, etc.), variables are already in process.env
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+if (nodeEnv !== 'production') {
+  config({ path: `.env.${nodeEnv}` });
+}
 
 // Detect if running in Docker container
 const isDocker = process.env.DOCKER_CONTAINER === 'true';
