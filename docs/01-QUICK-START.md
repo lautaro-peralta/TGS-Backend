@@ -20,7 +20,7 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente en tu sistema:
 |----------|----------------|-----------|
 | **Node.js** | 18.x o superior | Runtime de JavaScript |
 | **pnpm** | 8.x o superior | Gestor de paquetes (recomendado) |
-| **MySQL** | 8.0 o superior | Base de datos relacional |
+| **PostgreSQL** | 16 o superior | Base de datos relacional |
 | **Git** | 2.x o superior | Control de versiones |
 
 ### Software Opcional
@@ -41,9 +41,9 @@ node --version
 pnpm --version
 # Debe mostrar: 8.x.x o superior
 
-# Verificar MySQL
-mysql --version
-# Debe mostrar: mysql Ver 8.0.x o superior
+# Verificar PostgreSQL
+psql --version
+# Debe mostrar: psql (PostgreSQL) 16.x o superior
 
 # Verificar Git
 git --version
@@ -97,50 +97,45 @@ Progress: resolved XXX, reused XXX, downloaded X, added XXX, done
 
 ### 3. Configurar la Base de Datos
 
-#### Opción A: MySQL Local
+#### Opción A: PostgreSQL Local
 
-1. **Iniciar MySQL:**
+1. **Iniciar PostgreSQL:**
 ```bash
 # En Linux/macOS
-sudo systemctl start mysql
+sudo systemctl start postgresql
 
 # En Windows (como servicio)
-net start MySQL80
+net start postgresql-x64-16
 
-# O usar XAMPP/WAMP/MAMP según tu instalación
+# O usar pgAdmin según tu instalación
 ```
 
 2. **Crear la base de datos:**
 ```bash
-# Conectar a MySQL
-mysql -u root -p
+# Conectar a PostgreSQL
+psql -U postgres
 
-# Dentro de MySQL, ejecutar:
-CREATE DATABASE tpdesarrollo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+# Dentro de PostgreSQL, ejecutar:
+CREATE DATABASE tpdesarrollo WITH ENCODING 'UTF8' LC_COLLATE='en_US.UTF-8' LC_CTYPE='en_US.UTF-8';
 
 # Crear usuario (opcional, recomendado)
-CREATE USER 'dsw'@'localhost' IDENTIFIED BY 'dsw';
-GRANT ALL PRIVILEGES ON tpdesarrollo.* TO 'dsw'@'localhost';
-FLUSH PRIVILEGES;
+CREATE USER dsw WITH PASSWORD 'dsw';
+GRANT ALL PRIVILEGES ON DATABASE tpdesarrollo TO dsw;
 
-# Salir de MySQL
-EXIT;
+# Salir de PostgreSQL
+\q
 ```
 
-#### Opción B: Docker (Alternativa)
+#### Opción B: Docker (Recomendada)
 
 ```bash
-# Crear y ejecutar contenedor MySQL
-docker run --name tgs-mysql \
-  -e MYSQL_ROOT_PASSWORD=root \
-  -e MYSQL_DATABASE=tpdesarrollo \
-  -e MYSQL_USER=dsw \
-  -e MYSQL_PASSWORD=dsw \
-  -p 3307:3306 \
-  -d mysql:8.0
+# Usar docker-compose desde el repositorio principal
+cd ../../infra
+docker compose up -d
 
-# Verificar que el contenedor está corriendo
-docker ps
+# Esto levantará PostgreSQL 16 y Redis automáticamente
+# Verificar que los contenedores están corriendo
+docker compose ps
 ```
 
 ---
@@ -173,9 +168,9 @@ PORT=3000
 # DATABASE CONFIGURATION
 # ============================================================================
 DB_HOST=localhost
-DB_PORT=3307              # 3306 si usas el puerto por defecto de MySQL
-DB_USER=dsw
-DB_PASSWORD=dsw
+DB_PORT=5432              # Puerto por defecto de PostgreSQL
+DB_USER=postgres
+DB_PASSWORD=postgres
 DB_NAME=tpdesarrollo
 
 # ============================================================================
@@ -386,32 +381,30 @@ curl -X POST http://localhost:3000/api/auth/login \
 ### 3. Verificar Base de Datos
 
 ```bash
-# Conectar a MySQL
-mysql -u dsw -p tpdesarrollo
+# Conectar a PostgreSQL
+psql -U postgres -d tpdesarrollo
 
-# Dentro de MySQL, verificar tablas creadas
-SHOW TABLES;
+# Dentro de PostgreSQL, verificar tablas creadas
+\dt
 
 # Verificar usuario admin
-SELECT * FROM user LIMIT 1;
+SELECT * FROM users LIMIT 1;
 
 # Salir
-EXIT;
+\q
 ```
 
 **Tablas esperadas:**
 ```
-+---------------------------+
-| Tables_in_tpdesarrollo    |
-+---------------------------+
-| user                      |
-| admin                     |
-| client                    |
-| zone                      |
-| product                   |
-| sale                      |
-| ... (más tablas)          |
-+---------------------------+
+ Schema |        Name         | Type  |  Owner
+--------+---------------------+-------+----------
+ public | users               | table | postgres
+ public | admins              | table | postgres
+ public | clients             | table | postgres
+ public | zones               | table | postgres
+ public | products            | table | postgres
+ public | sales               | table | postgres
+ ... (más tablas)
 ```
 
 ---
@@ -429,19 +422,19 @@ rm -rf node_modules pnpm-lock.yaml
 pnpm install
 ```
 
-### Error: "ECONNREFUSED" al conectar a MySQL
+### Error: "ECONNREFUSED" al conectar a PostgreSQL
 
-**Problema:** MySQL no está ejecutándose o usa un puerto diferente
+**Problema:** PostgreSQL no está ejecutándose o usa un puerto diferente
 
 **Soluciones:**
 ```bash
-# 1. Verificar que MySQL está corriendo
-sudo systemctl status mysql
+# 1. Verificar que PostgreSQL está corriendo
+sudo systemctl status postgresql
 
-# 2. Verificar el puerto de MySQL
-mysql -u root -p -e "SHOW VARIABLES LIKE 'port';"
+# 2. Verificar el puerto de PostgreSQL
+psql -U postgres -c "SHOW port;"
 
-# 3. Actualizar DB_PORT en .env.development con el puerto correcto
+# 3. Actualizar DB_PORT en .env.development con el puerto correcto (por defecto 5432)
 ```
 
 ### Error: "Access denied for user"
@@ -451,14 +444,13 @@ mysql -u root -p -e "SHOW VARIABLES LIKE 'port';"
 **Soluciones:**
 ```bash
 # 1. Verificar usuario y contraseña en .env.development
-# 2. Recrear usuario en MySQL:
+# 2. Recrear usuario en PostgreSQL:
 
-mysql -u root -p
-DROP USER IF EXISTS 'dsw'@'localhost';
-CREATE USER 'dsw'@'localhost' IDENTIFIED BY 'dsw';
-GRANT ALL PRIVILEGES ON tpdesarrollo.* TO 'dsw'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
+psql -U postgres
+DROP USER IF EXISTS dsw;
+CREATE USER dsw WITH PASSWORD 'dsw';
+GRANT ALL PRIVILEGES ON DATABASE tpdesarrollo TO dsw;
+\q
 ```
 
 ### Error: "JWT_SECRET must be at least 32 characters"
@@ -521,9 +513,10 @@ Una vez que el sistema esté funcionando correctamente, continúa con:
 ## Recursos de Ayuda
 
 - **Logs del servidor:** Revisa la salida de la consola para mensajes de error detallados
-- **Base de datos:** Usa un cliente MySQL (MySQL Workbench, DBeaver, etc.) para inspeccionar los datos
+- **Base de datos:** Usa un cliente PostgreSQL (pgAdmin, DBeaver, etc.) para inspeccionar los datos
 - **Documentación de MikroORM:** https://mikro-orm.io/docs/
 - **Documentación de Express:** https://expressjs.com/
+- **Documentación de PostgreSQL:** https://www.postgresql.org/docs/16/
 
 ---
 

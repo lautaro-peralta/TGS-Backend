@@ -17,17 +17,17 @@
 
 ```
 ┌──────────────────────────────────────┐
-│           MySQL 8.0+                 │
+│        PostgreSQL 16                 │
 ├──────────────────────────────────────┤
-│ Charset: utf8mb4                     │
-│ Collation: utf8mb4_unicode_ci       │
-│ Engine: InnoDB (por defecto)        │
+│ Charset: UTF8                        │
+│ Collation: en_US.utf8               │
+│ Connection Pooling: Habilitado      │
 └──────────────────────────────────────┘
 ```
 
 ### ORM: MikroORM
 
-**MikroORM** es el ORM (Object-Relational Mapping) utilizado para mapear objetos TypeScript a tablas de MySQL.
+**MikroORM** es el ORM (Object-Relational Mapping) utilizado para mapear objetos TypeScript a tablas de PostgreSQL.
 
 **Ventajas:**
 - Type-safe: Aprovecha TypeScript para validación de tipos
@@ -44,7 +44,7 @@
 │         │                                                    │
 │         │ MikroORM decorators (@Entity, @Property, etc.)   │
 │         ▼                                                    │
-│  Database Table (MySQL)                                     │
+│  Database Table (PostgreSQL)                                │
 │                                                              │
 │  ┌─────────────────┐        ┌─────────────────┐           │
 │  │ Client.ts       │ ◄────► │ clients table   │           │
@@ -636,16 +636,16 @@ CREATE TABLE distributor_products (
 // src/shared/db/orm.config.ts
 
 export default {
-  driver: MySqlDriver,
+  driver: PostgreSqlDriver,
   entities: ['dist/**/*.entity.js'],       // Entidades compiladas
   entitiesTs: ['src/**/*.entity.ts'],      // Entidades TypeScript (desarrollo)
 
   // Conexión
   dbName: process.env.DB_NAME || 'tpdesarrollo',
-  user: process.env.DB_USER || 'dsw',
-  password: process.env.DB_PASSWORD || 'dsw',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3307'),
+  port: parseInt(process.env.DB_PORT || '5432'),
 
   // Pool de conexiones
   pool: {
@@ -654,10 +654,6 @@ export default {
     acquireTimeoutMillis: 30000, // Timeout para obtener conexión
     idleTimeoutMillis: 30000,    // Cerrar conexiones inactivas
   },
-
-  // Charset
-  charset: 'utf8mb4',
-  collate: 'utf8mb4_unicode_ci',
 
   // Debugging
   debug: process.env.NODE_ENV === 'development',
@@ -999,9 +995,9 @@ await em.transactional(async (em) => {
 ## Recursos Adicionales
 
 - **Documentación MikroORM:** https://mikro-orm.io/docs/
-- **MySQL 8.0 Reference:** https://dev.mysql.com/doc/refman/8.0/en/
+- **PostgreSQL 16 Documentation:** https://www.postgresql.org/docs/16/
 - **TypeScript Decorators:** https://www.typescriptlang.org/docs/handbook/decorators.html
 
 ---
 
-**Última actualización**: 2025-10-16
+**Última actualización**: 2025-11-10

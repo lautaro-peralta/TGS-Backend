@@ -89,7 +89,7 @@ A lo largo de esta documentación encontrarás:
 - **Lenguaje**: TypeScript
 - **Framework Web**: Express.js
 - **ORM**: MikroORM
-- **Base de Datos**: MySQL
+- **Base de Datos**: PostgreSQL 16
 - **Autenticación**: JWT (JSON Web Tokens)
 - **Validación**: Zod
 - **Logging**: Pino
@@ -105,4 +105,4 @@ A lo largo de esta documentación encontrarás:
 
 ---
 
-**Última actualización**: 2025-10-16
+**Última actualización**: 2025-11-10

@@ -1,6 +1,6 @@
 # TGS Backend - The Garrison System
 
-Este repositorio contiene el backend del sistema **The Garrison System**, desarrollado en **Node.js** con **TypeScript** y utilizando **MikroORM** para la gestión de la base de datos MySQL.
+Este repositorio contiene el backend del sistema **The Garrison System**, desarrollado en **Node.js** con **TypeScript** y utilizando **MikroORM** para la gestión de la base de datos PostgreSQL.
 
 Repo general (repositorio padre):
 <https://github.com/Lau-prog/TP-Desarrollo-de-Software>
@@ -11,7 +11,7 @@ Repo general (repositorio padre):
 
 ### Con Infraestructura Docker (Recomendado)
 
-Si estás usando el repositorio principal, la forma más fácil es levantar MySQL y Redis con Docker:
+Si estás usando el repositorio principal, la forma más fácil es levantar PostgreSQL y Redis con Docker:
 
 ```bash
 # Desde el repositorio principal (TP-Desarrollo-de-Software)
@@ -26,7 +26,7 @@ pnpm start:dev
 
 ### Sin Docker
 
-Si prefieres instalar MySQL y Redis localmente, sigue las instrucciones en la sección [Configuración del Entorno](#configuración-del-entorno).
+Si prefieres instalar PostgreSQL y Redis localmente, sigue las instrucciones en la sección [Configuración del Entorno](#configuración-del-entorno) o consulta la documentación completa en [docs/01-QUICK-START.md](docs/01-QUICK-START.md).
 
 ---
 
