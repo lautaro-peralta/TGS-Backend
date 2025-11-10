@@ -122,9 +122,9 @@ PORT=3000
 
 # Database
 DB_HOST=localhost
-DB_PORT=3307
-DB_USER=dsw
-DB_PASSWORD=dsw
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
 DB_NAME=tpdesarrollo
 
 # Authentication
@@ -135,7 +135,7 @@ JWT_EXPIRES_IN=15m
 LOG_LEVEL=info
 
 # Security
-ALLOWED_ORIGINS=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:4200
 TRUST_PROXY=false
 ENABLE_SECURITY_HEADERS=true
 ENABLE_RATE_LIMITING=true
@@ -155,7 +155,7 @@ SMTP_PASS=tu-app-password
 SMTP_FROM=noreply@tgs-system.com
 
 # Frontend URL
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:4200
 ```
 
 **Nota sobre verificación de emails:**

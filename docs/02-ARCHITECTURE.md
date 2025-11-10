@@ -30,7 +30,7 @@ TGS Backend está construido siguiendo una **arquitectura modular en capas**, do
 │ Validación:     Zod                     │
 │ Autenticación:  JWT + Argon2            │
 │ Logging:        Pino                    │
-│ Base de Datos:  MySQL 8.0               │
+│ Base de Datos:  PostgreSQL 16           │
 │ Cache:          Redis (opcional)        │
 └─────────────────────────────────────────┘
 ```
@@ -149,7 +149,7 @@ Aunque es una API REST (sin vistas tradicionales), seguimos una arquitectura sim
        │
        ▼
 ┌──────────────┐
-│   DATABASE   │ ← MySQL
+│   DATABASE   │ ← PostgreSQL
 └──────────────┘
 ```
 
@@ -415,7 +415,7 @@ Cada archivo/clase tiene una única responsabilidad:
                      ▼
 ┌──────────────────────────────────────────────────────┐
 │              DATABASE LAYER                          │
-│  (MySQL, Physical storage)                           │
+│  (PostgreSQL, Physical storage)                      │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -458,7 +458,7 @@ Cada archivo/clase tiene una única responsabilidad:
                  ┌───────────────────────────────────────┼─────────┐
                  │                                       │         │
           ┌──────▼──────┐                        ┌──────▼──────┐  │
-          │    MySQL    │                        │    Redis    │  │
+          │ PostgreSQL  │                        │    Redis    │  │
           │  (Database) │                        │   (Cache)   │  │
           └─────────────┘                        └─────────────┘  │
                                                                    │

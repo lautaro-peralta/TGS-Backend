@@ -215,7 +215,7 @@ const user = await em.findOne(User, { email });
 SELECT * FROM users WHERE email = ?
 -- Parámetros: ['thomas@shelby.com']
 
--- MySQL trata el valor como string literal, no como SQL
+-- PostgreSQL trata el valor como string literal, no como SQL
 ```
 
 ---

@@ -188,16 +188,15 @@ DB_HOST=localhost
 # localhost para desarrollo local
 # IP o hostname en producción
 
-# Puerto de MySQL
-DB_PORT=3307
-# 3306 es el puerto por defecto de MySQL
-# 3307 si tienes MySQL en puerto alternativo (ej: XAMPP)
+# Puerto de PostgreSQL
+DB_PORT=5432
+# 5432 es el puerto por defecto de PostgreSQL
 
 # Usuario de la base de datos
-DB_USER=dsw
+DB_USER=postgres
 
 # Contraseña del usuario
-DB_PASSWORD=dsw
+DB_PASSWORD=postgres
 
 # Nombre de la base de datos
 DB_NAME=tpdesarrollo
@@ -212,8 +211,8 @@ El sistema detecta automáticamente si está corriendo en Docker:
 const isDocker = process.env.DOCKER_CONTAINER === 'true';
 
 // Defaults automáticos:
-DB_HOST: z.string().default(isDocker ? 'mysql' : 'localhost')
-DB_PORT: z.coerce.number().default(isDocker ? 3306 : 3307)
+DB_HOST: z.string().default(isDocker ? 'postgres' : 'localhost')
+DB_PORT: z.coerce.number().default(5432)
 ```
 
 **Configuración de Pooling:**
@@ -232,7 +231,7 @@ pool: {
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│               MySQL Connection Pool                      │
+│            PostgreSQL Connection Pool                    │
 │                                                           │
 │  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐           │
 │  │Conn1│  │Conn2│  │Conn3│  │Conn4│  │Conn5│  ...      │
@@ -348,7 +347,7 @@ logger.error({ err: error }, 'Error al conectar a la base de datos'); // Errores
 
 ```env
 # Orígenes permitidos para CORS (separados por coma)
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:4200
 # Lista de URLs del frontend que pueden hacer requests
 
 # Confiar en proxy (para obtener IP real detrás de Nginx, etc.)
@@ -493,7 +492,7 @@ SENDGRID_FROM=noreply@tudominio.com
 # Configuración General de Email
 # ============================================================================
 
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:4200
 # URL del frontend para enlaces en emails (verificación, reset password)
 
 EMAIL_VERIFICATION_REQUIRED=true
@@ -665,15 +664,15 @@ MI_NUEVA_VAR=ejemplo-de-valor
 |----------|------|-----------|---------|-------------|
 | `NODE_ENV` | enum | No | development | Entorno de ejecución |
 | `PORT` | number | No | 3000 | Puerto del servidor |
-| `DB_HOST` | string | No | localhost | Host de MySQL |
-| `DB_PORT` | number | No | 3307 | Puerto de MySQL |
-| `DB_USER` | string | No | dsw | Usuario de MySQL |
-| `DB_PASSWORD` | string | No | dsw | Contraseña de MySQL |
+| `DB_HOST` | string | No | localhost | Host de PostgreSQL |
+| `DB_PORT` | number | No | 5432 | Puerto de PostgreSQL |
+| `DB_USER` | string | No | postgres | Usuario de PostgreSQL |
+| `DB_PASSWORD` | string | No | postgres | Contraseña de PostgreSQL |
 | `DB_NAME` | string | No | tpdesarrollo | Nombre de la BD |
 | `JWT_SECRET` | string | **Sí** | - | Clave JWT (min 32 chars) |
 | `JWT_EXPIRES_IN` | string | No | 15m | Expiración del token |
 | `LOG_LEVEL` | enum | No | info | Nivel de logging |
-| `ALLOWED_ORIGINS` | string | No | localhost:3000 | CORS origins |
+| `ALLOWED_ORIGINS` | string | No | localhost:4200 | CORS origins |
 | `REDIS_ENABLED` | boolean | No | false | Habilitar Redis |
 | `EMAIL_VERIFICATION_REQUIRED` | boolean | No | true | Verificación obligatoria |
 

@@ -188,7 +188,7 @@ LOG_LEVEL=info            # Opciones: debug, info, warn, error
 # ============================================================================
 # SECURITY
 # ============================================================================
-ALLOWED_ORIGINS=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:4200
 TRUST_PROXY=false
 ENABLE_SECURITY_HEADERS=true
 ENABLE_RATE_LIMITING=true
@@ -215,7 +215,7 @@ SMTP_FROM=noreply@tgs-system.com
 # ============================================================================
 # FRONTEND URL (para enlaces en emails)
 # ============================================================================
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:4200
 
 # ============================================================================
 # EMAIL VERIFICATION (Modo Demo)
