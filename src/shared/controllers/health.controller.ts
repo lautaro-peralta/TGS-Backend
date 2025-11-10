@@ -182,6 +182,16 @@ export class HealthController {
     try {
       const emailStats = emailService.getStats();
       const testEmail = req.query.test as string;
+      const reinit = req.query.reinit as string;
+
+      // Force re-initialization if requested
+      if (reinit === 'true') {
+        try {
+          await emailService.initialize();
+        } catch (initError) {
+          // Ignore error, will show in stats
+        }
+      }
 
       const response: any = {
         success: true,
@@ -201,6 +211,9 @@ export class HealthController {
           hasSmtpUser: !!process.env.SMTP_USER,
           hasSmtpPass: !!process.env.SMTP_PASS,
           frontendUrl: process.env.FRONTEND_URL,
+          // Show actual values (masked) for debugging
+          sendgridApiKeyPrefix: process.env.SENDGRID_API_KEY?.substring(0, 10) + '...',
+          sendgridFromValue: process.env.SENDGRID_FROM,
         }
       };
 
