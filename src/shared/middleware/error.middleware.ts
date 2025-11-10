@@ -1,5 +1,5 @@
 // ============================================================================
-// ERROR MIDDLEWARE - Middleware global para manejo consistente de errores
+// ERROR MIDDLEWARE - Global middleware for consistent error handling
 // ============================================================================
 
 import { Request, Response, NextFunction } from 'express';
@@ -8,8 +8,8 @@ import { AppError, InternalServerError, ValidationError, ForbiddenError } from '
 import { ValidationErrorDetail } from '../types/common.types.js';
 
 /**
- * Middleware global para manejo de errores
- * Captura todos los errores y los formatea de manera consistente
+ * Global middleware for error handling
+ * Captures all errors and formats them consistently
  */
 export const errorHandler = (
   error: Error | AppError,
@@ -19,7 +19,7 @@ export const errorHandler = (
 ): Response | void => {
   const requestId = req.requestId || 'unknown';
 
-  // Log del error con contexto básico (evitar propiedades problemáticas)
+  // Log the error with basic context (avoid problematic properties)
   logger.error(
     {
       err: error,
@@ -30,12 +30,12 @@ export const errorHandler = (
       ip: req.ip,
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
       params: JSON.stringify(req.params),
-      // Evitar req.query que puede ser de solo lectura
+      // Avoid req.query which may be read-only
     },
     `Error in ${req.method} ${req.url}`
   );
 
-  // Si no es un error personalizado, convertirlo
+  // If not a custom error, convert it
   if (!(error instanceof AppError)) {
     const internalError = new InternalServerError(
       error.message || 'Internal server error',
@@ -45,17 +45,17 @@ export const errorHandler = (
     return handleAppError(internalError, res, requestId);
   }
 
-  // Manejar error personalizado
+  // Handle custom error
   return handleAppError(error, res, requestId);
 };
 
 /**
- * Función auxiliar para manejar errores de la aplicación
+ * Helper function to handle application errors
  */
 function handleAppError(error: AppError, res: Response, requestId: string): Response {
   const isDevelopment = process.env.NODE_ENV === 'development';
 
-  // Construir respuesta de error
+  // Build error response
   const errorResponse = {
     success: false,
     message: error.message,
@@ -70,22 +70,22 @@ function handleAppError(error: AppError, res: Response, requestId: string): Resp
     }),
   };
 
-  // Headers adicionales para errores específicos
+  // Additional headers for specific errors
   if (error.statusCode === 429) {
-    res.set('Retry-After', '60'); // 60 segundos por defecto
+    res.set('Retry-After', '60'); // 60 seconds by default
   }
 
   if (error.statusCode >= 500) {
     res.set('X-Error-Type', 'ServerError');
   }
 
-  // Enviar respuesta
+  // Send response
   return res.status(error.statusCode).json(errorResponse);
 }
 
 /**
- * Middleware para capturar errores async/await no manejados
- * Envuelve funciones async para capturar errores automáticamente
+ * Middleware to catch unhandled async/await errors
+ * Wraps async functions to catch errors automatically
  */
 export const asyncErrorHandler = (fn: Function) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -94,7 +94,7 @@ export const asyncErrorHandler = (fn: Function) => {
 };
 
 /**
- * Middleware para errores 404 - rutas no encontradas
+ * Middleware for 404 errors - routes not found
  */
 export const notFoundHandler = (req: Request, res: Response, next: NextFunction): void => {
   const error = new AppError(
@@ -110,7 +110,7 @@ export const notFoundHandler = (req: Request, res: Response, next: NextFunction)
 };
 
 /**
- * Middleware para manejo de errores de validación de parámetros de consulta
+ * Middleware for handling query parameter validation errors
  */
 export const queryValidationErrorHandler = (
   errors: ValidationErrorDetail[],
@@ -140,7 +140,7 @@ export const queryValidationErrorHandler = (
 };
 
 /**
- * Middleware para manejo de errores de validación de cuerpo de solicitud
+ * Middleware for handling request body validation errors
  */
 export const bodyValidationErrorHandler = (
   errors: ValidationErrorDetail[],
@@ -171,7 +171,7 @@ export const bodyValidationErrorHandler = (
 };
 
 /**
- * Middleware para errores de autenticación
+ * Middleware for authentication errors
  */
 export const authenticationErrorHandler = (
   req: Request,
@@ -203,7 +203,7 @@ export const authenticationErrorHandler = (
 };
 
 /**
- * Middleware para errores de autorización
+ * Middleware for authorization errors
  */
 export const authorizationErrorHandler = (
   requiredRole: string,
@@ -233,7 +233,7 @@ export const authorizationErrorHandler = (
 };
 
 /**
- * Función para crear errores de validación desde errores de Zod
+ * Function to create validation errors from Zod errors
  */
 export function createValidationErrorsFromZod(
   zodErrors: any[]
@@ -246,7 +246,7 @@ export function createValidationErrorsFromZod(
 }
 
 /**
- * Función para crear errores de validación desde errores genéricos
+ * Function to create validation errors from generic errors
  */
 export function createValidationError(
   field: string,

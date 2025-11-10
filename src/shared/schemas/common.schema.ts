@@ -295,7 +295,7 @@ export const dniSchema = z
     message: `DNI must be ${VALIDATION_CONSTANTS.DNI_LENGTH.min}-${VALIDATION_CONSTANTS.DNI_LENGTH.max} digits`
   })
   .refine((val) => Number(val) > 0, { message: 'DNI must be a positive number' });
-  // Elimina el .transform(Number) y déjalo como string
+  // Remove the .transform(Number) and leave it as string
 /**
  * Schema for strong passwords with professional requirements.
  */

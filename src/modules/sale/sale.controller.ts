@@ -93,7 +93,7 @@ export class SaleController {
         const { date, type, endDate } = validated;
         const filters: SalesFilters = {};
 
-        // Si es PARTNER o AUTHORITY, filtrar solo ventas de su autoridad
+        // If PARTNER or AUTHORITY, filter only sales from their authority
         if (authorityId) {
           (filters as any).authority = authorityId;
         }
@@ -492,16 +492,16 @@ export class SaleController {
     
     const filters: any = {};
     
-    // Si es PARTNER o AUTHORITY, filtrar solo ventas de su autoridad
+    // If PARTNER or AUTHORITY, filter only sales from their authority
     if (user && (user.roles.includes(Role.PARTNER) || user.roles.includes(Role.AUTHORITY))) {
-      // Buscar authority por email del usuario (debe coincidir)
+      // Find authority by user email (must match)
       const authority = await em.findOne(Authority, { email: user.email });
       if (authority) {
         filters.authority = authority.id;
       }
     }
 
-    // Si es DISTRIBUTOR, filtrar solo ventas de ese distribuidor
+    // If DISTRIBUTOR, filter only sales from that distributor
     if (user && user.roles.includes(Role.DISTRIBUTOR)) {
       const distributor = await em.findOne(Distributor, { email: user.email });
       if (distributor) {
