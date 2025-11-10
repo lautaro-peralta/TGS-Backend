@@ -4,6 +4,7 @@ services:
     runtime: node
     buildCommand: pnpm install && pnpm build
     startCommand: pnpm start:prod
+    dockerfilePath: ""
     envVars:
       - key: NODE_ENV
         value: production

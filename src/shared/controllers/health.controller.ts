@@ -180,41 +180,49 @@ export class HealthController {
    */
   async emailDebug(req: Request, res: Response) {
     try {
-      const emailStats = emailService.getStats();
       const testEmail = req.query.test as string;
       const reinit = req.query.reinit as string;
+
+      const response: any = {
+        success: true,
+        timestamp: new Date().toISOString(),
+      };
 
       // Force re-initialization if requested
       if (reinit === 'true') {
         try {
           await emailService.initialize();
         } catch (initError) {
-          // Ignore error, will show in stats
+          // Capture the error to show what's preventing initialization
+          response.initializationError = {
+            message: initError instanceof Error ? initError.message : String(initError),
+            stack: initError instanceof Error ? initError.stack : undefined,
+          };
         }
       }
 
-      const response: any = {
-        success: true,
-        timestamp: new Date().toISOString(),
-        emailService: {
-          enabled: emailStats.enabled,
-          configured: emailStats.configured,
-          provider: emailStats.provider,
-          hasCredentials: emailStats.hasCredentials,
-          hasSendGridCredentials: emailStats.hasSendGridCredentials,
-        },
-        environment: {
-          nodeEnv: env.NODE_ENV,
-          emailVerificationRequired: env.EMAIL_VERIFICATION_REQUIRED,
-          hasSendGridApiKey: !!process.env.SENDGRID_API_KEY,
-          hasSendGridFrom: !!process.env.SENDGRID_FROM,
-          hasSmtpUser: !!process.env.SMTP_USER,
-          hasSmtpPass: !!process.env.SMTP_PASS,
-          frontendUrl: process.env.FRONTEND_URL,
-          // Show actual values (masked) for debugging
-          sendgridApiKeyPrefix: process.env.SENDGRID_API_KEY?.substring(0, 10) + '...',
-          sendgridFromValue: process.env.SENDGRID_FROM,
-        }
+      // Get current stats after potential re-initialization
+      const emailStats = emailService.getStats();
+
+      response.emailService = {
+        enabled: emailStats.enabled,
+        configured: emailStats.configured,
+        provider: emailStats.provider,
+        hasCredentials: emailStats.hasCredentials,
+        hasSendGridCredentials: emailStats.hasSendGridCredentials,
+      };
+
+      response.environment = {
+        nodeEnv: env.NODE_ENV,
+        emailVerificationRequired: env.EMAIL_VERIFICATION_REQUIRED,
+        hasSendGridApiKey: !!process.env.SENDGRID_API_KEY,
+        hasSendGridFrom: !!process.env.SENDGRID_FROM,
+        hasSmtpUser: !!process.env.SMTP_USER,
+        hasSmtpPass: !!process.env.SMTP_PASS,
+        frontendUrl: process.env.FRONTEND_URL,
+        // Show actual values (masked) for debugging
+        sendgridApiKeyPrefix: process.env.SENDGRID_API_KEY?.substring(0, 10) + '...',
+        sendgridFromValue: process.env.SENDGRID_FROM,
       };
 
       // Send test email if requested
