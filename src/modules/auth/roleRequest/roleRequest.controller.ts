@@ -15,6 +15,8 @@ import { validateQueryParams } from '../../../shared/middleware/validation.middl
 import logger from '../../../shared/utils/logger.js';
 import { searchRoleRequestsSchema } from './roleRequest.schema.js';
 import { RoleRequestFilters } from '../../../shared/types/common.types.js';
+import { createNotification } from '../../notification/notification.controller.js';
+import { NotificationType } from '../../notification/notification.entity.js';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -266,6 +268,52 @@ export class RoleRequestController {
       });
 
       await em.persistAndFlush(roleRequest);
+
+      // ────────────────────────────────────────────────────────────────────
+      // Crear notificaciones para todos los admins
+      // ────────────────────────────────────────────────────────────────────
+      try {
+        // Obtener todos los usuarios con rol ADMIN
+        const adminUsers = await em.find(User, {
+          roles: { $contains: [Role.ADMIN] }
+        });
+
+        // Crear una notificación para cada admin
+        const requestUser = user as any;
+        for (const admin of adminUsers) {
+          const notificationMessage = isRoleChange
+            ? `${requestUser.person.name} ha solicitado cambiar de rol ${roleToRemove} a ${requestedRole}.`
+            : `${requestUser.person.name} ha solicitado el rol ${requestedRole}.`;
+
+          await createNotification({
+            userId: admin.id,
+            type: NotificationType.SYSTEM,
+            title: 'Nueva solicitud de rol',
+            message: notificationMessage,
+            relatedEntityId: roleRequest.id,
+            relatedEntityType: 'role-request',
+            metadata: {
+              requestedRole,
+              roleToRemove: roleToRemove || null,
+              isRoleChange,
+              userName: requestUser.person.name,
+              userEmail: user.email,
+              requestedAt: new Date().toISOString(),
+            },
+          });
+        }
+
+        logger.info({
+          userId: user.id,
+          roleRequestId: roleRequest.id,
+          requestedRole,
+          adminCount: adminUsers.length
+        }, 'Admin notifications created for role request');
+
+      } catch (notifError) {
+        logger.error({ err: notifError }, 'Error creating admin notifications for role request');
+        // Don't fail the request if notification fails
+      }
 
       console.log('✅ [CREATE REQUEST] Role request saved successfully with ID:', roleRequest.id);
 
@@ -555,6 +603,26 @@ export class RoleRequestController {
           roleRequest.approve(adminUser, comments);
           await em.flush();
 
+          // Create notification for the user
+          try {
+            await createNotification({
+              userId: requestUser.id,
+              type: NotificationType.ROLE_REQUEST_APPROVED,
+              title: 'Solicitud de rol aprobada',
+              message: `Tu solicitud para cambiar de ${roleRequest.roleToRemove} a ${roleRequest.requestedRole} ha sido aprobada.`,
+              relatedEntityId: roleRequest.id,
+              relatedEntityType: 'role-request',
+              metadata: {
+                requestedRole: roleRequest.requestedRole,
+                previousRole: roleRequest.roleToRemove,
+                isRoleChange: true,
+              },
+            });
+          } catch (notifError) {
+            logger.error({ err: notifError }, 'Error creating notification for role change approval');
+            // Don't fail the request if notification fails
+          }
+
           return ResponseUtil.success(
             res,
             `Role change approved. User role changed from ${roleRequest.roleToRemove} to ${roleRequest.requestedRole}.`,
@@ -598,6 +666,25 @@ export class RoleRequestController {
 
           await em.flush();
 
+          // Create notification for the user
+          try {
+            await createNotification({
+              userId: requestUser.id,
+              type: NotificationType.ROLE_REQUEST_APPROVED,
+              title: 'Solicitud de rol aprobada',
+              message: `Tu solicitud para el rol ${roleRequest.requestedRole} ha sido aprobada. ¡Felicitaciones!`,
+              relatedEntityId: roleRequest.id,
+              relatedEntityType: 'role-request',
+              metadata: {
+                requestedRole: roleRequest.requestedRole,
+                isRoleChange: false,
+              },
+            });
+          } catch (notifError) {
+            logger.error({ err: notifError }, 'Error creating notification for role approval');
+            // Don't fail the request if notification fails
+          }
+
           return ResponseUtil.success(
             res,
             `Role request approved. User has been granted ${roleRequest.requestedRole} role.`,
@@ -607,6 +694,25 @@ export class RoleRequestController {
       } else {
         roleRequest.reject(adminUser, comments);
         await em.flush();
+
+        // Create notification for the user
+        try {
+          await createNotification({
+            userId: requestUser.id,
+            type: NotificationType.ROLE_REQUEST_REJECTED,
+            title: 'Solicitud de rol rechazada',
+            message: `Tu solicitud para el rol ${roleRequest.requestedRole} ha sido rechazada.${comments ? ` Motivo: ${comments}` : ''}`,
+            relatedEntityId: roleRequest.id,
+            relatedEntityType: 'role-request',
+            metadata: {
+              requestedRole: roleRequest.requestedRole,
+              adminComments: comments,
+            },
+          });
+        } catch (notifError) {
+          logger.error({ err: notifError }, 'Error creating notification for role rejection');
+          // Don't fail the request if notification fails
+        }
 
         return ResponseUtil.success(
           res,
