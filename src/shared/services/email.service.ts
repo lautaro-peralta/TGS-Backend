@@ -498,9 +498,20 @@ export class EmailService {
 
             <p class="important-title">Información importante:</p>
             <ul class="important-list">
-              <li>Este enlace expirará en ${data.expiresIn}</li>
-              <li>Si no solicitaste esta verificación, puedes ignorar este email</li>
+              <li><strong>Este enlace expirará en ${data.expiresIn}</strong></li>
               <li>No compartas este enlace con nadie</li>
+              <li>Si no verificas tu cuenta en 7 días, será eliminada automáticamente</li>
+            </ul>
+
+            <div class="divider"></div>
+
+            <p class="important-title">¿No solicitaste esta verificación?</p>
+            <p class="text">Si recibiste este email por error y no creaste una cuenta en GarrSYS:</p>
+            <ul class="important-list">
+              <li>Puedes <strong>ignorar este email de forma segura</strong></li>
+              <li>La cuenta no verificada será eliminada automáticamente en 7 días</li>
+              <li>Después de 24 horas, podrás registrarte normalmente con este email</li>
+              <li>Tu dirección de email no será utilizada sin tu consentimiento</li>
             </ul>
 
             <div class="divider"></div>
@@ -533,9 +544,17 @@ export class EmailService {
       Haz clic en el siguiente enlace para verificar tu email:
       ${data.verificationUrl}
 
-      Este enlace expirará en ${data.expiresIn}.
+      INFORMACIÓN IMPORTANTE:
+      - Este enlace expirará en ${data.expiresIn}
+      - No compartas este enlace con nadie
+      - Si no verificas tu cuenta en 7 días, será eliminada automáticamente
 
-      Si no solicitaste esta verificación, puedes ignorar este email.
+      ¿NO SOLICITASTE ESTA VERIFICACIÓN?
+      Si recibiste este email por error:
+      - Puedes ignorar este email de forma segura
+      - La cuenta no verificada será eliminada automáticamente en 7 días
+      - Después de 24 horas, podrás registrarte normalmente con este email
+      - Tu dirección de email no será utilizada sin tu consentimiento
 
       ¡Gracias por elegir GarrSYS!
 

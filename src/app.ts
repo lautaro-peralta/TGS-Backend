@@ -48,8 +48,12 @@ import { healthRouter } from './shared/routes/health.routes.js';
 // Import Redis management routes
 import { redisRouter } from './shared/routes/redis.routes.js';
 
+// Import Cleanup management routes
+import { cleanupRouter } from './shared/routes/cleanup.routes.js';
+
 // Import services
 import { emailService } from './shared/services/email.service.js';
+import { schedulerService } from './shared/services/scheduler.service.js';
 
 // Import security middleware
 import {
@@ -573,6 +577,9 @@ app.use('/health', healthRouter);
 // Redis management - Admin only routes for Redis monitoring and management
 app.use('/admin/redis', redisRouter);
 
+// Cleanup management - Admin only routes for cleanup and scheduler operations
+app.use('/admin/cleanup', cleanupRouter);
+
 // Authentication & User management
 app.use('/api/auth', authRouter);
 app.use('/api/role-requests', roleRequestRouter);
@@ -658,6 +665,19 @@ export const initDev = async () => {
       if (!env.EMAIL_VERIFICATION_REQUIRED) {
         logger.warn('Email verification: DISABLED (demo mode)');
       }
+    }
+
+    // Initialize scheduler service for automated tasks
+    try {
+      schedulerService.start();
+      const status = schedulerService.getStatus();
+
+      logger.info({
+        taskCount: status.taskCount,
+        tasks: status.tasks
+      }, 'Scheduler service started - automated cleanup enabled');
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to start scheduler service');
     }
 
     logger.info("Loading development routes...");

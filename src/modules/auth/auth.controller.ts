@@ -79,15 +79,107 @@ export class AuthController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // Check for duplicate email
+      // Check for duplicate email with smart reclaim logic
       // ────────────────────────────────────────────────────────────────────
       const existingEmail = await em.findOne(User, { email });
       if (existingEmail) {
-        return ResponseUtil.conflict(
-          res,
-          'Email is already registered',
-          'email'
-        );
+        // If email is already verified, it's truly taken
+        if (existingEmail.emailVerified) {
+          return ResponseUtil.conflict(
+            res,
+            'Email is already registered',
+            'email'
+          );
+        }
+
+        // Email exists but is not verified - check account age
+        const accountAge = Date.now() - existingEmail.createdAt.getTime();
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+        if (accountAge < TWENTY_FOUR_HOURS) {
+          // Account is recent (<24h) - resend verification to existing account
+          logger.info({
+            email,
+            existingUserId: existingEmail.id,
+            accountAge: Math.floor(accountAge / 1000 / 60) + ' minutes'
+          }, 'Attempting to register with recent unverified email - resending verification');
+
+          try {
+            // Find or create email verification
+            let emailVerification = await em.findOne(EmailVerification, { email });
+
+            if (!emailVerification || !emailVerification.isValid()) {
+              // Create new verification if none exists or expired
+              emailVerification = new EmailVerification(email);
+              await em.persistAndFlush(emailVerification);
+            }
+
+            // Resend verification email
+            const emailSent = await emailService.sendVerificationEmail(
+              email,
+              emailVerification.token,
+              existingEmail.username
+            );
+
+            return res.status(409).json({
+              success: false,
+              message: 'This email is already registered but not verified. We have resent the verification email.',
+              errors: [
+                {
+                  field: 'email',
+                  message: 'Email already registered - verification email resent',
+                  code: 'EMAIL_VERIFICATION_RESENT'
+                }
+              ],
+              data: {
+                verificationEmailSent: emailSent,
+                expiresAt: emailVerification.expiresAt.toISOString(),
+                accountCreatedAt: existingEmail.createdAt.toISOString()
+              }
+            });
+          } catch (error) {
+            logger.error({ err: error, email }, 'Failed to resend verification email');
+            return ResponseUtil.conflict(
+              res,
+              'Email is already registered. Please verify your email or wait 24 hours to reclaim it.',
+              'email'
+            );
+          }
+        } else {
+          // Account is old (>24h) - delete it and allow new registration
+          logger.warn({
+            email,
+            oldUserId: existingEmail.id,
+            accountAge: Math.floor(accountAge / 1000 / 60 / 60) + ' hours',
+            oldUsername: existingEmail.username
+          }, 'Reclaiming email from old unverified account');
+
+          try {
+            // Delete old email verifications first
+            await em.nativeDelete(EmailVerification, { email });
+
+            // Delete old user account
+            await em.removeAndFlush(existingEmail);
+
+            logger.info({
+              email,
+              oldUserId: existingEmail.id
+            }, 'Successfully reclaimed email from old unverified account');
+
+            // Continue with registration (fall through)
+          } catch (error) {
+            logger.error({
+              err: error,
+              email,
+              oldUserId: existingEmail.id
+            }, 'Failed to delete old unverified account');
+
+            return ResponseUtil.internalError(
+              res,
+              'Failed to reclaim email address. Please contact support.'
+            );
+          }
+        }
       }
 
       // ────────────────────────────────────────────────────────────────────
