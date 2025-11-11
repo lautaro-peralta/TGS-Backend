@@ -7,7 +7,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm@10.18.3
+RUN npm install -g pnpm@10.20.0
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
@@ -28,7 +28,7 @@ FROM node:18-alpine AS production
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm@10.18.3
+RUN npm install -g pnpm@10.20.0
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
@@ -38,9 +38,6 @@ RUN pnpm install --prod --frozen-lockfile
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-
-# Copy any additional runtime files if needed
-# COPY --from=builder /app/mikro-orm.config.ts ./
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
