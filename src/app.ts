@@ -622,63 +622,98 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // ============================================================================
+// SERVICES INITIALIZATION (ALL ENVIRONMENTS)
+// ============================================================================
+
+/**
+ * Initializes critical services that must run in all environments
+ * - Email service (SendGrid in production, SMTP in development)
+ * - Scheduler service (automated cleanup tasks)
+ *
+ * This function MUST be called on application startup regardless of NODE_ENV
+ */
+export const initServices = async () => {
+  // Initialize email service
+  try {
+    await emailService.initialize();
+
+    const emailStats = emailService.getStats();
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (emailService.isAvailable()) {
+      logger.info({
+        provider: emailStats.provider,
+        hasSendGrid: emailStats.hasSendGridCredentials,
+        hasSmtp: emailStats.hasCredentials
+      }, 'Email service ready and available');
+    } else {
+      if (isProduction) {
+        logger.error('Email service not available in PRODUCTION - this is critical!');
+        logger.error('Configure SENDGRID_API_KEY and SENDGRID_FROM in environment variables');
+        // In production, throw error if email service is not available
+        throw new Error('Email service is required in production but not configured');
+      } else {
+        logger.warn('Email service initialized but not available (missing SMTP credentials)');
+        logger.info('To enable emails, configure SMTP variables in .env.development:');
+        logger.info('   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
+      }
+    }
+
+    // Log email verification requirement status
+    if (env.EMAIL_VERIFICATION_REQUIRED) {
+      logger.info('Email verification: REQUIRED (users must verify email before login)');
+    } else {
+      logger.warn('Email verification: DISABLED (demo mode - users can login without verification)');
+      if (!isProduction) {
+        logger.info('To enable email verification, set EMAIL_VERIFICATION_REQUIRED=true in .env');
+      }
+    }
+  } catch (error) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction) {
+      logger.error({ err: error }, 'CRITICAL: Email service initialization failed in production');
+      throw error; // Fail fast in production
+    } else {
+      logger.warn({ err: error }, 'Email service initialization failed (continuing without email functionality)');
+      logger.info('This is normal in development if SMTP is not configured');
+    }
+  }
+
+  // Initialize scheduler service for automated tasks
+  try {
+    schedulerService.start();
+    const status = schedulerService.getStatus();
+
+    logger.info({
+      taskCount: status.taskCount,
+      tasks: status.tasks,
+      environment: process.env.NODE_ENV
+    }, 'Scheduler service started - automated cleanup enabled');
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to start scheduler service');
+    // Don't throw - scheduler is important but not critical for app startup
+  }
+};
+
+// ============================================================================
 // DEVELOPMENT INITIALIZATION
 // ============================================================================
 
 /**
- * Initializes development environment
+ * Initializes development-specific features
  * - Syncs database schema
  * - Creates default admin user
  * - Creates default zones
  * - Logs available routes
+ *
+ * Only runs when NODE_ENV === 'development'
  */
 export const initDev = async () => {
   if (process.env.NODE_ENV === 'development') {
     await syncSchema();
     await createAdminDev();
     await createZoneDev();
-
-    // Initialize email service
-    try {
-      await emailService.initialize();
-
-      if (emailService.isAvailable()) {
-        logger.info('Email service ready and available');
-      } else {
-        logger.warn('Email service initialized but not available (missing SMTP credentials)');
-        logger.info('To enable emails, configure SMTP variables in .env.development:');
-        logger.info('   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
-      }
-
-      // Log email verification requirement status
-      if (env.EMAIL_VERIFICATION_REQUIRED) {
-        logger.info('Email verification: REQUIRED (users must verify email before login)');
-      } else {
-        logger.warn('Email verification: DISABLED (demo mode - users can login without verification)');
-        logger.info('To enable email verification, set EMAIL_VERIFICATION_REQUIRED=true in .env');
-      }
-    } catch (error) {
-      logger.warn('Email service initialization failed (continuing without email functionality)');
-      logger.info('This is normal in development if SMTP is not configured');
-
-      // Still log verification status even if email service failed
-      if (!env.EMAIL_VERIFICATION_REQUIRED) {
-        logger.warn('Email verification: DISABLED (demo mode)');
-      }
-    }
-
-    // Initialize scheduler service for automated tasks
-    try {
-      schedulerService.start();
-      const status = schedulerService.getStatus();
-
-      logger.info({
-        taskCount: status.taskCount,
-        tasks: status.tasks
-      }, 'Scheduler service started - automated cleanup enabled');
-    } catch (error) {
-      logger.error({ err: error }, 'Failed to start scheduler service');
-    }
 
     logger.info("Loading development routes...");
     logRoutes([

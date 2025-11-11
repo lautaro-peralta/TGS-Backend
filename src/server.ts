@@ -16,7 +16,7 @@ import 'dotenv/config';
 // IMPORTS - Application & Configuration
 // ============================================================================
 
-import { app, initDev } from './app.js';
+import { app, initServices, initDev } from './app.js';
 import { env } from './config/env.js';
 import logger from './shared/utils/logger.js';
 import { redisService } from './shared/services/redis.service.js';
@@ -42,7 +42,7 @@ if (env.TRUST_PROXY) {
  * Initialize external services
  * Redis service initialization with graceful fallback
  */
-const initServices = async () => {
+const initRedis = async () => {
   // Only attempt Redis connection if it's enabled
   if (env.REDIS_ENABLED) {
     try {
@@ -58,22 +58,33 @@ const initServices = async () => {
 };
 
 // ============================================================================
-// DEVELOPMENT INITIALIZATION
+// APPLICATION INITIALIZATION
 // ============================================================================
 
 /**
- * Initialize development environment if NODE_ENV is set to 'development'
- * This includes database seeding, schema sync, and route logging
+ * Initialize all services and environment-specific features
+ * Order matters:
+ * 1. Redis (optional, for caching)
+ * 2. Critical services (email, scheduler) - ALL ENVIRONMENTS
+ * 3. Development features (only in dev mode)
  */
-const initDevelopment = async () => {
-  if (process.env.NODE_ENV === 'development') {
-    await initDev();
-  }
-};
+logger.info('Starting application initialization...');
 
-// Initialize services and development environment
+// Step 1: Initialize Redis
+await initRedis();
+
+// Step 2: Initialize critical services (email, scheduler)
+// This MUST run in all environments (dev, production, etc.)
+logger.info('Initializing critical services (email, scheduler)...');
 await initServices();
-await initDevelopment();
+
+// Step 3: Initialize development-specific features
+if (process.env.NODE_ENV === 'development') {
+  logger.info('Initializing development environment...');
+  await initDev();
+}
+
+logger.info('Application initialization completed successfully');
 
 // ============================================================================
 // SERVER STARTUP
