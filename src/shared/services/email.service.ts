@@ -1167,8 +1167,13 @@ export class EmailService {
 
   /**
    * Checks if the email service is available
+   * - For SendGrid: only needs isEnabled = true
+   * - For SMTP: needs isEnabled = true AND transporter !== null
    */
   isAvailable(): boolean {
+    if (this.useSendGrid) {
+      return this.isEnabled;
+    }
     return this.isEnabled && this.transporter !== null;
   }
 
