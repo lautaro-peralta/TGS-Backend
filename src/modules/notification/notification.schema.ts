@@ -21,7 +21,7 @@ export const createNotificationSchema = z.object({
   /**
    * User ID who will receive the notification
    */
-  userId: z.string().uuid('Invalid user ID'),
+  userId: z.string().uuid({ message: 'Invalid user ID' }),
 
   /**
    * Type of notification
@@ -73,7 +73,7 @@ export const markAsReadSchema = z.object({
   /**
    * Notification ID
    */
-  id: z.string().uuid('Invalid notification ID'),
+  id: z.string().uuid({ message: 'Invalid notification ID' }),
 });
 
 /**
@@ -93,5 +93,5 @@ export const searchNotificationsSchema = paginationSchema.extend({
   /**
    * Filter by user ID
    */
-  userId: z.string().uuid().optional(),
+  userId: z.string().uuid({ message: 'Invalid user ID' }).optional(),
 });

@@ -280,7 +280,7 @@ export class NotificationController {
    * @param res - Express response
    * @returns 201 with created notification
    */
-  async create(req: Request, res: Response) {
+  async createNotification(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
@@ -324,7 +324,7 @@ export class NotificationController {
    * @param res - Express response
    * @returns 200 with paginated notifications
    */
-  async search(req: Request, res: Response) {
+  async searchNotifications(req: Request, res: Response) {
     const em = orm.em.fork();
 
     try {
