@@ -15,7 +15,7 @@ import { validateQueryParams } from '../../../shared/middleware/validation.middl
 import logger from '../../../shared/utils/logger.js';
 import { searchRoleRequestsSchema } from './roleRequest.schema.js';
 import { RoleRequestFilters } from '../../../shared/types/common.types.js';
-import { createNotification } from '../../notification/notification.controller.js';
+import { sendNotificationToUser } from '../../notification/notification.controller.js';
 import { NotificationType } from '../../notification/notification.entity.js';
 
 // ============================================================================
@@ -285,7 +285,7 @@ export class RoleRequestController {
             ? `${requestUser.person.name} ha solicitado cambiar de rol ${roleToRemove} a ${requestedRole}.`
             : `${requestUser.person.name} ha solicitado el rol ${requestedRole}.`;
 
-          await createNotification({
+          await sendNotificationToUser({
             userId: admin.id,
             type: NotificationType.SYSTEM,
             title: 'Nueva solicitud de rol',
@@ -605,7 +605,7 @@ export class RoleRequestController {
 
           // Create notification for the user
           try {
-            await createNotification({
+            await sendNotificationToUser({
               userId: requestUser.id,
               type: NotificationType.ROLE_REQUEST_APPROVED,
               title: 'Solicitud de rol aprobada',
@@ -668,7 +668,7 @@ export class RoleRequestController {
 
           // Create notification for the user
           try {
-            await createNotification({
+            await sendNotificationToUser({
               userId: requestUser.id,
               type: NotificationType.ROLE_REQUEST_APPROVED,
               title: 'Solicitud de rol aprobada',
@@ -697,7 +697,7 @@ export class RoleRequestController {
 
         // Create notification for the user
         try {
-          await createNotification({
+          await sendNotificationToUser({
             userId: requestUser.id,
             type: NotificationType.ROLE_REQUEST_REJECTED,
             title: 'Solicitud de rol rechazada',

@@ -18,10 +18,10 @@ import logger from '../../shared/utils/logger.js';
 // ============================================================================
 
 /**
- * Helper function to create a notification
+ * Helper function to create and send a notification to a user
  * Can be used by other controllers to create notifications
  */
-export async function createNotification(params: {
+export async function sendNotificationToUser(params: {
   userId: string;
   type: NotificationType;
   title: string;

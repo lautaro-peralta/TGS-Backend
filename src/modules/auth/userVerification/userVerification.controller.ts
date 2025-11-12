@@ -14,7 +14,7 @@ import { cacheService } from '../../../shared/services/cache.service.js';
 import { User, Role } from '../user/user.entity.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 import { env } from '../../../config/env.js';
-import { createNotification } from '../../notification/notification.controller.js';
+import { sendNotificationToUser } from '../../notification/notification.controller.js';
 import { NotificationType } from '../../notification/notification.entity.js';
 
 /**
@@ -110,7 +110,7 @@ export class UserVerificationController {
         // Crear una notificación para cada admin
         const personData = person as any;
         for (const admin of adminUsers) {
-          await createNotification({
+          await sendNotificationToUser({
             userId: admin.id,
             type: NotificationType.SYSTEM,
             title: 'Nueva solicitud de verificación de usuario',
@@ -550,7 +550,7 @@ export class UserVerificationController {
       // 13. Crear notificación para el usuario
       // ────────────────────────────────────────────────────────────────────
       try {
-        await createNotification({
+        await sendNotificationToUser({
           userId: user.id,
           type: NotificationType.USER_VERIFICATION_APPROVED,
           title: 'Verificación de usuario aprobada',
@@ -639,7 +639,7 @@ export class UserVerificationController {
 
       if (user) {
         try {
-          await createNotification({
+          await sendNotificationToUser({
             userId: user.id,
             type: NotificationType.USER_VERIFICATION_REJECTED,
             title: 'Verificación de usuario rechazada',
