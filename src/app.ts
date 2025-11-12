@@ -41,6 +41,7 @@ import { roleRequestRouter } from './modules/auth/roleRequest/roleRequest.routes
 import { userRouter } from './modules/auth/user/user.routes.js';
 import { emailVerificationRouter } from './modules/auth/emailVerification/emailVerification.routes.js';
 import { userVerificationRouter } from './modules/auth/userVerification/userVerification.routes.js';
+import { notificationRouter } from './modules/notification/notification.routes.js';
 
 // Import health check routes
 import { healthRouter } from './shared/routes/health.routes.js';
@@ -585,6 +586,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/role-requests', roleRequestRouter);
 app.use('/api/users', userRouter);
 app.use('/api/email-verification', emailVerificationRouter);
+app.use('/api/notifications', notificationRouter);
 app.use('/api/user-verification', userVerificationRouter);
 
 // Business entities

@@ -11,9 +11,11 @@ import logger from '../../../shared/utils/logger.js';
 import { UserVerification, UserVerificationStatus } from './userVerification.entity.js';
 import { emailService } from '../../../shared/services/email.service.js';
 import { cacheService } from '../../../shared/services/cache.service.js';
-import { User } from '../user/user.entity.js';
+import { User, Role } from '../user/user.entity.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 import { env } from '../../../config/env.js';
+import { sendNotificationToUser } from '../../notification/notification.controller.js';
+import { NotificationType } from '../../notification/notification.entity.js';
 
 /**
  * Controller for handling user verification requests
@@ -96,7 +98,45 @@ export class UserVerificationController {
       em.persist(verification);
       await em.flush();
 
-      // Send notification email to the user
+      // ────────────────────────────────────────────────────────────────────
+      // Crear notificaciones para todos los admins
+      // ────────────────────────────────────────────────────────────────────
+      try {
+        // Obtener todos los usuarios con rol ADMIN
+        const adminUsers = await em.find(User, {
+          roles: { $contains: [Role.ADMIN] }
+        });
+
+        // Crear una notificación para cada admin
+        const personData = person as any;
+        for (const admin of adminUsers) {
+          await sendNotificationToUser({
+            userId: admin.id,
+            type: NotificationType.SYSTEM,
+            title: 'Nueva solicitud de verificación de usuario',
+            message: `${personData.name} (${email}) ha solicitado la verificación de su cuenta.`,
+            relatedEntityId: verification.id.toString(),
+            relatedEntityType: 'user-verification',
+            metadata: {
+              userEmail: email,
+              userName: personData.name,
+              requestedAt: new Date().toISOString(),
+            },
+          });
+        }
+
+        logger.info({
+          email,
+          verificationId: verification.id,
+          adminCount: adminUsers.length
+        }, 'Admin notifications created for user verification request');
+
+      } catch (notifError) {
+        logger.error({ err: notifError }, 'Error creating admin notifications for user verification request');
+        // Don't fail the request if notification fails
+      }
+
+      // Enviar email de notificación al usuario
       const emailSent = await emailService.sendVerificationEmail(
         email,
         verification.token,
@@ -506,13 +546,34 @@ export class UserVerificationController {
       await cacheService.invalidateUserCache(person.dni);
       await cacheService.delete(`user_verification_request:${email}`);
 
+      // ────────────────────────────────────────────────────────────────────
+      // 13. Crear notificación para el usuario
+      // ────────────────────────────────────────────────────────────────────
+      try {
+        await sendNotificationToUser({
+          userId: user.id,
+          type: NotificationType.USER_VERIFICATION_APPROVED,
+          title: 'Verificación de usuario aprobada',
+          message: `¡Felicitaciones! Tu cuenta ha sido verificada. Ahora puedes solicitar roles especiales y acceder a todas las funcionalidades del sistema.`,
+          relatedEntityId: verification.id.toString(),
+          relatedEntityType: 'user-verification',
+          metadata: {
+            email,
+            profileCompleteness: user.profileCompleteness,
+          },
+        });
+      } catch (notifError) {
+        logger.error({ err: notifError }, 'Error creating notification for user verification approval');
+        // Don't fail the request if notification fails
+      }
+
       logger.info(
-        { 
-          email, 
-          userId: user.id, 
+        {
+          email,
+          userId: user.id,
           dni: person.dni,
-          profileCompleteness: user.profileCompleteness 
-        }, 
+          profileCompleteness: user.profileCompleteness
+        },
         'User verification approved successfully'
       );
 
@@ -571,12 +632,29 @@ export class UserVerificationController {
       await cacheService.delete(`user_verification_request:${email}`);
 
       // ────────────────────────────────────────────────────────────────────
-      // 4. (Optional) Send rejection notification email to user
+      // 4. Enviar notificación al usuario
       // ────────────────────────────────────────────────────────────────────
       const person = await em.findOne(BasePersonEntity, { email });
-      if (person && reason) {
-        // TODO: Implement emailService.sendRejectionEmail if needed
-        logger.info({ email, reason }, 'User verification rejected - notification not sent');
+      const user = await em.findOne(User, { email });
+
+      if (user) {
+        try {
+          await sendNotificationToUser({
+            userId: user.id,
+            type: NotificationType.USER_VERIFICATION_REJECTED,
+            title: 'Verificación de usuario rechazada',
+            message: `Tu solicitud de verificación ha sido rechazada.${reason ? ` Motivo: ${reason}` : ''} Puedes corregir tu información y solicitar verificación nuevamente.`,
+            relatedEntityId: verification.id.toString(),
+            relatedEntityType: 'user-verification',
+            metadata: {
+              email,
+              reason: reason || 'No reason provided',
+            },
+          });
+        } catch (notifError) {
+          logger.error({ err: notifError }, 'Error creating notification for user verification rejection');
+          // Don't fail the request if notification fails
+        }
       }
 
       logger.info({ email, reason }, 'User verification rejected by admin');

@@ -224,6 +224,10 @@ Re-login requerido
         name: 'Clandestine Agreements',
         description: 'Acuerdos clandestinos',
       },
+      {
+        name: 'Notifications',
+        description: 'Sistema de notificaciones de usuario',
+      },
     ],
   };
 
