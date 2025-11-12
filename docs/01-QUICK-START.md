@@ -71,10 +71,10 @@ scoop install nodejs-lts pnpm
 
 ```bash
 # Clonar el proyecto
-git clone https://github.com/Lau-prog/TP-Desarrollo-de-Software.git
+git clone https://github.com/Lau-prog/GarrSYS.git
 
 # Navegar al directorio del backend
-cd TP-Desarrollo-de-Software/TGS-Backend
+cd GarrSYS/TGS-Backend
 ```
 
 ### 2. Instalar Dependencias
