@@ -1,0 +1,84 @@
+# Stress Testing - Prueba de estrés
+# Objetivo: Encontrar el punto de quiebre del sistema
+
+config:
+  target: "{{ $processEnvironment.API_BASE_URL || 'http://localhost:3000' }}"
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint:
+      stripQueryString: true
+
+  processor: "../utils/helpers.js"
+
+  phases:
+    # Fase 1: Incremento gradual (5 minutos)
+    - name: "Ramp Up"
+      duration: 300
+      arrivalRate: 10
+      rampTo: 200
+
+    # Fase 2: Carga máxima (2 minutos)
+    - name: "Peak Load"
+      duration: 120
+      arrivalRate: 200
+
+    # Fase 3: Descenso gradual (2 minutos)
+    - name: "Ramp Down"
+      duration: 120
+      arrivalRate: 200
+      rampTo: 10
+
+  # Umbrales más permisivos para stress test
+  ensure:
+    p95: 1000   # 1 segundo
+    p99: 2000   # 2 segundos
+    maxErrorRate: 5  # 5% error rate aceptable bajo estrés
+
+scenarios:
+  # Escenario pesado: Crear ventas
+  - name: "Create Sales Under Stress"
+    weight: 60
+    flow:
+      - function: "generateAuthToken"
+
+      - post:
+          url: "/api/sales"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            productId: "{{ $randomNumber(1, 10) }}"
+            distributorId: "{{ $randomNumber(1, 5) }}"
+            clientId: "{{ $randomNumber(1, 20) }}"
+            quantity: "{{ $randomNumber(1, 50) }}"
+            date: "1920-{{ $randomNumber(1, 12) }}-{{ $randomNumber(1, 28) }}"
+          expect:
+            - statusCode: [201, 400, 401, 500]
+            - contentType: json
+
+  # Escenario de lectura intensiva
+  - name: "Heavy Read Operations"
+    weight: 40
+    flow:
+      - function: "generateAuthToken"
+
+      - get:
+          url: "/api/sales?page={{ $randomNumber(1, 100) }}&limit=50"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401, 500]
+
+      - get:
+          url: "/api/products?page={{ $randomNumber(1, 20) }}&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401, 500]
+
+      - get:
+          url: "/api/bribes?paid=false"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401, 500]

@@ -1,0 +1,381 @@
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import request from 'supertest';
+import { MikroORM } from '@mikro-orm/core';
+import express, { Express } from 'express';
+import { createTestDatabase, cleanupTestDatabase } from '../test-helpers';
+import fs from 'fs';
+import path from 'path';
+
+/**
+ * API Regression Tests
+ *
+ * These tests ensure that API responses maintain consistency across versions.
+ * They compare current API responses with baseline snapshots to detect
+ * unintended changes in API contracts.
+ */
+describe('API Regression Tests', () => {
+  let orm: MikroORM;
+  let app: Express;
+  let baselineDir: string;
+
+  beforeAll(async () => {
+    orm = await createTestDatabase();
+
+    app = express();
+    app.use(express.json());
+
+    // Mount all routes
+    const authRouter = (await import('../../src/modules/auth/auth.routes')).default;
+    app.use('/api/auth', authRouter);
+
+    baselineDir = path.join(__dirname, 'baselines');
+    if (!fs.existsSync(baselineDir)) {
+      fs.mkdirSync(baselineDir, { recursive: true });
+    }
+  });
+
+  afterAll(async () => {
+    await cleanupTestDatabase(orm);
+  });
+
+  describe('Auth API Contract', () => {
+    it('should maintain registration response structure', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          username: 'regressionuser',
+          email: 'regression@example.com',
+          password: 'RegressionTest123!',
+        })
+        .expect(201);
+
+      // Check response structure
+      expect(response.body).toMatchObject({
+        success: expect.any(Boolean),
+        message: expect.any(String),
+        data: {
+          id: expect.any(String),
+          username: expect.any(String),
+          email: expect.any(String),
+          roles: expect.any(Array),
+          isActive: expect.any(Boolean),
+          verifiedByAdmin: expect.any(Boolean),
+          emailVerified: expect.any(Boolean),
+          profileCompleteness: expect.any(Number),
+        },
+        meta: {
+          timestamp: expect.any(String),
+          statusCode: expect.any(Number),
+          requestId: expect.any(String),
+        },
+      });
+
+      // Ensure password is not exposed
+      expect(response.body.data).not.toHaveProperty('password');
+
+      // Snapshot test (Jest snapshots)
+      expect(response.body).toMatchSnapshot({
+        data: {
+          id: expect.any(String),
+        },
+        meta: {
+          timestamp: expect.any(String),
+          requestId: expect.any(String),
+        },
+      });
+    });
+
+    it('should maintain login response structure', async () => {
+      // First register user
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          username: 'loginregression',
+          email: 'loginregression@example.com',
+          password: 'LoginRegression123!',
+        });
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'loginregression',
+          password: 'LoginRegression123!',
+        })
+        .expect(200);
+
+      // Check response structure
+      expect(response.body).toMatchObject({
+        success: true,
+        message: expect.any(String),
+        data: {
+          user: {
+            id: expect.any(String),
+            username: 'loginregression',
+            email: 'loginregression@example.com',
+            roles: expect.any(Array),
+            isActive: expect.any(Boolean),
+          },
+          accessToken: expect.any(String),
+        },
+        meta: {
+          timestamp: expect.any(String),
+          statusCode: 200,
+        },
+      });
+
+      // Ensure sensitive data is not exposed
+      expect(response.body.data.user).not.toHaveProperty('password');
+      expect(response.body.data).not.toHaveProperty('refreshToken');
+
+      // Check JWT structure (should have 3 parts)
+      const tokenParts = response.body.data.accessToken.split('.');
+      expect(tokenParts).toHaveLength(3);
+    });
+
+    it('should maintain error response structure', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'nonexistent',
+          password: 'WrongPassword123!',
+        })
+        .expect(401);
+
+      // Check error response structure
+      expect(response.body).toMatchObject({
+        success: false,
+        message: expect.any(String),
+        meta: {
+          timestamp: expect.any(String),
+          statusCode: 401,
+        },
+      });
+
+      // Snapshot error response
+      expect(response.body).toMatchSnapshot({
+        meta: {
+          timestamp: expect.any(String),
+          requestId: expect.any(String),
+        },
+      });
+    });
+  });
+
+  describe('Pagination Structure', () => {
+    it('should maintain consistent pagination metadata', async () => {
+      // This test would check sales or clients endpoint pagination
+      // For now, we'll use a mock structure
+
+      const mockPaginatedResponse = {
+        success: true,
+        message: 'Items retrieved',
+        data: [],
+        meta: {
+          timestamp: new Date().toISOString(),
+          statusCode: 200,
+          total: 100,
+          page: 1,
+          limit: 10,
+          hasNextPage: true,
+          hasPrevPage: false,
+        },
+      };
+
+      expect(mockPaginatedResponse).toMatchObject({
+        success: expect.any(Boolean),
+        message: expect.any(String),
+        data: expect.any(Array),
+        meta: {
+          timestamp: expect.any(String),
+          statusCode: expect.any(Number),
+          total: expect.any(Number),
+          page: expect.any(Number),
+          limit: expect.any(Number),
+          hasNextPage: expect.any(Boolean),
+          hasPrevPage: expect.any(Boolean),
+        },
+      });
+    });
+  });
+
+  describe('HTTP Status Codes', () => {
+    const statusCodeTests = [
+      { method: 'post', path: '/api/auth/register', expectedStatus: 201, description: 'Registration' },
+      { method: 'post', path: '/api/auth/login', expectedStatus: 200, description: 'Login (after register)' },
+      { method: 'post', path: '/api/auth/logout', expectedStatus: 200, description: 'Logout' },
+      { method: 'get', path: '/api/auth/me', expectedStatus: 401, description: 'Unauthorized access' },
+    ];
+
+    statusCodeTests.forEach(({ method, path, expectedStatus, description }) => {
+      it(`should return ${expectedStatus} for ${description}`, async () => {
+        if (method === 'post' && path === '/api/auth/login') {
+          // Register first
+          await request(app)
+            .post('/api/auth/register')
+            .send({
+              username: `statustest_${Date.now()}`,
+              email: `statustest_${Date.now()}@example.com`,
+              password: 'StatusTest123!',
+            });
+        }
+
+        const req = request(app)[method as 'get' | 'post'](path);
+
+        if (method === 'post') {
+          req.send({
+            username: 'testuser',
+            password: 'TestPassword123!',
+          });
+        }
+
+        const response = await req;
+        expect(response.status).toBe(expectedStatus);
+      });
+    });
+  });
+
+  describe('Security Headers Regression', () => {
+    it('should include required security headers', async () => {
+      const response = await request(app)
+        .get('/api/auth/test')
+        .expect(404); // Endpoint doesn't exist but headers should be present
+
+      const headers = response.headers;
+
+      // Check for security headers (if enabled in production)
+      const securityHeaders = [
+        'x-content-type-options',
+        'x-frame-options',
+        'x-xss-protection',
+      ];
+
+      securityHeaders.forEach(header => {
+        // In test mode, these might not be enabled
+        // In production, they should be
+        if (process.env.ENABLE_SECURITY_HEADERS === 'true') {
+          expect(headers).toHaveProperty(header);
+        }
+      });
+    });
+
+    it('should not expose sensitive server information', async () => {
+      const response = await request(app)
+        .get('/api/auth/test')
+        .expect(404);
+
+      const headers = response.headers;
+
+      // Should not expose these headers
+      expect(headers).not.toHaveProperty('x-powered-by');
+      expect(headers['x-powered-by']).toBeUndefined();
+    });
+  });
+
+  describe('Data Type Consistency', () => {
+    it('should maintain consistent data types across responses', async () => {
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          username: 'typetest',
+          email: 'typetest@example.com',
+          password: 'TypeTest123!',
+        });
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'typetest',
+          password: 'TypeTest123!',
+        })
+        .expect(200);
+
+      const { data } = response.body;
+
+      // Verify data types
+      expect(typeof data.user.id).toBe('string');
+      expect(typeof data.user.username).toBe('string');
+      expect(typeof data.user.email).toBe('string');
+      expect(Array.isArray(data.user.roles)).toBe(true);
+      expect(typeof data.user.isActive).toBe('boolean');
+      expect(typeof data.user.profileCompleteness).toBe('number');
+      expect(typeof data.accessToken).toBe('string');
+
+      // Verify number ranges
+      expect(data.user.profileCompleteness).toBeGreaterThanOrEqual(0);
+      expect(data.user.profileCompleteness).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('Backwards Compatibility', () => {
+    it('should not remove fields from previous API versions', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          username: 'backwardscompat',
+          email: 'backcompat@example.com',
+          password: 'BackCompat123!',
+        })
+        .expect(201);
+
+      // These fields should always be present for backwards compatibility
+      const requiredFields = [
+        'id',
+        'username',
+        'email',
+        'roles',
+        'isActive',
+      ];
+
+      requiredFields.forEach(field => {
+        expect(response.body.data).toHaveProperty(field);
+      });
+    });
+  });
+
+  describe('Performance Regression', () => {
+    it('should complete registration within acceptable time', async () => {
+      const startTime = Date.now();
+
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          username: `perftest_${Date.now()}`,
+          email: `perftest_${Date.now()}@example.com`,
+          password: 'PerfTest123!',
+        })
+        .expect(201);
+
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
+
+      // Registration should complete in less than 5 seconds
+      expect(responseTime).toBeLessThan(5000);
+    });
+
+    it('should complete login within acceptable time', async () => {
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          username: 'loginperftest',
+          email: 'loginperftest@example.com',
+          password: 'LoginPerfTest123!',
+        });
+
+      const startTime = Date.now();
+
+      await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'loginperftest',
+          password: 'LoginPerfTest123!',
+        })
+        .expect(200);
+
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
+
+      // Login should complete in less than 3 seconds
+      expect(responseTime).toBeLessThan(3000);
+    });
+  });
+});

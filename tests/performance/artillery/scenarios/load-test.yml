@@ -1,0 +1,120 @@
+# Load Testing - Simulación de carga normal
+# Objetivo: Verificar que el sistema maneja carga normal sin degradación
+
+config:
+  target: "{{ $processEnvironment.API_BASE_URL || 'http://localhost:3000' }}"
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint:
+      stripQueryString: true
+
+  processor: "../utils/helpers.js"
+
+  phases:
+    # Fase 1: Warm-up (30 segundos)
+    - name: "Warm-up"
+      duration: 30
+      arrivalRate: 5
+      rampTo: 10
+
+    # Fase 2: Carga sostenida (2 minutos)
+    - name: "Sustained Load"
+      duration: 120
+      arrivalRate: 50
+
+    # Fase 3: Cool-down (30 segundos)
+    - name: "Cool-down"
+      duration: 30
+      arrivalRate: 50
+      rampTo: 5
+
+  ensure:
+    p95: 500
+    p99: 1000
+    maxErrorRate: 1
+
+scenarios:
+  # Escenario 1: Flujo de autenticación
+  - name: "Authentication Flow"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            identifier: "testuser_{{ $randomNumber(1, 1000) }}"
+            password: "TestPassword123"
+          capture:
+            - json: "$.data.token"
+              as: "authToken"
+          expect:
+            - statusCode: [200, 401]  # Puede fallar si usuario no existe
+            - contentType: json
+
+      # Si login exitoso, obtener perfil
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json
+
+  # Escenario 2: Consultar ventas
+  - name: "Get Sales"
+    weight: 40
+    flow:
+      - function: "generateAuthToken"
+
+      - get:
+          url: "/api/sales?page=1&limit=10"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json
+            - hasProperty: data
+
+      - get:
+          url: "/api/sales/search?startDate=1920-01-01&endDate=1920-12-31"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json
+
+  # Escenario 3: Consultar productos
+  - name: "Get Products"
+    weight: 20
+    flow:
+      - function: "generateAuthToken"
+
+      - get:
+          url: "/api/products"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json
+
+      - get:
+          url: "/api/products/{{ $randomNumber(1, 100) }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401, 404]
+            - contentType: json
+
+  # Escenario 4: Consultar zonas
+  - name: "Get Zones"
+    weight: 10
+    flow:
+      - function: "generateAuthToken"
+
+      - get:
+          url: "/api/zones"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json

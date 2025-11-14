@@ -1,0 +1,88 @@
+# Soak Testing - Prueba de resistencia
+# Objetivo: Detectar memory leaks y degradación a largo plazo
+
+config:
+  target: "{{ $processEnvironment.API_BASE_URL || 'http://localhost:3000' }}"
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint:
+      stripQueryString: true
+
+  processor: "../utils/helpers.js"
+
+  phases:
+    # Fase 1: Warm-up (2 minutos)
+    - name: "Warm-up"
+      duration: 120
+      arrivalRate: 10
+      rampTo: 30
+
+    # Fase 2: Carga sostenida (10 minutos)
+    - name: "Sustained Load"
+      duration: 600
+      arrivalRate: 30
+
+    # Fase 3: Cool-down (1 minuto)
+    - name: "Cool-down"
+      duration: 60
+      arrivalRate: 30
+      rampTo: 5
+
+  ensure:
+    p95: 600
+    p99: 1200
+    maxErrorRate: 1
+
+scenarios:
+  # Mix realista de operaciones
+  - name: "Realistic User Behavior"
+    weight: 100
+    flow:
+      - function: "generateAuthToken"
+
+      # Simular navegación de usuario
+      - loop:
+          - get:
+              url: "/api/sales?page=1&limit=10"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+              expect:
+                - statusCode: [200, 401]
+
+          - think: 2  # Usuario lee 2 segundos
+
+          - get:
+              url: "/api/products"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+              expect:
+                - statusCode: [200, 401]
+
+          - think: 3
+
+          - get:
+              url: "/api/zones"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+              expect:
+                - statusCode: [200, 401]
+
+          - think: 2
+
+          # Ocasionalmente crear una venta
+          - post:
+              url: "/api/sales"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+              json:
+                productId: "{{ $randomNumber(1, 10) }}"
+                distributorId: "{{ $randomNumber(1, 5) }}"
+                clientId: "{{ $randomNumber(1, 20) }}"
+                quantity: 5
+                date: "1920-06-{{ $randomNumber(1, 28) }}"
+              expect:
+                - statusCode: [201, 400, 401]
+
+          - think: 5
+        count: 3  # Repetir 3 veces

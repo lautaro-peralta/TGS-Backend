@@ -1,0 +1,40 @@
+# Artillery Configuration
+# Configuración base para tests de rendimiento
+
+config:
+  target: "{{ $processEnvironment.API_BASE_URL || 'http://localhost:3000' }}"
+
+  # Plugins
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+  # Configuración de reportes
+  processor: "./utils/helpers.js"
+
+  # Variables de entorno
+  variables:
+    apiVersion: "v1"
+
+  # Headers comunes
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+  # Configuración de HTTP
+  http:
+    timeout: 30
+    maxSockets: 100
+
+  # Umbrales de rendimiento
+  ensure:
+    # Response time thresholds
+    - p95: 500    # 95th percentile < 500ms
+    - p99: 1000   # 99th percentile < 1000ms
+
+    # Error rate threshold
+    - maxErrorRate: 1  # < 1% error rate
+
+    # Throughput threshold
+    - minRate: 100  # > 100 requests/second
