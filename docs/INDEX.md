@@ -100,7 +100,7 @@ A lo largo de esta documentación encontrarás:
 
 ## 📞 Recursos Adicionales
 
-- **Repositorio General**: [TP-Desarrollo-de-Software](https://github.com/Lau-prog/TP-Desarrollo-de-Software)
+- **Repositorio General**: [GarrSYS](https://github.com/Lau-prog/GarrSYS)
 - **README Principal**: [README.md](../README.md)
 
 ---

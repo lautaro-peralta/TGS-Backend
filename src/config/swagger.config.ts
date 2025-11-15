@@ -124,7 +124,7 @@ Re-login requerido
 - ✅ **Logout**: Cierra sesión para probar con otro usuario`,
       contact: {
         name: 'The Garrison System',
-        url: 'https://github.com/Lau-prog/TP-Desarrollo-de-Software',
+        url: 'https://github.com/Lau-prog/GarrSYS',
       },
     },
     servers: [
@@ -223,6 +223,10 @@ Re-login requerido
       {
         name: 'Clandestine Agreements',
         description: 'Acuerdos clandestinos',
+      },
+      {
+        name: 'Notifications',
+        description: 'Sistema de notificaciones de usuario',
       },
     ],
   };
