@@ -52,6 +52,12 @@ Bienvenido a la documentación académica completa del backend de **The Garrison
    - CORS y headers de seguridad
    - Mejores prácticas de desarrollo
 
+8. **[User Verification & Bribes](08-USER-VERIFICATION-AND-BRIBES.md)**
+   - Sistema de verificación de usuarios
+   - Gestión de sobornos (bribes)
+   - Endpoints de aprobación/rechazo
+   - Búsqueda y pagos de bribes
+
 ---
 
 ## 🎯 ¿Por dónde empezar?
@@ -105,4 +111,4 @@ A lo largo de esta documentación encontrarás:
 
 ---
 
-**Última actualización**: 2025-11-10
+**Última actualización**: 2025-11-15
