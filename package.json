@@ -13,7 +13,13 @@
     "clean": "pnpm exec rimraf dist",
     "type-check": "tsc --noEmit",
     "test:sendgrid": "cross-env NODE_ENV=development tsx scripts/test-sendgrid.js",
-    "schema:create": "node scripts/create-schema.mjs"
+    "schema:create": "node scripts/create-schema.mjs",
+    "schema:check": "node scripts/check-schema.mjs",
+    "migration:create": "npx mikro-orm migration:create",
+    "migration:up": "npx mikro-orm migration:up",
+    "migration:pending": "npx mikro-orm migration:pending",
+    "migration:list": "npx mikro-orm migration:list",
+    "migration:neon": "cross-env NODE_ENV=production node scripts/run-migrations-neon.mjs"
   },
   "engines": {
     "node": ">=18"

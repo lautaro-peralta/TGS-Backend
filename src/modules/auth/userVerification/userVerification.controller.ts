@@ -535,9 +535,10 @@ export class UserVerificationController {
 
   /**
    * Rechaza una solicitud de verificación de usuario (admin only)
-   * 
-   * El rechazo permite al usuario corregir su información y volver a solicitar
-   * la verificación. El cooldown se elimina para permitir el reintento inmediato.
+   *
+   * El rechazo incrementa el contador de intentos y permite al usuario
+   * corregir su información y volver a solicitar la verificación.
+   * Si se superan los intentos máximos, la verificación se marca como expirada.
    */
   async rejectVerification(req: Request, res: Response) {
     const em = orm.em.fork();
@@ -560,15 +561,17 @@ export class UserVerificationController {
       }
 
       // ────────────────────────────────────────────────────────────────────
-      // 2. Mark verification as cancelled
+      // 2. Increment attempts counter (may mark as EXPIRED if max reached)
       // ────────────────────────────────────────────────────────────────────
-      verification.cancel();
+      verification.incrementAttempts();
       await em.flush();
 
       // ────────────────────────────────────────────────────────────────────
-      // 3. Clear cooldown cache to allow new request
+      // 3. Clear cooldown cache to allow new request (only if not expired)
       // ────────────────────────────────────────────────────────────────────
-      await cacheService.delete(`user_verification_request:${email}`);
+      if (verification.status !== UserVerificationStatus.EXPIRED) {
+        await cacheService.delete(`user_verification_request:${email}`);
+      }
 
       // ────────────────────────────────────────────────────────────────────
       // 4. (Optional) Send rejection notification email to user
@@ -579,13 +582,16 @@ export class UserVerificationController {
         logger.info({ email, reason }, 'User verification rejected - notification not sent');
       }
 
-      logger.info({ email, reason }, 'User verification rejected by admin');
+      logger.info({
+        email,
+        reason,
+        attempts: verification.attempts,
+        maxAttempts: verification.maxAttempts,
+        status: verification.status
+      }, 'User verification rejected by admin');
 
       return ResponseUtil.success(res, 'User verification rejected successfully', {
-        email,
-        reason: reason || 'No reason provided',
-        canRetry: true,
-        message: 'The user can correct their information and request verification again',
+        data: verification.toDTO(),
       });
 
     } catch (error) {

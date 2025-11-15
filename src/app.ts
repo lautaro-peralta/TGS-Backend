@@ -87,10 +87,15 @@ app.use(cors({
 // Security headers and protection middleware
 app.use(securityMiddleware);
 
-// Rate limiting - Applied in order of restrictiveness
-app.use('/api/auth', authRateLimit);           // Stricter limits for auth
-app.use('/api/admin', sensitiveRateLimit);     // Sensitive operations
-app.use(generalRateLimit);                     // General API rate limiting
+// Rate limiting - Applied in order of restrictiveness (disabled in development)
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/auth', authRateLimit);           // Stricter limits for auth
+  app.use('/api/admin', sensitiveRateLimit);     // Sensitive operations
+  app.use(generalRateLimit);                     // General API rate limiting
+  logger.info('Rate limiting enabled (production mode)');
+} else {
+  logger.info('Rate limiting disabled (development mode)');
+}
 
 // Body parsing (after security middleware for proper sanitization)
 app.use(express.json({ limit: '10mb' }));      // Limit payload size

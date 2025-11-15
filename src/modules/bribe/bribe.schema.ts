@@ -29,12 +29,12 @@ export const searchBribesSchema = paginationSchema
  */
 export const updateBribeSchema = z.object({
   /**
-   * The amount of the bribe.
-   * Must be a non-negative number.
+   * The total amount of the bribe.
+   * Must be a positive number.
    */
-  amount: z
+  totalAmount: z
     .number()
-    .nonnegative({ message: 'The amount must be zero or positive' }),
+    .positive({ message: 'The total amount must be positive' }),
 });
 
 /**
@@ -50,6 +50,19 @@ export const payBribesSchema = z.object({
   ]),
 });
 
+/**
+ * Zod schema for making a payment to a bribe.
+ */
+export const payBribeAmountSchema = z.object({
+  /**
+   * The amount to pay.
+   * Must be a positive number.
+   */
+  amount: z
+    .number()
+    .positive({ message: 'The payment amount must be positive' }),
+});
+
 // ============================================================================
 // TYPES - Bribe
 // ============================================================================
@@ -63,3 +76,8 @@ export type UpdateBribeInput = z.infer<typeof updateBribeSchema>;
  * Type definition for the pay bribe input.
  */
 export type payBribeInput = z.infer<typeof payBribesSchema>;
+
+/**
+ * Type definition for the pay bribe amount input.
+ */
+export type PayBribeAmountInput = z.infer<typeof payBribeAmountSchema>;

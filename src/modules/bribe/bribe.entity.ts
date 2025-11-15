@@ -27,20 +27,40 @@ export class Bribe extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * The amount of the bribe.
+   * The total amount of the bribe.
    *
    * @type {number}
    */
   @Property()
-  amount!: number;
+  totalAmount!: number;
 
   /**
-   * Indicates if the bribe has been paid.
+   * The amount already paid for the bribe.
+   *
+   * @type {number}
+   */
+  @Property()
+  paidAmount: number = 0;
+
+  /**
+   * Gets the pending amount (total - paid).
+   *
+   * @type {number}
+   */
+  @Property({ persist: false })
+  get pendingAmount(): number {
+    return this.totalAmount - this.paidAmount;
+  }
+
+  /**
+   * Indicates if the bribe has been fully paid.
    *
    * @type {boolean}
    */
-  @Property()
-  paid: boolean = false;
+  @Property({ persist: false })
+  get paid(): boolean {
+    return this.paidAmount >= this.totalAmount;
+  }
 
   /**
    * The creation date of the bribe.
@@ -84,7 +104,9 @@ export class Bribe extends BaseObjectEntity {
   toDTO() {
     return {
       id: this.id,
-      amount: this.amount,
+      totalAmount: this.totalAmount,
+      paidAmount: this.paidAmount,
+      pendingAmount: this.pendingAmount,
       paid: this.paid,
       creationDate: this.creationDate,
       authority: {
@@ -104,7 +126,9 @@ export class Bribe extends BaseObjectEntity {
    */
   toWithoutAuthDTO() {
     return {
-      amount: this.amount,
+      totalAmount: this.totalAmount,
+      paidAmount: this.paidAmount,
+      pendingAmount: this.pendingAmount,
       paid: this.paid,
       creationDate: this.creationDate,
       sale: {

@@ -7,7 +7,7 @@ import { Router } from 'express';
 // IMPORTS - Internal modules
 // ============================================================================
 import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
-import { payBribesSchema } from './bribe.schema.js';
+import { payBribesSchema, payBribeAmountSchema } from './bribe.schema.js';
 import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
 import { BribeController } from './bribe.controller.js';
 import { Role } from '../auth/user/user.entity.js';
@@ -268,13 +268,16 @@ bribeRouter.get(
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "5 bribes marked as paid"
+ *                   example: "Bribes payment processed"
  *                 data:
  *                   type: object
  *                   properties:
- *                     updated:
- *                       type: integer
- *                       example: 5
+ *                     paid:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     summary:
+ *                       type: object
  *       400:
  *         description: Invalid request body
  *       401:
@@ -298,7 +301,72 @@ bribeRouter.patch(
  *   patch:
  *     tags: [Bribes]
  *     summary: Mark single bribe as paid
- *     description: Updates payment status for a specific bribe (Admin/Partner only)
+ *     description: Marks a specific bribe as fully paid using its ID from the URL (Admin/Partner only)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Bribe ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Bribe marked as paid successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Bribe paid successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     paid:
+ *                       type: boolean
+ *                       example: true
+ *                     totalAmount:
+ *                       type: number
+ *                       example: 1000
+ *                     paidAmount:
+ *                       type: number
+ *                       example: 1000
+ *                     pendingAmount:
+ *                       type: number
+ *                       example: 0
+ *       400:
+ *         description: Invalid ID
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       403:
+ *         description: Forbidden - Admin or Partner role required
+ *       404:
+ *         description: Bribe not found
+ */
+bribeRouter.patch(
+  '/:id/pay',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  bribeController.payBribe
+);
+
+/**
+ * @swagger
+ * /api/bribes/{id}/pay-amount:
+ *   patch:
+ *     tags: [Bribes]
+ *     summary: Make a partial payment to a bribe
+ *     description: Allows making a partial payment to a bribe, updating the paid amount (Admin/Partner only)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -316,18 +384,15 @@ bribeRouter.patch(
  *           schema:
  *             type: object
  *             required:
- *               - ids
+ *               - amount
  *             properties:
- *               ids:
- *                 oneOf:
- *                   - type: integer
- *                   - type: array
- *                     items:
- *                       type: integer
- *                 example: 1
+ *               amount:
+ *                 type: number
+ *                 description: Amount to pay (must not exceed pending amount)
+ *                 example: 250
  *     responses:
  *       200:
- *         description: Bribe marked as paid successfully
+ *         description: Payment processed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -338,9 +403,30 @@ bribeRouter.patch(
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Bribe paid successfully"
+ *                   example: "Payment processed successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     totalAmount:
+ *                       type: number
+ *                       example: 1000
+ *                     paidAmount:
+ *                       type: number
+ *                       example: 250
+ *                     pendingAmount:
+ *                       type: number
+ *                       example: 750
+ *                     paid:
+ *                       type: boolean
+ *                       example: false
+ *                     paymentMade:
+ *                       type: number
+ *                       example: 250
  *       400:
- *         description: Invalid request body
+ *         description: Invalid request or payment exceeds pending amount
  *       401:
  *         description: Unauthorized - Authentication required
  *       403:
@@ -349,11 +435,11 @@ bribeRouter.patch(
  *         description: Bribe not found
  */
 bribeRouter.patch(
-  '/:id/pay',
+  '/:id/pay-amount',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
-  validateWithSchema({ body: payBribesSchema }),
-  bribeController.payBribes
+  validateWithSchema({ body: payBribeAmountSchema }),
+  bribeController.payBribeAmount
 );
 
 /**

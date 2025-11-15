@@ -357,7 +357,10 @@ userVerificationRouter.post(
  *   post:
  *     tags: [User Verification]
  *     summary: Reject user verification (Admin)
- *     description: Rejects a user verification request with an optional reason
+ *     description: |
+ *       Rejects a user verification request with an optional reason.
+ *       Increments the attempts counter and marks as EXPIRED if max attempts reached.
+ *       Returns the updated verification object.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -384,7 +387,7 @@ userVerificationRouter.post(
  *                 example: "Incomplete personal information. Please provide valid DNI and address."
  *     responses:
  *       200:
- *         description: User verification rejected
+ *         description: User verification rejected and attempts counter incremented
  *         content:
  *           application/json:
  *             schema:
@@ -395,7 +398,48 @@ userVerificationRouter.post(
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "User verification rejected"
+ *                   example: "User verification rejected successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: number
+ *                       example: 1
+ *                     token:
+ *                       type: string
+ *                       example: "01936c2a-8b9e-7e8f-b123-456789abcdef"
+ *                     email:
+ *                       type: string
+ *                       example: "user@example.com"
+ *                     status:
+ *                       type: string
+ *                       enum: [pending, verified, expired, cancelled]
+ *                       example: "pending"
+ *                     expiresAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-16T12:00:00Z"
+ *                     attempts:
+ *                       type: number
+ *                       example: 1
+ *                       description: Number of rejection attempts (incremented on each rejection)
+ *                     maxAttempts:
+ *                       type: number
+ *                       example: 3
+ *                       description: Maximum allowed attempts before marking as expired
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-15T10:00:00Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-11-15T12:30:00Z"
+ *                     verifiedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       example: null
  *       400:
  *         description: Invalid request body
  *       401:

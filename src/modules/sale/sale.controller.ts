@@ -412,11 +412,11 @@ export class SaleController {
             const percentage = Authority.rankToCommission(authority.rank) ?? 0;
             const bribe = em.create(Bribe, {
               authority,
-              amount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
+              totalAmount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
+              paidAmount: 0,
               sale: newSale,
               creationDate: new Date(),
-              paid: false,
-            });
+            } as any);
 
             em.persist(bribe);
             logger.info({
