@@ -113,8 +113,8 @@ export class UserVerificationController {
           await sendNotificationToUser({
             userId: admin.id,
             type: NotificationType.SYSTEM,
-            title: 'Nueva solicitud de verificación de usuario',
-            message: `${personData.name} (${email}) ha solicitado la verificación de su cuenta.`,
+            title: 'NEW_USER_VERIFICATION_REQUEST_TITLE',
+            message: 'NEW_USER_VERIFICATION_REQUEST_MESSAGE',
             relatedEntityId: verification.id.toString(),
             relatedEntityType: 'user-verification',
             metadata: {
@@ -553,8 +553,8 @@ export class UserVerificationController {
         await sendNotificationToUser({
           userId: user.id,
           type: NotificationType.USER_VERIFICATION_APPROVED,
-          title: 'Verificación de usuario aprobada',
-          message: `¡Felicitaciones! Tu cuenta ha sido verificada. Ahora puedes solicitar roles especiales y acceder a todas las funcionalidades del sistema.`,
+          title: 'USER_VERIFICATION_APPROVED_TITLE',
+          message: 'USER_VERIFICATION_APPROVED_MESSAGE',
           relatedEntityId: verification.id.toString(),
           relatedEntityType: 'user-verification',
           metadata: {
@@ -642,13 +642,13 @@ export class UserVerificationController {
           await sendNotificationToUser({
             userId: user.id,
             type: NotificationType.USER_VERIFICATION_REJECTED,
-            title: 'Verificación de usuario rechazada',
-            message: `Tu solicitud de verificación ha sido rechazada.${reason ? ` Motivo: ${reason}` : ''} Puedes corregir tu información y solicitar verificación nuevamente.`,
+            title: 'USER_VERIFICATION_REJECTED_TITLE',
+            message: 'USER_VERIFICATION_REJECTED_MESSAGE',
             relatedEntityId: verification.id.toString(),
             relatedEntityType: 'user-verification',
             metadata: {
               email,
-              reason: reason || 'No reason provided',
+              reason: reason || '',
             },
           });
         } catch (notifError) {
