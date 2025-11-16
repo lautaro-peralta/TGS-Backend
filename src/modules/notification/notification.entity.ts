@@ -154,7 +154,7 @@ export class Notification {
    *
    * @type {Ref<User>}
    */
-  @ManyToOne({ entity: () => User, nullable: false, onDelete: 'cascade' })
+  @ManyToOne({ entity: () => User, nullable: false, deleteRule: 'cascade' })
   user!: Ref<User>;
 
   // ──────────────────────────────────────────────────────────────────────────

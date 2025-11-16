@@ -150,7 +150,7 @@ export class RoleRequest {
    *
    * @type {Ref<User>}
    */
-  @ManyToOne({ entity: () => User, nullable: false, onDelete: 'cascade' })
+  @ManyToOne({ entity: () => User, nullable: false, deleteRule: 'cascade' })
   user!: Ref<User>;
 
   /**
@@ -158,7 +158,7 @@ export class RoleRequest {
    *
    * @type {Ref<User> | undefined}
    */
-  @ManyToOne({ entity: () => User, nullable: true, onDelete: 'set null' })
+  @ManyToOne({ entity: () => User, nullable: true, deleteRule: 'set null' })
   reviewedBy?: Ref<User>;
 
   // ──────────────────────────────────────────────────────────────────────────
