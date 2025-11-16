@@ -265,6 +265,26 @@ export class EmailService {
   }
 
   /**
+   * Sends password reset email
+   */
+  async sendPasswordResetEmail(
+    email: string,
+    resetToken: string,
+    userName?: string
+  ): Promise<boolean> {
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:4200'}/reset-password/${encodeURIComponent(resetToken)}`;
+
+    return this.sendEmail(email, EmailTemplate.PASSWORD_RESET, {
+      userName: userName || 'Usuario',
+      resetUrl,
+      token: resetToken,
+      expiresIn: '30 minutes',
+    }, {
+      subject: 'Restablecer contraseña - GarrSYS',
+    });
+  }
+
+  /**
    * Gets template data for a specific type
    */
   private async getTemplateData(
@@ -280,6 +300,9 @@ export class EmailService {
 
       case EmailTemplate.ADMIN_NOTIFICATION:
         return this.getAdminNotificationTemplate(data);
+
+      case EmailTemplate.PASSWORD_RESET:
+        return this.getPasswordResetTemplate(data);
 
       default:
         throw new Error(`Unknown email template: ${template}`);
@@ -1189,6 +1212,243 @@ export class EmailService {
       hasSendGridCredentials: !!(this.config?.sendgridApiKey && this.config?.sendgridFrom),
     };
   }
+
+  /**
+   * Password reset email template
+   */
+  private getPasswordResetTemplate(data: any) {
+    const subject = 'Restablece tu contraseña - GarrSYS';
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Restablecer Contraseña</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #e5e7eb;
+            background: linear-gradient(135deg, #0b0e11 0%, #11161b 100%);
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(17, 22, 27, 0.95) 0%, rgba(15, 20, 25, 0.95) 100%);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 1px rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+          }
+          .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 2px solid rgba(239, 68, 68, 0.25);
+            position: relative;
+            overflow: hidden;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+            animation: glow 8s ease-in-out infinite;
+          }
+          @keyframes glow {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+            50% { transform: translate(10px, 10px) scale(1.1); opacity: 0.8; }
+          }
+          .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: #c3a462;
+            margin-bottom: 8px;
+            position: relative;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 20px rgba(195, 164, 98, 0.3);
+          }
+          .subtitle {
+            font-size: 16px;
+            color: #cbd5e1;
+            font-weight: 500;
+            position: relative;
+            letter-spacing: 0.5px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #efe9dd;
+            margin-bottom: 20px;
+          }
+          .text {
+            color: #cbd5e1;
+            margin-bottom: 20px;
+            font-size: 15px;
+            line-height: 1.7;
+          }
+          .warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid #f59e0b;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+          }
+          .warning-text {
+            color: #fbbf24;
+            font-size: 14px;
+            margin: 0;
+          }
+          .button-container {
+            text-align: center;
+            margin: 35px 0;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            padding: 16px 40px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3), 0 0 0 1px rgba(239, 68, 68, 0.4);
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+          }
+          .button:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            box-shadow: 0 15px 40px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(239, 68, 68, 0.6);
+            transform: translateY(-2px);
+          }
+          .expiry {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 13px;
+            margin: 25px 0;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(156, 163, 175, 0.2);
+          }
+          .footer {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .footer-text {
+            color: #9ca3af;
+            font-size: 13px;
+            margin: 8px 0;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            margin: 25px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">GarrSYS</div>
+            <div class="subtitle">Sistema de Gestión de Reservas</div>
+          </div>
+
+          <div class="content">
+            <div class="greeting">Hola, ${data.userName}!</div>
+
+            <p class="text">
+              Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.
+            </p>
+
+            <div class="warning">
+              <p class="warning-text">
+                ⚠️ Si no solicitaste restablecer tu contraseña, ignora este email. Tu contraseña permanecerá sin cambios.
+              </p>
+            </div>
+
+            <p class="text">
+              Para restablecer tu contraseña, haz clic en el siguiente botón:
+            </p>
+
+            <div class="button-container">
+              <a href="${data.resetUrl}" class="button">
+                Restablecer Contraseña
+              </a>
+            </div>
+
+            <div class="expiry">
+              ⏱️ Este enlace expirará en <strong>${data.expiresIn}</strong>
+            </div>
+
+            <div class="divider"></div>
+
+            <p class="text" style="font-size: 13px; color: #9ca3af;">
+              <strong>Consejos de seguridad:</strong><br>
+              • Nunca compartas tu contraseña con nadie<br>
+              • Usa una contraseña segura y única<br>
+              • Cierra sesión cuando uses dispositivos compartidos
+            </p>
+          </div>
+
+          <div class="footer">
+            <p class="footer-text">
+              Este es un email automático, por favor no respondas.
+            </p>
+            <p class="footer-text">
+              © 2024 GarrSYS. Todos los derechos reservados.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Hola, ${data.userName}!
+
+Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en GarrSYS.
+
+Para restablecer tu contraseña, visita el siguiente enlace:
+${data.resetUrl}
+
+⚠️ IMPORTANTE:
+- Este enlace expirará en ${data.expiresIn}
+- Si no solicitaste restablecer tu contraseña, ignora este email
+
+Consejos de seguridad:
+• Nunca compartas tu contraseña con nadie
+• Usa una contraseña segura y única
+• Cierra sesión cuando uses dispositivos compartidos
+
+---
+Este es un email automático, por favor no respondas.
+© 2024 GarrSYS. Todos los derechos reservados.
+    `;
+
+    return {
+      subject,
+      html,
+      text,
+    };
+  }
+
 }
 
 // Singleton instance

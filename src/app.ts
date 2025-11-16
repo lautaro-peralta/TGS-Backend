@@ -40,6 +40,7 @@ import { monthlyReviewRouter } from './modules/shelbyCouncil/monthlyReview.route
 import { roleRequestRouter } from './modules/auth/roleRequest/roleRequest.routes.js';
 import { userRouter } from './modules/auth/user/user.routes.js';
 import { emailVerificationRouter } from './modules/auth/emailVerification/emailVerification.routes.js';
+import { passwordResetRouter } from './modules/auth/passwordReset/passwordReset.routes.js';
 import { userVerificationRouter } from './modules/auth/userVerification/userVerification.routes.js';
 import { notificationRouter } from './modules/notification/notification.routes.js';
 
@@ -604,6 +605,11 @@ app.use('/api/auth', authRouter);
 app.use('/api/role-requests', roleRequestRouter);
 app.use('/api/users', userRouter);
 app.use('/api/email-verification', emailVerificationRouter);
+
+console.log('🔐 [APP] Montando router de password-reset en /api/password-reset');
+app.use('/api/password-reset', passwordResetRouter);
+console.log('🔐 [APP] Router de password-reset montado exitosamente');
+
 app.use('/api/notifications', notificationRouter);
 app.use('/api/user-verification', userVerificationRouter);
 
@@ -740,6 +746,7 @@ export const initDev = async () => {
       '/api-docs',
       '/health',
       '/api/auth',
+      '/api/password-reset',
       '/api/clients',
       '/api/sales',
       '/api/authorities',
