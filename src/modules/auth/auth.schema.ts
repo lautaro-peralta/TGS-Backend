@@ -2,7 +2,8 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { z } from 'zod';
-import { emailSchema, passwordSchema, nameSchema } from '../../shared/schemas/common.schema.js';
+import { emailSchema, passwordSchema } from '../../shared/schemas/common.schema.js';
+import { usernameSchema } from './user/user.schema.js';
 
 // ============================================================================
 // SCHEMAS - Auth
@@ -26,10 +27,10 @@ export const registerSchema = z.object({
   password: passwordSchema,
 
   /**
-   * User's username (display name).
-   * Professional name validation with proper character set.
+   * User's username.
+   * Only allows letters, numbers, and underscores (3-30 characters).
    */
-  username: nameSchema,
+  username: usernameSchema,
 });
 
 /**
@@ -41,6 +42,7 @@ export const loginSchema = z.object({
   /**
    * User's email address or username.
    * Accepts either format for flexible login.
+   * Note: Field is named 'email' for backward compatibility but accepts both.
    */
   email: z
     .string()
