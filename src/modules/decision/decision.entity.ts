@@ -67,7 +67,7 @@ export class StrategicDecision extends BaseObjectEntity {
    *
    * @type {Collection<User>}
    */
-  @ManyToMany({entity:()=>User, nullable:false})
+  @ManyToMany({entity:()=>User, nullable:false, onDelete: 'cascade'})
   socios = new Collection<User>(this);
 
   /**
