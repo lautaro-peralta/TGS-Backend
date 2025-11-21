@@ -164,16 +164,30 @@ export class EmailVerificationController {
 
           if (existingVerification.createdAt > twoMinutesAgo) {
             // Less than 2 minutes, return error with remaining time
-            const timeRemaining = Math.ceil((existingVerification.createdAt.getTime() + 2 * 60 * 1000 - Date.now()) / 1000 / 60);
+            const cooldownSeconds = Math.ceil((existingVerification.createdAt.getTime() + 2 * 60 * 1000 - Date.now()) / 1000);
+            const minutes = Math.floor(cooldownSeconds / 60);
+            const seconds = cooldownSeconds % 60;
+
+            // Formato de mensaje preciso
+            let timeMessage = '';
+            if (minutes > 0 && seconds > 0) {
+              timeMessage = `${minutes} minuto${minutes > 1 ? 's' : ''} y ${seconds} segundo${seconds > 1 ? 's' : ''}`;
+            } else if (minutes > 0) {
+              timeMessage = `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+            } else {
+              timeMessage = `${seconds} segundo${seconds > 1 ? 's' : ''}`;
+            }
+
             return ResponseUtil.error(
               res,
-              `A verification request is already pending. Please wait ${timeRemaining} minutes before requesting another verification`,
+              `Ya existe una solicitud de verificación pendiente. Por favor espera ${timeMessage} antes de solicitar otra verificación`,
               409,
               [
                 {
                   field: 'cooldown',
-                  message: `Please wait ${timeRemaining} minutes before requesting another verification`,
-                  code: 'VERIFICATION_COOLDOWN_ACTIVE'
+                  message: `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
+                  code: 'VERIFICATION_COOLDOWN_ACTIVE',
+                  cooldownSeconds: cooldownSeconds
                 }
               ]
             );
@@ -419,7 +433,34 @@ export class EmailVerificationController {
       const cooldownData = await cacheService.get(cooldownKey);
 
       if (cooldownData) {
-        return ResponseUtil.error(res, 'Please wait 2 minutes before requesting another verification', 429);
+        // Calculate remaining time
+        const timestamp = cooldownData.timestamp || Date.now();
+        const cooldownSeconds = Math.max(0, Math.ceil((timestamp + 2 * 60 * 1000 - Date.now()) / 1000));
+        const minutes = Math.floor(cooldownSeconds / 60);
+        const seconds = cooldownSeconds % 60;
+
+        let timeMessage = '';
+        if (minutes > 0 && seconds > 0) {
+          timeMessage = `${minutes} minuto${minutes > 1 ? 's' : ''} y ${seconds} segundo${seconds > 1 ? 's' : ''}`;
+        } else if (minutes > 0) {
+          timeMessage = `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+        } else {
+          timeMessage = `${seconds} segundo${seconds > 1 ? 's' : ''}`;
+        }
+
+        return ResponseUtil.error(
+          res,
+          `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
+          429,
+          [
+            {
+              field: 'cooldown',
+              message: `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
+              code: 'VERIFICATION_COOLDOWN_ACTIVE',
+              cooldownSeconds: cooldownSeconds
+            }
+          ]
+        );
       }
 
       // Find user's personal information
@@ -521,7 +562,34 @@ export class EmailVerificationController {
       const cooldownData = await cacheService.get(cooldownKey);
 
       if (cooldownData) {
-        return ResponseUtil.error(res, 'Please wait 2 minutes before requesting another verification', 429);
+        // Calculate remaining time
+        const timestamp = cooldownData.timestamp || Date.now();
+        const cooldownSeconds = Math.max(0, Math.ceil((timestamp + 2 * 60 * 1000 - Date.now()) / 1000));
+        const minutes = Math.floor(cooldownSeconds / 60);
+        const seconds = cooldownSeconds % 60;
+
+        let timeMessage = '';
+        if (minutes > 0 && seconds > 0) {
+          timeMessage = `${minutes} minuto${minutes > 1 ? 's' : ''} y ${seconds} segundo${seconds > 1 ? 's' : ''}`;
+        } else if (minutes > 0) {
+          timeMessage = `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+        } else {
+          timeMessage = `${seconds} segundo${seconds > 1 ? 's' : ''}`;
+        }
+
+        return ResponseUtil.error(
+          res,
+          `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
+          429,
+          [
+            {
+              field: 'cooldown',
+              message: `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
+              code: 'VERIFICATION_COOLDOWN_ACTIVE',
+              cooldownSeconds: cooldownSeconds
+            }
+          ]
+        );
       }
 
       // ────────────────────────────────────────────────────────────────────
