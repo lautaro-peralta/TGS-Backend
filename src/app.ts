@@ -77,8 +77,21 @@ const app = express();
 
 
 // CORS configuration - Enhanced security
+const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
+
 app.use(cors({
-  origin: true, 
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    logger.warn(`CORS blocked for origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
