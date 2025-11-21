@@ -38,6 +38,7 @@ export enum EmailTemplate {
   WELCOME = 'welcome',
   PASSWORD_RESET = 'password_reset',
   ADMIN_NOTIFICATION = 'admin_notification',
+  USER_VERIFICATION_REJECTED = 'user_verification_rejected',
 }
 
 /**
@@ -248,6 +249,24 @@ export class EmailService {
   }
 
   /**
+   * Sends rejection email when user verification is rejected
+   */
+  async sendUserVerificationRejectionEmail(
+    email: string,
+    userName: string,
+    reason?: string,
+    attemptsLeft?: number
+  ): Promise<boolean> {
+    return this.sendEmail(email, EmailTemplate.USER_VERIFICATION_REJECTED, {
+      userName,
+      reason: reason || 'No se especificó un motivo',
+      attemptsLeft: attemptsLeft ?? 0,
+      accountUrl: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/account`,
+      supportEmail: process.env.SUPPORT_EMAIL || 'support@tgs-system.com',
+    });
+  }
+
+  /**
    * Sends notification to administrators about new verification
    */
   async sendAdminNotification(
@@ -280,6 +299,9 @@ export class EmailService {
 
       case EmailTemplate.ADMIN_NOTIFICATION:
         return this.getAdminNotificationTemplate(data);
+
+      case EmailTemplate.USER_VERIFICATION_REJECTED:
+        return this.getUserVerificationRejectedTemplate(data);
 
       default:
         throw new Error(`Unknown email template: ${template}`);
@@ -1155,6 +1177,360 @@ export class EmailService {
       - Máximo 3 intentos permitidos
 
       Esta notificación se envió automáticamente.
+
+      ---
+      GarrSYS
+      Proyecto académico desarrollado en UTN – Facultad Regional Rosario
+      Zeballos 1341, Rosario, Santa Fe, Argentina
+    `;
+
+    return { subject, html, text };
+  }
+
+  /**
+   * User verification rejected template
+   */
+  private getUserVerificationRejectedTemplate(data: any) {
+    const subject = 'Solicitud de verificación rechazada - GarrSYS';
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verificación Rechazada</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #e5e7eb;
+            background: linear-gradient(135deg, #0b0e11 0%, #11161b 100%);
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(17, 22, 27, 0.95) 0%, rgba(15, 20, 25, 0.95) 100%);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 1px rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+          }
+          .header {
+            background: linear-gradient(135deg, #3f1d1d 0%, #1f0f0f 100%);
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 2px solid rgba(239, 68, 68, 0.3);
+            position: relative;
+            overflow: hidden;
+          }
+          .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.12) 0%, transparent 70%);
+            animation: glow 8s ease-in-out infinite;
+          }
+          @keyframes glow {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+            50% { transform: translate(10px, 10px) scale(1.1); opacity: 0.8; }
+          }
+          .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: #c3a462;
+            margin-bottom: 8px;
+            position: relative;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 20px rgba(195, 164, 98, 0.3);
+          }
+          .subtitle {
+            font-size: 18px;
+            color: #fca5a5;
+            font-weight: 600;
+            position: relative;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          }
+          .icon {
+            font-size: 24px;
+          }
+          .content {
+            padding: 40px 30px;
+          }
+          .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #efe9dd;
+            margin-bottom: 20px;
+          }
+          .text {
+            color: #cbd5e1;
+            margin-bottom: 20px;
+            font-size: 15px;
+            line-height: 1.7;
+          }
+          .alert-box {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.05) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-left: 4px solid #ef4444;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+          }
+          .alert-title {
+            font-weight: 600;
+            color: #fca5a5;
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .alert-text {
+            color: #e5e7eb;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .info-box {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.05) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+          }
+          .info-title {
+            font-weight: 600;
+            color: #93c5fd;
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          .info-text {
+            color: #e5e7eb;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+          }
+          .attempts-badge {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            letter-spacing: 0.5px;
+            margin: 10px 0;
+          }
+          .button-container {
+            text-align: center;
+            margin: 35px 0;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: #ffffff;
+            padding: 16px 40px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.4);
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+          }
+          .button:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.6);
+            transform: translateY(-2px);
+          }
+          .important-title {
+            font-weight: 600;
+            color: #efe9dd;
+            margin-top: 30px;
+            margin-bottom: 12px;
+            font-size: 16px;
+          }
+          .important-list {
+            list-style: none;
+            padding: 0;
+          }
+          .important-list li {
+            padding: 10px 0 10px 28px;
+            position: relative;
+            color: #cbd5e1;
+            font-size: 14px;
+          }
+          .important-list li::before {
+            content: '•';
+            position: absolute;
+            left: 8px;
+            color: #3b82f6;
+            font-weight: 700;
+            font-size: 20px;
+          }
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(195, 164, 98, 0.3) 50%, transparent 100%);
+            margin: 30px 0;
+          }
+          .footer {
+            background: rgba(11, 14, 17, 0.6);
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid rgba(195, 164, 98, 0.15);
+          }
+          .footer-text {
+            color: #9aa0a6;
+            font-size: 13px;
+            margin-bottom: 20px;
+          }
+          .academic-info {
+            padding-top: 20px;
+            border-top: 1px solid rgba(195, 164, 98, 0.15);
+          }
+          .academic-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 700;
+            color: #c3a462;
+            font-size: 16px;
+            margin-bottom: 8px;
+          }
+          .academic-text {
+            font-size: 12px;
+            color: #9aa0a6;
+            line-height: 1.6;
+          }
+          @media only screen and (max-width: 600px) {
+            .container { border-radius: 0; margin: -20px; }
+            .content { padding: 30px 20px; }
+            .header { padding: 30px 20px; }
+            .logo { font-size: 36px; }
+            .greeting { font-size: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">GarrSYS</div>
+            <div class="subtitle">
+              <span class="icon">❌</span>
+              Solicitud Rechazada
+            </div>
+          </div>
+
+          <div class="content">
+            <div class="greeting">Hola ${data.userName},</div>
+
+            <p class="text">Lamentamos informarte que tu solicitud de verificación de usuario ha sido rechazada.</p>
+
+            <div class="alert-box">
+              <div class="alert-title">Motivo del rechazo:</div>
+              <div class="alert-text">${data.reason}</div>
+            </div>
+
+            ${data.attemptsLeft > 0 ? `
+            <div class="info-box">
+              <div class="info-title">Puedes intentarlo nuevamente</div>
+              <div class="info-text">
+                Te quedan <strong>${data.attemptsLeft} ${data.attemptsLeft === 1 ? 'intento' : 'intentos'}</strong> para solicitar la verificación.
+              </div>
+              <div class="info-text">
+                Por favor, revisa cuidadosamente tu información personal y asegúrate de que todos los datos sean correctos antes de volver a solicitar la verificación.
+              </div>
+              ${data.attemptsLeft === 1 ? `
+              <div class="alert-text" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(239, 68, 68, 0.2);">
+                ⚠️ <strong>Este es tu último intento.</strong> Si es rechazado nuevamente, no podrás solicitar verificación otra vez.
+              </div>
+              ` : ''}
+            </div>
+            ` : `
+            <div class="alert-box">
+              <div class="alert-title">Has alcanzado el límite de intentos</div>
+              <div class="alert-text">
+                Lo sentimos, pero has agotado todos los intentos disponibles para solicitar la verificación de usuario.
+                Si crees que esto es un error, por favor contacta al soporte técnico.
+              </div>
+            </div>
+            `}
+
+            ${data.attemptsLeft > 0 ? `
+            <div class="button-container">
+              <a href="${data.accountUrl}" class="button">Corregir Mi Información</a>
+            </div>
+            ` : ''}
+
+            <div class="divider"></div>
+
+            <p class="important-title">¿Qué puedes hacer ahora?</p>
+            <ul class="important-list">
+              ${data.attemptsLeft > 0 ? `
+              <li>Revisa y actualiza tu información personal en tu cuenta</li>
+              <li>Asegúrate de que tu DNI, nombre, dirección y teléfono sean correctos</li>
+              <li>Vuelve a solicitar la verificación cuando hayas corregido la información</li>
+              ` : `
+              <li>Contacta al soporte técnico si crees que esto es un error</li>
+              <li>Revisa las políticas de verificación en nuestra plataforma</li>
+              `}
+              <li>Si tienes dudas, contacta al equipo de soporte: ${data.supportEmail}</li>
+            </ul>
+
+            <div class="divider"></div>
+
+            <p class="text" style="font-size: 13px; color: #9aa0a6;">
+              Este email se envió automáticamente porque un administrador revisó tu solicitud de verificación.
+              No respondas a este correo.
+            </p>
+          </div>
+
+          <div class="footer">
+            <div class="academic-info">
+              <div class="academic-title">GarrSYS</div>
+              <div class="academic-text">
+                Proyecto académico desarrollado en UTN – Facultad Regional Rosario<br>
+                Zeballos 1341, Rosario, Santa Fe, Argentina
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Solicitud de Verificación Rechazada
+
+      Hola ${data.userName},
+
+      Lamentamos informarte que tu solicitud de verificación de usuario ha sido rechazada.
+
+      Motivo del rechazo: ${data.reason}
+
+      ${data.attemptsLeft > 0 ? `
+      Te quedan ${data.attemptsLeft} ${data.attemptsLeft === 1 ? 'intento' : 'intentos'} para solicitar la verificación.
+
+      ${data.attemptsLeft === 1 ? '⚠️ ATENCIÓN: Este es tu último intento. Si es rechazado nuevamente, no podrás solicitar verificación otra vez.' : ''}
+
+      Qué puedes hacer:
+      - Revisa y actualiza tu información personal en: ${data.accountUrl}
+      - Asegúrate de que tu DNI, nombre, dirección y teléfono sean correctos
+      - Vuelve a solicitar la verificación cuando hayas corregido la información
+      ` : `
+      Has alcanzado el límite de intentos disponibles para solicitar la verificación.
+      Si crees que esto es un error, contacta al soporte técnico en: ${data.supportEmail}
+      `}
 
       ---
       GarrSYS

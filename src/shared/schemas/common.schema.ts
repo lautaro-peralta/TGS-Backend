@@ -25,7 +25,7 @@ export const VALIDATION_CONSTANTS = {
   DNI_LENGTH: { min: 7, max: 8 },
 
   // Password requirements
-  PASSWORD_MIN_LENGTH: 12,
+  PASSWORD_MIN_LENGTH: 8,
   PASSWORD_REQUIREMENTS: {
     uppercase: true,
     lowercase: true,

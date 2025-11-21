@@ -93,10 +93,53 @@ export class UserVerificationController {
         await em.removeAndFlush(existingVerification);
       }
 
-      // Create new verification request
+      // ────────────────────────────────────────────────────────────────────
+      // 4. Check previous attempts and accumulate them
+      // ────────────────────────────────────────────────────────────────────
+      const previousVerifications = await em.find(UserVerification, {
+        email,
+        status: { $in: [UserVerificationStatus.CANCELLED, UserVerificationStatus.EXPIRED] }
+      });
+
+      // Calculate total attempts from previous verifications
+      const totalPreviousAttempts = previousVerifications.reduce((sum, v) => sum + v.attempts, 0);
+
+      // Check if user has exceeded maximum attempts
+      const maxAttempts = 3;
+      if (totalPreviousAttempts >= maxAttempts) {
+        logger.warn({
+          email,
+          totalPreviousAttempts,
+          maxAttempts
+        }, 'User has exceeded maximum verification attempts');
+
+        return ResponseUtil.error(
+          res,
+          'Maximum verification attempts exceeded',
+          403,
+          [
+            {
+              field: 'attempts',
+              message: `You have exceeded the maximum number of verification attempts (${maxAttempts}). Please contact support if you believe this is an error.`,
+              code: 'MAX_ATTEMPTS_EXCEEDED'
+            }
+          ]
+        );
+      }
+
+      // Create new verification request with accumulated attempts
       const verification = new UserVerification(email);
+      verification.attempts = totalPreviousAttempts; // Preserve previous attempts
+      verification.maxAttempts = maxAttempts;
       em.persist(verification);
       await em.flush();
+
+      logger.info({
+        email,
+        verificationId: verification.id,
+        previousAttempts: totalPreviousAttempts,
+        attemptsLeft: maxAttempts - totalPreviousAttempts
+      }, 'New verification request created with accumulated attempts');
 
       // ────────────────────────────────────────────────────────────────────
       // Crear notificaciones para todos los admins
@@ -625,6 +668,13 @@ export class UserVerificationController {
       // 2. Increment attempts counter (may mark as EXPIRED if max reached)
       // ────────────────────────────────────────────────────────────────────
       verification.incrementAttempts();
+
+      // Si no ha alcanzado el máximo de intentos, marcar como CANCELLED
+      // Esto oculta la solicitud del inbox del admin pero mantiene el registro
+      if (verification.status !== UserVerificationStatus.EXPIRED) {
+        verification.cancel();
+      }
+
       await em.flush();
 
       // ────────────────────────────────────────────────────────────────────
@@ -657,6 +707,25 @@ export class UserVerificationController {
         } catch (notifError) {
           logger.error({ err: notifError }, 'Error creating notification for user verification rejection');
           // Don't fail the request if notification fails
+        }
+      }
+
+      // ────────────────────────────────────────────────────────────────────
+      // 5. Enviar email de rechazo al usuario
+      // ────────────────────────────────────────────────────────────────────
+      if (person && emailService.isAvailable()) {
+        try {
+          const attemptsLeft = verification.maxAttempts - verification.attempts;
+          await emailService.sendUserVerificationRejectionEmail(
+            email,
+            person.name || 'Usuario',
+            reason,
+            attemptsLeft
+          );
+          logger.info({ email, attemptsLeft }, 'Rejection email sent successfully');
+        } catch (emailError) {
+          logger.error({ err: emailError }, 'Error sending rejection email');
+          // Don't fail the request if email fails
         }
       }
 
