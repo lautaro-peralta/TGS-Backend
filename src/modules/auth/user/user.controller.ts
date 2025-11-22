@@ -504,7 +504,8 @@ export class UserController {
     // ──────────────────────────────────────────────────────────────────────
     // Verify person doesn't already have a user (one-to-one constraint)
     // ──────────────────────────────────────────────────────────────────────
-    if (person.user)
+    const existingUserForPerson = await em.findOne(User, { person: personId });
+    if (existingUserForPerson)
       return ResponseUtil.conflict(
         res,
         'The person already has a user assigned'
