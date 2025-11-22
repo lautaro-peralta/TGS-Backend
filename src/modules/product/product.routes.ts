@@ -15,7 +15,7 @@ import {
 } from './product.schema.js';
 import { Role } from '../auth/user/user.entity.js';
 import {
-  uploadMultiple,
+  uploadSingle,
   handleUploadError,
   validateFilesExist,
   uploadRateLimit,
@@ -232,11 +232,11 @@ productRouter.delete(
 
 /**
  * @swagger
- * /api/products/{id}/images:
+ * /api/products/{id}/image:
  *   get:
  *     tags: [Products]
- *     summary: Get product images
- *     description: Retrieves all images associated with a product
+ *     summary: Get product image
+ *     description: Retrieves the image associated with a product
  *     parameters:
  *       - in: path
  *         name: id
@@ -246,19 +246,19 @@ productRouter.delete(
  *         description: Product ID
  *     responses:
  *       200:
- *         description: Images retrieved successfully
+ *         description: Image retrieved successfully
  *       404:
  *         description: Product not found
  */
-productRouter.get('/:id/images', productController.getImages);
+productRouter.get('/:id/image', productController.getImage);
 
 /**
  * @swagger
- * /api/products/{id}/images:
+ * /api/products/{id}/image:
  *   post:
  *     tags: [Products]
- *     summary: Upload product images
- *     description: Upload one or more images for a product (Admin or Distributor only)
+ *     summary: Upload or replace product image
+ *     description: Upload a single image for a product. Replaces existing image if present (Admin or Distributor only)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -275,17 +275,15 @@ productRouter.get('/:id/images', productController.getImages);
  *           schema:
  *             type: object
  *             properties:
- *               images:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: Image files (max 5, 5MB each)
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (max 5MB)
  *     responses:
  *       201:
- *         description: Images uploaded successfully
+ *         description: Image uploaded successfully
  *       400:
- *         description: Invalid files or limit exceeded
+ *         description: Invalid file or limit exceeded
  *       401:
  *         description: Not authenticated
  *       403:
@@ -294,75 +292,23 @@ productRouter.get('/:id/images', productController.getImages);
  *         description: Product not found
  */
 productRouter.post(
-  '/:id/images',
+  '/:id/image',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   uploadRateLimit,
-  uploadMultiple,
+  uploadSingle,
   handleUploadError,
   validateFilesExist,
-  productController.uploadImages
+  productController.uploadImage
 );
 
 /**
  * @swagger
- * /api/products/{id}/images:
- *   put:
- *     tags: [Products]
- *     summary: Replace all product images
- *     description: Replace all existing images with new ones (Admin or Distributor only)
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Product ID
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               images:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *                 description: Image files (max 5, 5MB each)
- *     responses:
- *       200:
- *         description: Images replaced successfully
- *       400:
- *         description: Invalid files or limit exceeded
- *       401:
- *         description: Not authenticated
- *       403:
- *         description: Insufficient permissions
- *       404:
- *         description: Product not found
- */
-productRouter.put(
-  '/:id/images',
-  authMiddleware,
-  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
-  uploadRateLimit,
-  uploadMultiple,
-  handleUploadError,
-  validateFilesExist,
-  productController.replaceImages
-);
-
-/**
- * @swagger
- * /api/products/{id}/images/{imageIndex}:
+ * /api/products/{id}/image:
  *   delete:
  *     tags: [Products]
- *     summary: Delete a specific product image
- *     description: Deletes a single image by its index (Admin or Distributor only)
+ *     summary: Delete product image
+ *     description: Deletes the product image (Admin or Distributor only)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -372,17 +318,9 @@ productRouter.put(
  *         schema:
  *           type: integer
  *         description: Product ID
- *       - in: path
- *         name: imageIndex
- *         required: true
- *         schema:
- *           type: integer
- *         description: Index of the image to delete (0-based)
  *     responses:
  *       200:
  *         description: Image deleted successfully
- *       400:
- *         description: Invalid image index
  *       401:
  *         description: Not authenticated
  *       403:
@@ -391,7 +329,7 @@ productRouter.put(
  *         description: Product or image not found
  */
 productRouter.delete(
-  '/:id/images/:imageIndex',
+  '/:id/image',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   productController.deleteImage
