@@ -26,6 +26,7 @@ import { authRouter } from './modules/auth/auth.routes.js';
 
 import { saleRouter } from './modules/sale/sale.routes.js';
 import { productRouter } from './modules/product/product.routes.js';
+import { uploadRouter } from './modules/upload/upload.routes.js';
 import { authorityRouter } from './modules/authority/authority.routes.js';
 import { zoneRouter } from './modules/zone/zone.routes.js';
 import { distributorRouter } from './modules/distributor/distributor.routes.js';
@@ -611,6 +612,7 @@ app.use('/api/user-verification', userVerificationRouter);
 app.use('/api/clients', clientRouter);
 app.use('/api/sales', saleRouter);
 app.use('/api/products', productRouter);
+app.use('/api/products', uploadRouter); // Upload routes for product images
 app.use('/api/distributors', distributorRouter);
 app.use('/api/partners', partnerRouter);
 
