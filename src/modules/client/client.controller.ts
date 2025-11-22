@@ -52,6 +52,7 @@ export class ClientController {
       em,
       searchFields: 'name',
       buildFilters: () => ({}),
+      populate: ['user', 'purchases'] as any,
       orderBy: { name: 'ASC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.CLIENT_LIST,
@@ -279,7 +280,11 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch client by DNI
       // ──────────────────────────────────────────────────────────────────────
-      const client = await em.findOne(Client, { dni: String(dni) });
+      const client = await em.findOne(
+        Client,
+        { dni: String(dni) },
+        { populate: ['user', 'purchases'] }
+      );
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);
       }

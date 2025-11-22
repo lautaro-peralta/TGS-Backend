@@ -93,6 +93,7 @@ export class ProductController {
 
         return filters;
       },
+      populate: ['distributors', 'distributors.zone'] as any,
       orderBy: { description: 'ASC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.PRODUCT_LIST,
@@ -227,7 +228,11 @@ export class ProductController {
       // Fetch product by ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id);
-      const product = await em.findOne(Product, { id });
+      const product = await em.findOne(
+        Product,
+        { id },
+        { populate: ['distributors', 'distributors.zone'] }
+      );
       if (!product) {
         return ResponseUtil.notFound(res, 'Product', id);
       }
@@ -266,7 +271,11 @@ export class ProductController {
       const id = Number(req.params.id);
       const validatedData = updateProductSchema.parse(req.body);
 
-      const product = await em.findOne(Product, { id });
+      const product = await em.findOne(
+        Product,
+        { id },
+        { populate: ['distributors', 'distributors.zone'] }
+      );
       if (!product) {
         return ResponseUtil.notFound(res, 'Product', id);
       }
