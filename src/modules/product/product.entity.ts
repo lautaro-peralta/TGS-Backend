@@ -7,6 +7,7 @@ import {
   ManyToMany,
   OneToMany,
   Collection,
+  EventArgs,
 } from '@mikro-orm/core';
 
 // ============================================================================
@@ -15,6 +16,8 @@ import {
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
 import { Distributor } from '../distributor/distributor.entity.js';
 import { Detail } from '../sale/detail.entity.js';
+import { uploadThingService } from '../../shared/services/uploadthing.service.js';
+import logger from '../../shared/utils/logger.js';
 
 // ============================================================================
 // ENTITY - Product
@@ -67,6 +70,15 @@ export class Product extends BaseObjectEntity {
   @Property({ default: false })
   isIllegal: boolean = false;
 
+  /**
+   * Array of image URLs stored in UploadThing.
+   * Stored as JSONB in PostgreSQL for efficient querying.
+   *
+   * @type {string[]}
+   */
+  @Property({ type: 'json', nullable: true })
+  imageUrls?: string[];
+
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
@@ -115,6 +127,44 @@ export class Product extends BaseObjectEntity {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // Helper Methods
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Cleans up all associated images from UploadThing storage.
+   * Should be called before deleting a product.
+   */
+  async cleanupImages(): Promise<void> {
+    if (!uploadThingService.enabled) {
+      logger.warn(
+        `UploadThing service disabled. Skipping image cleanup for product ${this.id}`
+      );
+      return;
+    }
+
+    if (!this.imageUrls || this.imageUrls.length === 0) {
+      logger.debug(`Product ${this.id} has no images to clean up`);
+      return;
+    }
+
+    try {
+      logger.info(
+        `Cleaning up ${this.imageUrls.length} images for product ${this.id}`
+      );
+
+      const fileKeys = uploadThingService.extractFileKeys(this.imageUrls);
+      await uploadThingService.deleteMultipleFiles(fileKeys);
+
+      logger.info(`Successfully cleaned up images for product ${this.id}`);
+    } catch (error) {
+      logger.error(
+        `Failed to clean up images for product ${this.id}:`
+      );
+      // Don't throw - allow product deletion even if image cleanup fails
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // DTO (Data Transfer Object) Methods
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -131,6 +181,8 @@ export class Product extends BaseObjectEntity {
       detail: this.detail,
       stock: this.stock,
       isIllegal: this.isIllegal,
+      imageUrls: this.imageUrls || [],
+      imageCount: this.imageUrls?.length || 0,
       distributorsCount: this.distributors.isInitialized()
         ? this.distributors.length
         : undefined,

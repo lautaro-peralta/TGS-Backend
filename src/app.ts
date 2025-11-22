@@ -55,6 +55,7 @@ import { cleanupRouter } from './shared/routes/cleanup.routes.js';
 // Import services
 import { emailService } from './shared/services/email.service.js';
 import { schedulerService } from './shared/services/scheduler.service.js';
+import { uploadThingService } from './shared/services/uploadthing.service.js';
 
 // Import security middleware
 import {
@@ -713,6 +714,23 @@ export const initServices = async () => {
   } catch (error) {
     logger.error({ err: error }, 'Failed to start scheduler service');
     // Don't throw - scheduler is important but not critical for app startup
+  }
+
+  // Initialize UploadThing file upload service
+  try {
+    uploadThingService.initialize();
+
+    if (uploadThingService.enabled) {
+      logger.info('UploadThing file upload service initialized successfully');
+    } else {
+      logger.warn('UploadThing service disabled - UPLOADTHING_SECRET not configured');
+      logger.info('To enable file uploads, configure UPLOADTHING_SECRET in environment variables');
+      logger.info('Get your API key from: https://uploadthing.com');
+    }
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to initialize UploadThing service');
+    logger.warn('File upload functionality will be unavailable');
+    // Don't throw - file uploads are optional for app startup
   }
 };
 

@@ -78,6 +78,10 @@ const envSchema = z.object({
     (val) => parseBoolean(val as string, true),
     z.boolean()
   ),
+
+  // UploadThing Configuration (File Upload Service)
+  // Get your API key from: https://uploadthing.com
+  UPLOADTHING_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
