@@ -71,12 +71,13 @@ export class Product extends BaseObjectEntity {
   isIllegal: boolean = false;
 
   /**
-   * URL of the product image stored in UploadThing.
+   * Array of image URLs stored in UploadThing.
+   * Stored as JSONB in PostgreSQL for efficient querying.
    *
-   * @type {string}
+   * @type {string[]}
    */
-  @Property({ nullable: true })
-  imageUrl?: string;
+  @Property({ type: 'json', nullable: true })
+  imageUrls?: string[];
 
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
@@ -130,10 +131,10 @@ export class Product extends BaseObjectEntity {
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Cleans up the associated image from UploadThing storage.
-   * Should be called before deleting a product or replacing its image.
+   * Cleans up all associated images from UploadThing storage.
+   * Should be called before deleting a product.
    */
-  async cleanupImage(): Promise<void> {
+  async cleanupImages(): Promise<void> {
     if (!uploadThingService.enabled) {
       logger.warn(
         `UploadThing service disabled. Skipping image cleanup for product ${this.id}`
@@ -141,21 +142,23 @@ export class Product extends BaseObjectEntity {
       return;
     }
 
-    if (!this.imageUrl) {
-      logger.debug(`Product ${this.id} has no image to clean up`);
+    if (!this.imageUrls || this.imageUrls.length === 0) {
+      logger.debug(`Product ${this.id} has no images to clean up`);
       return;
     }
 
     try {
-      logger.info(`Cleaning up image for product ${this.id}`);
+      logger.info(
+        `Cleaning up ${this.imageUrls.length} images for product ${this.id}`
+      );
 
-      const fileKey = uploadThingService.extractFileKey(this.imageUrl);
-      await uploadThingService.deleteFile(fileKey);
+      const fileKeys = uploadThingService.extractFileKeys(this.imageUrls);
+      await uploadThingService.deleteMultipleFiles(fileKeys);
 
-      logger.info(`Successfully cleaned up image for product ${this.id}`);
+      logger.info(`Successfully cleaned up images for product ${this.id}`);
     } catch (error) {
       logger.error(
-        `Failed to clean up image for product ${this.id}:`
+        `Failed to clean up images for product ${this.id}:`
       );
       // Don't throw - allow product deletion even if image cleanup fails
     }
@@ -178,7 +181,8 @@ export class Product extends BaseObjectEntity {
       detail: this.detail,
       stock: this.stock,
       isIllegal: this.isIllegal,
-      imageUrl: this.imageUrl || null,
+      imageUrls: this.imageUrls || [],
+      imageCount: this.imageUrls?.length || 0,
       distributorsCount: this.distributors.isInitialized()
         ? this.distributors.length
         : undefined,
