@@ -430,7 +430,7 @@ export class EmailVerificationController {
 
       // Verify resend cooldown (2 minutes)
       const cooldownKey = `verification_request:${email}`;
-      const cooldownData = await cacheService.get(cooldownKey);
+      const cooldownData = await cacheService.get<{ timestamp: number }>(cooldownKey);
 
       if (cooldownData) {
         // Calculate remaining time
@@ -559,7 +559,7 @@ export class EmailVerificationController {
       // VALIDATION: Verify resend cooldown (2 minutes)
       // ────────────────────────────────────────────────────────────────────
       const cooldownKey = `verification_request:${email}`;
-      const cooldownData = await cacheService.get(cooldownKey);
+      const cooldownData = await cacheService.get<{ timestamp: number }>(cooldownKey);
 
       if (cooldownData) {
         // Calculate remaining time

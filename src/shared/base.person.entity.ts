@@ -79,7 +79,7 @@ export class BasePersonEntity {
     if (this.user) {
       const user = await this.user.load();
 
-      if (user.email !== this.email) {
+      if (user && user.email !== this.email) {
         throw new Error(
           `Email mismatch: BasePersonEntity email (${this.email}) must match User email (${user.email}). ` +
           `To change your email, please update it in your account settings, which will trigger a new email verification.`
