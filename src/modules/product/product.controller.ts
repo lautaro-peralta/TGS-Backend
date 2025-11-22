@@ -20,8 +20,6 @@ import { ProductFilters } from '../../shared/types/common.types.js';
 import { searchEntityWithPagination, searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
 import { CACHE_TTL } from '../../shared/services/cache.service.js';
 import { validateQueryParams, validateBusinessRules } from '../../shared/middleware/validation.middleware.js';
-import { uploadThingService } from '../../shared/services/uploadthing.service.js';
-import logger from '../../shared/utils/logger.js';
 
 // ============================================================================
 // CONTROLLER - Product
@@ -93,7 +91,6 @@ export class ProductController {
 
         return filters;
       },
-      populate: ['distributors', 'distributors.zone'] as any,
       orderBy: { description: 'ASC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.PRODUCT_LIST,
@@ -228,11 +225,7 @@ export class ProductController {
       // Fetch product by ID
       // ──────────────────────────────────────────────────────────────────────
       const id = Number(req.params.id);
-      const product = await em.findOne(
-        Product,
-        { id },
-        { populate: ['distributors', 'distributors.zone'] }
-      );
+      const product = await em.findOne(Product, { id });
       if (!product) {
         return ResponseUtil.notFound(res, 'Product', id);
       }
@@ -271,11 +264,7 @@ export class ProductController {
       const id = Number(req.params.id);
       const validatedData = updateProductSchema.parse(req.body);
 
-      const product = await em.findOne(
-        Product,
-        { id },
-        { populate: ['distributors', 'distributors.zone'] }
-      );
+      const product = await em.findOne(Product, { id });
       if (!product) {
         return ResponseUtil.notFound(res, 'Product', id);
       }
@@ -363,11 +352,6 @@ export class ProductController {
       }
 
       // ──────────────────────────────────────────────────────────────────────
-      // Clean up image before deleting
-      // ──────────────────────────────────────────────────────────────────────
-      await product.cleanupImage();
-
-      // ──────────────────────────────────────────────────────────────────────
       // Delete the product
       // ──────────────────────────────────────────────────────────────────────
       await em.removeAndFlush(product);
@@ -378,168 +362,6 @@ export class ProductController {
       return ResponseUtil.deleted(res, 'Product deleted successfully');
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error deleting product', err);
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // IMAGE UPLOAD METHODS
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Upload or replace product image
-   * POST /api/products/:id/image
-   *
-   * Request: multipart/form-data with 'image' field (single file)
-   * Authorization: Required (ADMIN or DISTRIBUTOR)
-   */
-  async uploadImage(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const productId = parseInt(req.params.id);
-    const file = req.file as Express.Multer.File;
-
-    if (!uploadThingService.enabled) {
-      return ResponseUtil.internalError(
-        res,
-        'File upload service is not configured',
-        new Error('UPLOADTHING_SECRET not set')
-      );
-    }
-
-    try {
-      // Find product
-      const product = await em.findOne(Product, { id: productId });
-      if (!product) {
-        return ResponseUtil.notFound(res, 'Product', productId);
-      }
-
-      logger.info(`Uploading image for product ${productId}`);
-
-      // Delete existing image if present
-      if (product.imageUrl) {
-        try {
-          const oldFileKey = uploadThingService.extractFileKey(product.imageUrl);
-          await uploadThingService.deleteFile(oldFileKey);
-          logger.info(`Deleted old image for product ${productId}`);
-        } catch (error) {
-          logger.warn(`Failed to delete old image, continuing with upload`);
-        }
-      }
-
-      // Upload new image to UploadThing
-      const uploadResult = await uploadThingService.uploadFile(
-        file.buffer,
-        `product-${productId}-${Date.now()}-${file.originalname}`
-      );
-
-      // Update product with new image URL
-      product.imageUrl = uploadResult.url;
-      await em.flush();
-
-      logger.info(`Successfully uploaded image for product ${productId}`);
-
-      return ResponseUtil.created(res, 'Image uploaded successfully', {
-        productId: product.id,
-        imageUrl: product.imageUrl,
-      });
-    } catch (err) {
-      logger.error(`Error uploading image for product ${productId}`);
-      return ResponseUtil.internalError(
-        res,
-        'Error uploading image',
-        err
-      );
-    }
-  }
-
-  /**
-   * Delete product image
-   * DELETE /api/products/:id/image
-   *
-   * Authorization: Required (ADMIN or DISTRIBUTOR)
-   */
-  async deleteImage(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const productId = parseInt(req.params.id);
-
-    if (!uploadThingService.enabled) {
-      return ResponseUtil.internalError(
-        res,
-        'File upload service is not configured',
-        new Error('UPLOADTHING_SECRET not set')
-      );
-    }
-
-    try {
-      // Find product
-      const product = await em.findOne(Product, { id: productId });
-      if (!product) {
-        return ResponseUtil.notFound(res, 'Product', productId);
-      }
-
-      // Validate image exists
-      if (!product.imageUrl) {
-        return ResponseUtil.notFound(res, 'Image', productId);
-      }
-
-      logger.info(`Deleting image from product ${productId}`);
-
-      // Delete from UploadThing
-      const fileKey = uploadThingService.extractFileKey(product.imageUrl);
-      await uploadThingService.deleteFile(fileKey);
-
-      // Update product
-      product.imageUrl = undefined;
-      await em.flush();
-
-      logger.info(`Successfully deleted image from product ${productId}`);
-
-      return ResponseUtil.success(res, 'Image deleted successfully', {
-        productId: product.id,
-        imageUrl: null,
-      });
-    } catch (err) {
-      logger.error(`Error deleting image from product ${productId}`);
-      return ResponseUtil.internalError(
-        res,
-        'Error deleting image',
-        err
-      );
-    }
-  }
-
-  /**
-   * Get product image
-   * GET /api/products/:id/image
-   *
-   * Authorization: Not required (public endpoint)
-   */
-  async getImage(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const productId = parseInt(req.params.id);
-
-    try {
-      // Find product with only necessary fields
-      const product = await em.findOne(
-        Product,
-        { id: productId },
-        { fields: ['id', 'description', 'imageUrl'] as any }
-      );
-
-      if (!product) {
-        return ResponseUtil.notFound(res, 'Product', productId);
-      }
-
-      return ResponseUtil.success(res, 'Image retrieved successfully', {
-        productId: product.id,
-        productName: product.description,
-        imageUrl: product.imageUrl || null,
-      });
-    } catch (err) {
-      return ResponseUtil.internalError(
-        res,
-        'Error retrieving image',
-        err
-      );
     }
   }
 }

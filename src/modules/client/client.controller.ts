@@ -52,7 +52,6 @@ export class ClientController {
       em,
       searchFields: 'name',
       buildFilters: () => ({}),
-      populate: ['purchases'] as any,
       orderBy: { name: 'ASC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.CLIENT_LIST,
@@ -214,7 +213,7 @@ export class ClientController {
       entityName: 'client',
       em,
       buildFilters: () => ({}),
-      populate: ['purchases', 'purchases.details'] as any,
+      populate: ['user', 'purchases', 'purchases.details'] as any,
       orderBy: { name: 'ASC' } as any,
     });
   }
@@ -241,7 +240,7 @@ export class ClientController {
       const client = await em.findOne(
         Client,
         { dni: String(dni) },
-        { populate: ['purchases'] }
+        { populate: ['user', 'purchases'] }
       );
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);
@@ -280,11 +279,7 @@ export class ClientController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch client by DNI
       // ──────────────────────────────────────────────────────────────────────
-      const client = await em.findOne(
-        Client,
-        { dni: String(dni) },
-        { populate: ['purchases'] }
-      );
+      const client = await em.findOne(Client, { dni: String(dni) });
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);
       }

@@ -209,7 +209,7 @@ export class ResponseUtil {
     res: Response,
     message: string,
     statusCode: number = 400,
-    errors?: Array<{ field?: string; message: string; code?: string; cooldownSeconds?: number; timestamp?: string }>
+    errors?: Array<{ field?: string; message: string; code?: string }>
   ): Response {
     const appError = new BadRequestError(message, errors, res.req?.requestId);
     return ErrorFormatter.formatErrorResponse(appError, res, res.req?.requestId);
