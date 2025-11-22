@@ -67,6 +67,24 @@ export class Product extends BaseObjectEntity {
   @Property({ default: false })
   isIllegal: boolean = false;
 
+  /**
+   * URL of the product image stored in UploadThing.
+   * This is the public URL used to display the image.
+   *
+   * @type {string}
+   */
+  @Property({ nullable: true })
+  imageUrl?: string;
+
+  /**
+   * UploadThing file key for the product image.
+   * This key is required to delete the image from UploadThing storage.
+   *
+   * @type {string}
+   */
+  @Property({ nullable: true })
+  imageKey?: string;
+
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
@@ -131,6 +149,7 @@ export class Product extends BaseObjectEntity {
       detail: this.detail,
       stock: this.stock,
       isIllegal: this.isIllegal,
+      imageUrl: this.imageUrl,
       distributorsCount: this.distributors.isInitialized()
         ? this.distributors.length
         : undefined,
