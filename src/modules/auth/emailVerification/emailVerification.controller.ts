@@ -186,8 +186,7 @@ export class EmailVerificationController {
                 {
                   field: 'cooldown',
                   message: `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
-                  code: 'VERIFICATION_COOLDOWN_ACTIVE',
-                  cooldownSeconds: cooldownSeconds
+                  code: 'VERIFICATION_COOLDOWN_ACTIVE'
                 }
               ]
             );
@@ -434,7 +433,7 @@ export class EmailVerificationController {
 
       if (cooldownData) {
         // Calculate remaining time
-        const timestamp = cooldownData.timestamp || Date.now();
+        const timestamp = (cooldownData as any).timestamp || Date.now();
         const cooldownSeconds = Math.max(0, Math.ceil((timestamp + 2 * 60 * 1000 - Date.now()) / 1000));
         const minutes = Math.floor(cooldownSeconds / 60);
         const seconds = cooldownSeconds % 60;
@@ -456,8 +455,7 @@ export class EmailVerificationController {
             {
               field: 'cooldown',
               message: `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
-              code: 'VERIFICATION_COOLDOWN_ACTIVE',
-              cooldownSeconds: cooldownSeconds
+              code: 'VERIFICATION_COOLDOWN_ACTIVE'
             }
           ]
         );
@@ -563,7 +561,7 @@ export class EmailVerificationController {
 
       if (cooldownData) {
         // Calculate remaining time
-        const timestamp = cooldownData.timestamp || Date.now();
+        const timestamp = (cooldownData as any).timestamp || Date.now();
         const cooldownSeconds = Math.max(0, Math.ceil((timestamp + 2 * 60 * 1000 - Date.now()) / 1000));
         const minutes = Math.floor(cooldownSeconds / 60);
         const seconds = cooldownSeconds % 60;
@@ -585,8 +583,7 @@ export class EmailVerificationController {
             {
               field: 'cooldown',
               message: `Por favor espera ${timeMessage} antes de solicitar otra verificación`,
-              code: 'VERIFICATION_COOLDOWN_ACTIVE',
-              cooldownSeconds: cooldownSeconds
+              code: 'VERIFICATION_COOLDOWN_ACTIVE'
             }
           ]
         );
