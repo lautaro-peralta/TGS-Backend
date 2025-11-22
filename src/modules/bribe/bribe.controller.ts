@@ -298,7 +298,7 @@ export class BribeController {
         Bribe,
         { id },
         {
-          populate: ['authority.user', 'sale'],
+          populate: ['authority', 'sale'],
         }
       );
 

@@ -52,7 +52,7 @@ export class ClientController {
       em,
       searchFields: 'name',
       buildFilters: () => ({}),
-      populate: ['user', 'purchases'] as any,
+      populate: ['purchases'] as any,
       orderBy: { name: 'ASC' } as any,
       useCache: true,
       cacheTtl: CACHE_TTL.CLIENT_LIST,
@@ -214,7 +214,7 @@ export class ClientController {
       entityName: 'client',
       em,
       buildFilters: () => ({}),
-      populate: ['user', 'purchases', 'purchases.details'] as any,
+      populate: ['purchases', 'purchases.details'] as any,
       orderBy: { name: 'ASC' } as any,
     });
   }
@@ -241,7 +241,7 @@ export class ClientController {
       const client = await em.findOne(
         Client,
         { dni: String(dni) },
-        { populate: ['user', 'purchases'] }
+        { populate: ['purchases'] }
       );
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);
@@ -283,7 +283,7 @@ export class ClientController {
       const client = await em.findOne(
         Client,
         { dni: String(dni) },
-        { populate: ['user', 'purchases'] }
+        { populate: ['purchases'] }
       );
       if (!client) {
         return ResponseUtil.notFound(res, 'Client', dni);

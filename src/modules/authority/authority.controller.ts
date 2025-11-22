@@ -424,7 +424,7 @@ export class AuthorityController {
       const authority = await em.findOne(
         Authority,
         { dni },
-        { populate: ['zone', 'user'] }
+        { populate: ['zone'] }
       );
 
       if (!authority) {
@@ -497,7 +497,7 @@ export class AuthorityController {
       const authority = await em.findOne(
         Authority,
         { dni },
-        { populate: ['zone', 'user'] }
+        { populate: ['zone'] }
       );
 
       if (!authority) {
