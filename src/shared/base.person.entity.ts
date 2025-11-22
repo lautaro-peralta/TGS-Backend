@@ -62,7 +62,7 @@ export class BasePersonEntity {
   //@Property({ onUpdate: () => new Date() })
   //updatedAt: Date = new Date();
 
-  @OneToOne({ entity: () => User, nullable: true })
+  @OneToOne({ entity: () => User, nullable: true, mappedBy: 'person' })
   user?: Ref<User>;
 
   /**
