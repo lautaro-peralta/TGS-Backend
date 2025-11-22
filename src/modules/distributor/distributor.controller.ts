@@ -254,11 +254,6 @@ export class DistributorController {
       await em.persistAndFlush(distributor);
 
       // ──────────────────────────────────────────────────────────────────────
-      // Populate relations for response
-      // ──────────────────────────────────────────────────────────────────────
-      await em.populate(distributor, ['products', 'zone']);
-
-      // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       const message = createUser

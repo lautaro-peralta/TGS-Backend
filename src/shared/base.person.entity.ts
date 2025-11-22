@@ -2,11 +2,14 @@ import {
   PrimaryKey,
   Property,
   DateTimeType,
+  OneToOne,
+  Ref,
   Entity,
   BeforeCreate,
   BeforeUpdate,
   EventArgs,
 } from '@mikro-orm/core';
+import { User } from '../modules/auth/user/user.entity.js';
 import { v7 as uuidv7 } from 'uuid';
 
 @Entity({ tableName: 'persons' })
@@ -58,6 +61,32 @@ export class BasePersonEntity {
 
   //@Property({ onUpdate: () => new Date() })
   //updatedAt: Date = new Date();
+
+  @OneToOne({ entity: () => User, nullable: true })
+  user?: Ref<User>;
+
+  /**
+   * Hook que valida que el email de BasePersonEntity coincida con el email del User
+   * Esto previene inconsistencias de datos donde el usuario cambia el email
+   * en sus datos personales sin actualizar su email de autenticación
+   */
+  @BeforeCreate()
+  @BeforeUpdate()
+  async validateEmailSync(args: EventArgs<BasePersonEntity>): Promise<void> {
+    const em = args.em;
+
+    // Si hay un usuario asociado, validar que los emails coincidan
+    if (this.user) {
+      const user = await this.user.load();
+
+      if (user.email !== this.email) {
+        throw new Error(
+          `Email mismatch: BasePersonEntity email (${this.email}) must match User email (${user.email}). ` +
+          `To change your email, please update it in your account settings, which will trigger a new email verification.`
+        );
+      }
+    }
+  }
 
   // get fullName(): string {
   //return this.middleName

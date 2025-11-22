@@ -189,8 +189,6 @@ export interface ValidationErrorDetail {
   field?: string;
   message: string;
   code?: string;
-  cooldownSeconds?: number;
-  timestamp?: string;
 }
 
 export interface AppError extends Error {

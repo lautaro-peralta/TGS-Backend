@@ -177,11 +177,6 @@ export class PartnerController {
       await em.persistAndFlush(partner);
 
       // ──────────────────────────────────────────────────────────────────────
-      // Populate relations for response
-      // ──────────────────────────────────────────────────────────────────────
-      await em.populate(partner, ['decisions']);
-
-      // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       const message = createUser
@@ -294,11 +289,7 @@ export class PartnerController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch partner by DNI
       // ──────────────────────────────────────────────────────────────────────
-      const partner = await em.findOne(
-        Partner,
-        { dni },
-        { populate: ['decisions'] }
-      );
+      const partner = await em.findOne(Partner, { dni });
       if (!partner) {
         return ResponseUtil.notFound(res, 'Partner', dni);
       }

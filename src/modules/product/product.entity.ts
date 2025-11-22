@@ -7,7 +7,6 @@ import {
   ManyToMany,
   OneToMany,
   Collection,
-  EventArgs,
 } from '@mikro-orm/core';
 
 // ============================================================================
@@ -16,8 +15,6 @@ import {
 import { BaseObjectEntity } from '../../shared/base.object.entity.js';
 import { Distributor } from '../distributor/distributor.entity.js';
 import { Detail } from '../sale/detail.entity.js';
-import { uploadThingService } from '../../shared/services/uploadthing.service.js';
-import logger from '../../shared/utils/logger.js';
 
 // ============================================================================
 // ENTITY - Product
@@ -70,14 +67,6 @@ export class Product extends BaseObjectEntity {
   @Property({ default: false })
   isIllegal: boolean = false;
 
-  /**
-   * URL of the product image stored in UploadThing.
-   *
-   * @type {string}
-   */
-  @Property({ nullable: true })
-  imageUrl?: string;
-
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
@@ -126,42 +115,6 @@ export class Product extends BaseObjectEntity {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Helper Methods
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Cleans up the associated image from UploadThing storage.
-   * Should be called before deleting a product or replacing its image.
-   */
-  async cleanupImage(): Promise<void> {
-    if (!uploadThingService.enabled) {
-      logger.warn(
-        `UploadThing service disabled. Skipping image cleanup for product ${this.id}`
-      );
-      return;
-    }
-
-    if (!this.imageUrl) {
-      logger.debug(`Product ${this.id} has no image to clean up`);
-      return;
-    }
-
-    try {
-      logger.info(`Cleaning up image for product ${this.id}`);
-
-      const fileKey = uploadThingService.extractFileKey(this.imageUrl);
-      await uploadThingService.deleteFile(fileKey);
-
-      logger.info(`Successfully cleaned up image for product ${this.id}`);
-    } catch (error) {
-      logger.error(
-        `Failed to clean up image for product ${this.id}:`
-      );
-      // Don't throw - allow product deletion even if image cleanup fails
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
   // DTO (Data Transfer Object) Methods
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -178,7 +131,6 @@ export class Product extends BaseObjectEntity {
       detail: this.detail,
       stock: this.stock,
       isIllegal: this.isIllegal,
-      imageUrl: this.imageUrl || null,
       distributorsCount: this.distributors.isInitialized()
         ? this.distributors.length
         : undefined,
