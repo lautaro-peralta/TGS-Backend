@@ -67,6 +67,14 @@ export class Product extends BaseObjectEntity {
   @Property({ default: false })
   isIllegal: boolean = false;
 
+  /**
+   * The URL of the product image.
+   *
+   * @type {string}
+   */
+  @Property({ nullable: true })
+  imageUrl?: string;
+
   // ──────────────────────────────────────────────────────────────────────────
   // Relationships
   // ──────────────────────────────────────────────────────────────────────────
@@ -100,18 +108,21 @@ export class Product extends BaseObjectEntity {
    * @param {number} stock - The stock quantity of the product.
    * @param {string} description - The description of the product.
    * @param {boolean} isIllegal - Whether the product is illegal.
+   * @param {string} [imageUrl] - The URL of the product image.
    */
   constructor(
     price: number,
     stock: number,
     description: string,
-    isIllegal: boolean
+    isIllegal: boolean,
+    imageUrl?: string
   ) {
     super();
     this.price = price;
     this.stock = stock;
     this.description = description;
     this.isIllegal = isIllegal;
+    this.imageUrl = imageUrl;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -131,6 +142,7 @@ export class Product extends BaseObjectEntity {
       detail: this.detail,
       stock: this.stock,
       isIllegal: this.isIllegal,
+      imageUrl: this.imageUrl,
       distributorsCount: this.distributors.isInitialized()
         ? this.distributors.length
         : undefined,
@@ -139,14 +151,14 @@ export class Product extends BaseObjectEntity {
         : undefined,
       distributors: this.distributors.isInitialized()
         ? this.distributors.getItems().map(d => ({
-            dni: d.dni,
-            name: d.name,
-            zone: d.zone ? {
-              id: d.zone.id,
-              name: d.zone.name,
-              isHeadquarters: d.zone.isHeadquarters,
-            } : null,
-          }))
+          dni: d.dni,
+          name: d.name,
+          zone: d.zone ? {
+            id: d.zone.id,
+            name: d.zone.name,
+            isHeadquarters: d.zone.isHeadquarters,
+          } : null,
+        }))
         : undefined,
     };
   }

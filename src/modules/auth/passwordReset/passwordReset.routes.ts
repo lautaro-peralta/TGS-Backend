@@ -8,12 +8,8 @@ import {
   passwordResetEmailParamSchema,
 } from './passwordReset.schema.js';
 
-console.log('🔐 [PASSWORD-RESET] Inicializando router de password reset...');
-
 export const passwordResetRouter = Router();
 const passwordResetController = new PasswordResetController();
-
-console.log('🔐 [PASSWORD-RESET] Router creado, registrando endpoints...');
 
 /**
  * @swagger
@@ -115,11 +111,5 @@ passwordResetRouter.get(
   validateWithSchema({ params: passwordResetEmailParamSchema }),
   passwordResetController.getResetStatus.bind(passwordResetController)
 );
-
-console.log('🔐 [PASSWORD-RESET] Endpoints registrados:');
-console.log('   POST   /request');
-console.log('   GET    /validate/:token');
-console.log('   POST   /reset');
-console.log('   GET    /status/:email');
 
 export default passwordResetRouter;

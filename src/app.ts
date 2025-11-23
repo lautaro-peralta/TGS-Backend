@@ -593,17 +593,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/role-requests', roleRequestRouter);
 app.use('/api/users', userRouter);
 app.use('/api/email-verification', emailVerificationRouter);
-
-console.log('🔐 [APP] Montando router de password-reset en /api/password-reset');
 app.use('/api/password-reset', passwordResetRouter);
-console.log('🔐 [APP] Router de password-reset montado exitosamente');
-
+app.use('/api/notifications', notificationRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/user-verification', userVerificationRouter);
 
-// Business entities
-app.use('/api/clients', clientRouter);
-app.use('/api/sales', saleRouter);
+// Uploadthing
 app.use('/api/products', productRouter);
 app.use('/api/distributors', distributorRouter);
 app.use('/api/partners', partnerRouter);

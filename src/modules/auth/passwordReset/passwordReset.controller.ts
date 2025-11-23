@@ -11,7 +11,7 @@ import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 
 export class PasswordResetController {
   constructor() {
-    console.log('🔐 [PASSWORD-RESET] PasswordResetController instanciado');
+    logger.info('PasswordResetController initialized');
   }
 
   /**
@@ -23,14 +23,10 @@ export class PasswordResetController {
    * - 5-minute cooldown between requests
    */
   async requestPasswordReset(req: Request, res: Response) {
-    console.log('🔐 [PASSWORD-RESET] requestPasswordReset llamado');
-    console.log('   Body:', req.body);
-
     const em = orm.em.fork();
 
     try {
       const { email } = req.body;
-      console.log('   Email solicitado:', email);
 
       // Find user
       const user = await em.findOne(User, { email });

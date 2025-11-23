@@ -96,6 +96,12 @@ export const createProductSchema = z.object({
    * Optional field for automatic distributor association.
    */
   distributorsIds: z.array(z.string()).optional(),
+
+  /**
+   * The URL of the product image.
+   * Optional field.
+   */
+  imageUrl: z.string().url().optional(),
 });
 
 /**

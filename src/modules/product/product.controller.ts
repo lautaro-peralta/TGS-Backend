@@ -117,19 +117,23 @@ export class ProductController {
       // ──────────────────────────────────────────────────────────────────────
       const validatedData = createProductSchema.parse(req.body);
 
-      const productExists = await em.findOne(Product,{description: validatedData.description})
+      const productExists = await em.findOne(Product, { description: validatedData.description });
 
-      if(productExists){
-        return ResponseUtil.conflict(res,'A product with that description already exists.', 'description')
+      if (productExists) {
+        return ResponseUtil.conflict(res, 'A product with that description already exists.', 'description');
       }
 
-      const product = em.create(Product,{
-        price: validatedData.price,
-        stock: validatedData.stock ?? 0,
-        description: validatedData.description,
-        detail: validatedData.detail ?? '',
-        isIllegal: validatedData.isIllegal ?? false
-        });
+      const product = new Product(
+        validatedData.price,
+        validatedData.stock,
+        validatedData.description,
+        validatedData.isIllegal,
+        validatedData.imageUrl
+      );
+
+      if (validatedData.detail) {
+        product.detail = validatedData.detail;
+      }
 
       // ──────────────────────────────────────────────────────────────────────
       // Associate distributors if provided
@@ -274,14 +278,16 @@ export class ProductController {
       // ──────────────────────────────────────────────────────────────────────
       if (validatedData.description !== undefined)
         product.description = validatedData.description;
-      if (validatedData.detail !== undefined)  
-      product.detail = validatedData.detail;
+      if (validatedData.detail !== undefined)
+        product.detail = validatedData.detail;
       if (validatedData.price !== undefined)
         product.price = validatedData.price;
       if (validatedData.stock !== undefined)
         product.stock = validatedData.stock;
       if (validatedData.isIllegal !== undefined)
         product.isIllegal = validatedData.isIllegal;
+      if (validatedData.imageUrl !== undefined)
+        product.imageUrl = validatedData.imageUrl;
 
       await em.flush();
 
