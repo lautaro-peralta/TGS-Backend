@@ -13,7 +13,8 @@
     "clean": "pnpm exec rimraf dist",
     "type-check": "tsc --noEmit",
     "test:sendgrid": "cross-env NODE_ENV=development tsx scripts/test-sendgrid.js",
-    "schema:create": "node scripts/create-schema.mjs"
+    "schema:create": "node scripts/create-schema.mjs",
+    "schema:update": "node scripts/update-schema.mjs"
   },
   "engines": {
     "node": ">=18"
