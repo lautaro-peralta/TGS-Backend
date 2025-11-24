@@ -71,29 +71,6 @@ saleRouter.get('/search', authMiddleware, rolesMiddleware([Role.ADMIN, Role.DIST
 
 /**
  * @swagger
- * /api/sales/my-purchases:
- *   get:
- *     tags: [Sales]
- *     summary: Get my purchases
- *     description: Retrieves all purchases made by the authenticated user (requires only authentication, no specific role)
- *     security:
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: Purchases retrieved successfully
- *       400:
- *         description: User profile incomplete (missing DNI)
- *       401:
- *         description: Not authenticated
- */
-saleRouter.get(
-  '/my-purchases',
-  authMiddleware,
-  saleController.getMyPurchases
-);
-
-/**
- * @swagger
  * /api/sales/summary:
  *   get:
  *     tags: [Sales]
