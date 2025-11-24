@@ -546,9 +546,14 @@ export class SaleController {
           logger.info({ userId, purchaseCount: sales.length, searchBy: 'email' }, 'Found purchases by email');
 
           // If we found sales, try to associate the person with the user
-          const firstClient = sales[0].client;
-          if (firstClient?.dni) {
-            const basePerson = await em.findOne(BasePersonEntity, { dni: firstClient.dni });
+          const firstSale = sales[0];
+          const firstClient = firstSale.client;
+
+          // Get client DNI from the wrapped reference
+          const clientDni = (firstClient as any)?.dni;
+
+          if (clientDni) {
+            const basePerson = await em.findOne(BasePersonEntity, { dni: clientDni });
             if (basePerson && !user.person) {
               user.person = basePerson as any;
               await em.persistAndFlush(user);
