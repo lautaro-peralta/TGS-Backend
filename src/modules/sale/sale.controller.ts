@@ -280,6 +280,13 @@ export class SaleController {
           await em.persistAndFlush(basePerson);
         }
 
+        // Associate person with user if not already associated
+        if (!user.person) {
+          user.person = basePerson as any;
+          await em.persistAndFlush(user);
+          logger.info({ userId: user.id, personDni: basePerson.dni }, 'Associated person with user during purchase');
+        }
+
         client = em.create(Client, {
           dni: basePerson.dni,
           name: basePerson.name,
@@ -500,10 +507,63 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       // Get user's DNI from person entity
       // ──────────────────────────────────────────────────────────────────────
-      const personEntity = user.person?.isInitialized?.() ? user.person : await user.person?.load?.();
-      const userDni = (personEntity as any)?.dni;
+      let userDni: string | undefined;
 
+      logger.info({
+        userId,
+        email: user.email,
+        hasPerson: !!user.person,
+        personType: user.person ? typeof user.person : 'undefined'
+      }, 'Checking user person data');
+
+      // Try to get DNI from person
+      if (user.person) {
+        // Load person if not initialized
+        if (typeof user.person.load === 'function' && !user.person.isInitialized?.()) {
+          await user.person.load();
+        }
+
+        // Try different ways to access DNI
+        userDni = (user.person as any)?.dni || user.person?.getEntity?.()?.dni;
+
+        logger.info({ userDni, personData: user.person }, 'Person data extracted');
+      }
+
+      // If no DNI, try to find sales by email as fallback
       if (!userDni) {
+        logger.warn({ userId, email: user.email }, 'User has no DNI, trying to find sales by email');
+
+        const sales = await em.find(
+          Sale,
+          { client: { email: user.email } },
+          {
+            populate: ['client', 'distributor', 'distributor.zone', 'details', 'details.product', 'authority'] as any,
+            orderBy: { saleDate: 'DESC' } as any
+          }
+        );
+
+        if (sales.length > 0) {
+          logger.info({ userId, purchaseCount: sales.length, searchBy: 'email' }, 'Found purchases by email');
+
+          // If we found sales, try to associate the person with the user
+          const firstClient = sales[0].client;
+          if (firstClient?.dni) {
+            const basePerson = await em.findOne(BasePersonEntity, { dni: firstClient.dni });
+            if (basePerson && !user.person) {
+              user.person = basePerson as any;
+              await em.persistAndFlush(user);
+              logger.info({ userId, personDni: basePerson.dni }, 'Auto-associated person with user from existing purchase');
+            }
+          }
+
+          return ResponseUtil.success(
+            res,
+            `${sales.length} purchase(s) retrieved successfully`,
+            sales.map(sale => sale.toDTO())
+          );
+        }
+
+        // No sales found by email either
         return ResponseUtil.error(
           res,
           'Cannot retrieve purchases: User profile is incomplete. Please complete your personal information (DNI) first.',
