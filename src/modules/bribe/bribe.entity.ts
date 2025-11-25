@@ -104,6 +104,7 @@ export class Bribe extends BaseObjectEntity {
   toDTO() {
     return {
       id: this.id,
+      amount: this.totalAmount,  // Map totalAmount to amount for frontend compatibility
       totalAmount: this.totalAmount,
       paidAmount: this.paidAmount,
       pendingAmount: this.pendingAmount,
@@ -126,6 +127,7 @@ export class Bribe extends BaseObjectEntity {
    */
   toWithoutAuthDTO() {
     return {
+      amount: this.totalAmount,  // Map totalAmount to amount for frontend compatibility
       totalAmount: this.totalAmount,
       paidAmount: this.paidAmount,
       pendingAmount: this.pendingAmount,

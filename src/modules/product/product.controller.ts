@@ -50,51 +50,56 @@ export class ProductController {
   async searchProducts(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    // Validate query params
-    const validated = validateQueryParams(req, res, searchProductsSchema);
-    if (!validated) return; // Validation failed, response already sent
+    try {
+      // Validate query params
+      const validated = validateQueryParams(req, res, searchProductsSchema);
+      if (!validated) return; // Validation failed, response already sent
 
-    // Additional business rule validation for product search
-    if (validated.by === 'legal' && validated.q) {
-      const allowedValues = ['true', 'false'];
-      if (!allowedValues.includes(validated.q)) {
-        return ResponseUtil.validationError(res, 'Invalid legal status value', [
-          { field: 'q', message: 'Legal status must be "true" or "false"' }
-        ]);
+      // Additional business rule validation for product search
+      if (validated.by === 'legal' && validated.q) {
+        const allowedValues = ['true', 'false'];
+        if (!allowedValues.includes(validated.q)) {
+          return ResponseUtil.validationError(res, 'Invalid legal status value', [
+            { field: 'q', message: 'Legal status must be "true" or "false"' }
+          ]);
+        }
       }
+
+      return searchEntityWithPaginationCached(req, res, Product, {
+        entityName: 'product',
+        em,
+        searchFields: validated.by === 'legal' ? undefined : 'description',
+        buildFilters: () => {
+          const { by, min, max, q } = validated;
+          const filters: ProductFilters = {};
+
+          // Filter by legal status
+          if (by === 'legal' && q) {
+            filters.isIllegal = q === 'false';
+          }
+
+          // Filter by price range
+          if (min !== undefined || max !== undefined) {
+            filters.price = {};
+            if (min !== undefined) filters.price.$gte = min;
+            if (max !== undefined) filters.price.$lte = max;
+          }
+
+          // Filter by description
+          if (by === 'description' && q) {
+            filters.description = `%${q}%`;
+          }
+
+          return filters;
+        },
+        orderBy: { description: 'ASC' } as any,
+        useCache: true,
+        cacheTtl: CACHE_TTL.PRODUCT_LIST,
+      });
+    } finally {
+      // Always clear the EntityManager to release the connection back to the pool
+      em.clear();
     }
-
-    return searchEntityWithPaginationCached(req, res, Product, {
-      entityName: 'product',
-      em,
-      searchFields: validated.by === 'legal' ? undefined : 'description',
-      buildFilters: () => {
-        const { by, min, max, q } = validated;
-        const filters: ProductFilters = {};
-
-        // Filter by legal status
-        if (by === 'legal' && q) {
-          filters.isIllegal = q === 'false';
-        }
-
-        // Filter by price range
-        if (min !== undefined || max !== undefined) {
-          filters.price = {};
-          if (min !== undefined) filters.price.$gte = min;
-          if (max !== undefined) filters.price.$lte = max;
-        }
-
-        // Filter by description
-        if (by === 'description' && q) {
-          filters.description = `%${q}%`;
-        }
-
-        return filters;
-      },
-      orderBy: { description: 'ASC' } as any,
-      useCache: true,
-      cacheTtl: CACHE_TTL.PRODUCT_LIST,
-    });
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -176,6 +181,9 @@ export class ProductController {
       } else {
         return ResponseUtil.internalError(res, 'Error creating product', err);
       }
+    } finally {
+      // Always clear the EntityManager to release the connection back to the pool
+      em.clear();
     }
   }
 
@@ -197,13 +205,18 @@ export class ProductController {
   async getAllProducts(req: Request, res: Response) {
     const em = orm.em.fork();
 
-    return searchEntityWithPagination(req, res, Product, {
-      entityName: 'product',
-      em,
-      buildFilters: () => ({}),
-      orderBy: { description: 'ASC' } as any,
-      populate: ['distributors', 'distributors.zone'] as any,
-    });
+    try {
+      return searchEntityWithPagination(req, res, Product, {
+        entityName: 'product',
+        em,
+        buildFilters: () => ({}),
+        orderBy: { description: 'ASC' } as any,
+        populate: ['distributors', 'distributors.zone'] as any,
+      });
+    } finally {
+      // Always clear the EntityManager to release the connection back to the pool
+      em.clear();
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -240,6 +253,9 @@ export class ProductController {
       );
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error searching for product', err);
+    } finally {
+      // Always clear the EntityManager to release the connection back to the pool
+      em.clear();
     }
   }
 
@@ -308,6 +324,9 @@ export class ProductController {
       } else {
         return ResponseUtil.internalError(res, 'Error updating product', err);
       }
+    } finally {
+      // Always clear the EntityManager to release the connection back to the pool
+      em.clear();
     }
   }
 
@@ -362,6 +381,9 @@ export class ProductController {
       return ResponseUtil.deleted(res, 'Product deleted successfully');
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error deleting product', err);
+    } finally {
+      // Always clear the EntityManager to release the connection back to the pool
+      em.clear();
     }
   }
 }
