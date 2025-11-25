@@ -38,11 +38,16 @@ export default {
   // - max: Maximum connections allowed (prevents database overload)
   // - acquireTimeoutMillis: Max time to wait for available connection
   // - idleTimeoutMillis: Close idle connections after this time
+  //
+  // OPTIMIZED FOR SERVERLESS (Vercel):
+  // - Lower min to reduce idle connections in serverless
+  // - Lower max to prevent connection exhaustion
+  // - Shorter idle timeout to close unused connections faster
   pool: {
-    min: 2,                      // Keep at least 2 connections alive
-    max: 10,                     // Maximum 10 concurrent connections
-    acquireTimeoutMillis: 30000, // Wait up to 30s for a connection
-    idleTimeoutMillis: 30000,    // Close connections idle for 30s
+    min: process.env.NODE_ENV === 'production' ? 0 : 2,  // No idle connections in serverless
+    max: process.env.NODE_ENV === 'production' ? 5 : 10, // Lower max for serverless
+    acquireTimeoutMillis: 30000,                          // Wait up to 30s for a connection
+    idleTimeoutMillis: 10000,                             // Close idle connections after 10s (faster for serverless)
   },
 
   // ============================================================================

@@ -133,6 +133,8 @@ export class ProductController {
 
       // ──────────────────────────────────────────────────────────────────────
       // Associate distributors if provided
+      // CRITICAL FIX: Add relationship from BOTH sides (owner and inverse)
+      // This ensures the many-to-many relationship is properly persisted
       // ──────────────────────────────────────────────────────────────────────
       if (validatedData.distributorsIds && validatedData.distributorsIds.length > 0) {
         const distributors = await em.find(Distributor, {
@@ -140,18 +142,35 @@ export class ProductController {
         });
 
         if (distributors.length > 0) {
+          // Add from both sides to ensure persistence
           for (const dist of distributors) {
+            // Add from inverse side (Product)
             product.distributors.add(dist);
+            // Add from owning side (Distributor) - CRITICAL for persistence
+            dist.products.add(product);
           }
         }
       }
 
+      // ──────────────────────────────────────────────────────────────────────
+      // Persist with explicit flush to ensure transaction commits
+      // CRITICAL FIX: Use persistAndFlush with await to ensure DB write completes
+      // before function returns (important for serverless environments like Vercel)
+      // ──────────────────────────────────────────────────────────────────────
       await em.persistAndFlush(product);
 
       // ──────────────────────────────────────────────────────────────────────
       // Populate distributors for response
+      // Clear and re-fetch from DB to ensure we have the persisted state
       // ──────────────────────────────────────────────────────────────────────
-      await em.populate(product, ['distributors', 'distributors.zone']);
+      em.clear();
+      const savedProduct = await em.findOne(Product, { id: product.id }, {
+        populate: ['distributors', 'distributors.zone']
+      });
+
+      if (!savedProduct) {
+        throw new Error('Product was not saved correctly to database');
+      }
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -159,7 +178,7 @@ export class ProductController {
       return ResponseUtil.created(
         res,
         'Product created successfully',
-        product.toDTO()
+        savedProduct.toDTO()
       );
     } catch (err: any) {
       if (err.errors) {
