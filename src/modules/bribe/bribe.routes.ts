@@ -1,16 +1,16 @@
 // ============================================================================
 // IMPORTS - Dependencies
 // ============================================================================
-import { Router } from "express";
+import { Router } from 'express';
 
 // ============================================================================
 // IMPORTS - Internal modules
 // ============================================================================
-import { validateWithSchema } from "../../shared/middleware/validation.middleware.js";
-import { payBribesSchema } from "./bribe.schema.js";
-import { authMiddleware, rolesMiddleware } from "../auth/auth.middleware.js";
-import { BribeController } from "./bribe.controller.js";
-import { Role } from "../auth/user/user.entity.js";
+import { validateWithSchema } from '../../shared/middleware/validation.middleware.js';
+import { payBribesSchema } from './bribe.schema.js';
+import { authMiddleware, rolesMiddleware } from '../auth/auth.middleware.js';
+import { BribeController } from './bribe.controller.js';
+import { Role } from '../auth/user/user.entity.js';
 
 // ============================================================================
 // ROUTER - Bribe
@@ -101,7 +101,7 @@ const bribeController = new BribeController();
  *         description: Forbidden - Admin or Partner role required
  */
 bribeRouter.get(
-  "/search",
+  '/search',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.searchBribes,
@@ -160,7 +160,7 @@ bribeRouter.get(
  *         description: Forbidden - Admin or Partner role required
  */
 bribeRouter.get(
-  "/",
+  '/',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.getAllBribes,
@@ -227,7 +227,7 @@ bribeRouter.get(
  *         description: Bribe not found
  */
 bribeRouter.get(
-  "/:id",
+  '/:id',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER, Role.AUTHORITY]),
   bribeController.getOneBribeById,
@@ -290,7 +290,7 @@ bribeRouter.get(
  *         description: One or more bribes not found
  */
 bribeRouter.patch(
-  "/pay",
+  '/pay',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: payBribesSchema }),
@@ -354,7 +354,7 @@ bribeRouter.patch(
  *         description: Bribe not found
  */
 bribeRouter.patch(
-  "/:id/pay",
+  '/:id/pay',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: payBribesSchema }),
@@ -400,7 +400,7 @@ bribeRouter.patch(
  *         description: Bribe not found
  */
 bribeRouter.delete(
-  "/:id",
+  '/:id',
   authMiddleware,
   rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   bribeController.deleteBribe,
