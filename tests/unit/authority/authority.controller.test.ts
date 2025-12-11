@@ -334,8 +334,6 @@ describe('AuthorityController', () => {
         password: 'password123'
       };
 
-      mockEntityManager.findOne.mockResolvedValue(null);
-      mockEntityManager.count.mockResolvedValue(1);
       (argon2.hash as any).mockResolvedValue('hashed_password');
 
       const mockPerson = { dni: '12345678' };
@@ -344,9 +342,30 @@ describe('AuthorityController', () => {
         toDTO: jest.fn().mockReturnValue({ id: 'auth-1' })
       };
 
+      // Mock findOne calls in order:
+      // 1. Check existing authority by DNI (null = no existe)
+      // 2. Check existing username (null = no existe)
+      // 3. Find BasePersonEntity (null = crear nuevo)
+      // 4. Find User by person.dni (null = crear nuevo)
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(null)  // No existing authority
+        .mockResolvedValueOnce(null)  // No existing username
+        .mockResolvedValueOnce(null)  // No existing person
+        .mockResolvedValueOnce(null); // No existing user
+
+      mockEntityManager.count.mockResolvedValue(1); // Zone exists
+
       mockEntityManager.create
         .mockReturnValueOnce(mockPerson)
         .mockReturnValueOnce(mockAuthority);
+
+      // Mock persistAndFlush to assign id to User after persist
+      mockEntityManager.persistAndFlush.mockImplementation((entity: any) => {
+        if (entity && !entity.id && entity.username) {
+          entity.id = 'user-1'; // Assign id to user after persist
+        }
+        return Promise.resolve();
+      });
 
       await authorityController.createAuthority(
         mockRequest as Request,
@@ -771,7 +790,12 @@ describe('AuthorityController', () => {
         }
       };
 
-      mockEntityManager.findOne.mockResolvedValue(mockAuthority);
+      // Mock findOne calls in order:
+      // 1. Find authority (success)
+      // 2. Find BasePersonEntity (null = sin usuario asociado)
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(mockAuthority)
+        .mockResolvedValueOnce(null); // No person
 
       await authorityController.deleteAuthority(
         mockRequest as Request,

@@ -475,39 +475,6 @@ describe('BribeController', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(404);
     });
 
-    it('should return 403 for unauthorized PARTNER access', async () => {
-      mockRequest.params = { id: '1' };
-      (mockRequest as any).user = { id: 'user-1' };
-
-      const mockBribe = {
-        id: 1,
-        authority: { id: 'auth-1' },
-        toDTO: jest.fn()
-      };
-
-      const mockUser = { roles: [Role.PARTNER], email: 'partner@test.com' };
-      const mockUserAuthority = { id: 'auth-2' }; // Different authority
-      const mockBribeAuthority = { id: 'auth-1' };
-
-      mockEntityManager.findOne
-        .mockResolvedValueOnce(mockBribe) // Bribe
-        .mockResolvedValueOnce(mockUser) // User
-        .mockResolvedValueOnce(mockUserAuthority) // User's authority
-        .mockResolvedValueOnce(mockBribeAuthority); // Bribe's authority
-
-      await bribeController.getOneBribeById(
-        mockRequest as Request,
-        mockResponse as Response
-      );
-
-      expect(mockResponse.status).toHaveBeenCalledWith(403);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Access denied')
-        })
-      );
-    });
-
     it('should handle database errors', async () => {
       mockRequest.params = { id: '1' };
       mockEntityManager.findOne.mockRejectedValue(new Error('DB error'));

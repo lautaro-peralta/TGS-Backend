@@ -76,6 +76,7 @@ describe('ClientController', () => {
     mockResponse = {
       status: jest.fn() as any,
       json: jest.fn() as any,
+      set: jest.fn() as any,
       locals: {
         validated: {
           body: {},
@@ -84,9 +85,10 @@ describe('ClientController', () => {
       }
     };
 
-    // Setup chaining for status().json()
+    // Setup chaining for status().json().set()
     (mockResponse.status as jest.Mock).mockReturnValue(mockResponse);
     (mockResponse.json as jest.Mock).mockReturnValue(mockResponse);
+    (mockResponse.set as jest.Mock).mockReturnValue(mockResponse);
 
     // Mock entity manager
     mockEntityManager = {
@@ -190,7 +192,6 @@ describe('ClientController', () => {
         password: 'password123'
       };
 
-      mockEntityManager.findOne.mockResolvedValue(null);
       (argon2.hash as any).mockResolvedValue('hashed_password');
 
       const mockPerson = { dni: '12345678', name: 'Test Client' };
@@ -200,9 +201,28 @@ describe('ClientController', () => {
         toDTO: jest.fn().mockReturnValue({ dni: '12345678' })
       };
 
+      // Mock findOne calls:
+      // 1. Check existing client (null = no existe)
+      // 2. Check existing username (null = no existe)
+      // 3. Find BasePersonEntity (null = crear nuevo)
+      // 4. Find User by person.dni (null = crear nuevo)
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(null)  // No existing client
+        .mockResolvedValueOnce(null)  // No existing username
+        .mockResolvedValueOnce(null)  // No existing person
+        .mockResolvedValueOnce(null); // No existing user
+
       mockEntityManager.create
         .mockReturnValueOnce(mockPerson)
         .mockReturnValueOnce(mockClient);
+
+      // Mock persistAndFlush to assign id to User after persist
+      mockEntityManager.persistAndFlush.mockImplementation((entity: any) => {
+        if (entity && !entity.id && entity.username) {
+          entity.id = 'user-1'; // Assign id to user after persist
+        }
+        return Promise.resolve();
+      });
 
       await clientController.createClient(
         mockRequest as Request,
