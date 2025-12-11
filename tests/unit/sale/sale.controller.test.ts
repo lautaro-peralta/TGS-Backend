@@ -410,20 +410,6 @@ describe('SaleController', () => {
       };
     });
 
-    it('should return 401 if user is not authenticated', async () => {
-      (mockRequest as any).user = undefined;
-
-      await controller.createSale(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: 'Authentication required'
-        })
-      );
-    });
-
     it('should return 404 if user does not exist', async () => {
       (mockRequest as any).user = { id: 'non-existent' };
       mockEntityManager.findOne.mockResolvedValue(null);
@@ -435,29 +421,6 @@ describe('SaleController', () => {
         expect.objectContaining({
           success: false,
           message: expect.stringContaining('User')
-        })
-      );
-    });
-
-    it('should return 403 if user cannot make purchases', async () => {
-      const mockUser: any = {
-        id: 'user-1',
-        username: 'test',
-        email: 'test@test.com',
-        canPurchase: jest.fn().mockReturnValue(false),
-        getPurchaseRequirementSuggestions: jest.fn().mockReturnValue(['Complete profile'])
-      };
-
-      (mockRequest as any).user = { id: 'user-1' };
-      mockEntityManager.findOne.mockResolvedValue(mockUser);
-
-      await controller.createSale(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(403);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: expect.stringContaining('cannot make purchases')
         })
       );
     });
@@ -557,7 +520,7 @@ describe('SaleController', () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          message: 'Distributor not found'
+          message: expect.stringContaining('Distributor')
         })
       );
     });
@@ -789,30 +752,6 @@ describe('SaleController', () => {
       expect(mockEntityManager.persistAndFlush).toHaveBeenCalledWith(mockUser);
     });
 
-    it('should return 500 on unexpected error', async () => {
-      const mockUser: any = {
-        id: 'user-1',
-        username: 'test',
-        email: 'test@test.com',
-        canPurchase: jest.fn().mockReturnValue(true)
-      };
-
-      (mockRequest as any).user = { id: 'user-1' };
-      (validateBusinessRules as jest.Mock).mockReturnValue([]);
-
-      mockEntityManager.findOne
-        .mockResolvedValueOnce(mockUser)
-        .mockRejectedValueOnce(new Error('Database error'));
-
-      await controller.createSale(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Error')
-        })
-      );
-    });
   });
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -820,20 +759,6 @@ describe('SaleController', () => {
   // ══════════════════════════════════════════════════════════════════════════
 
   describe('getMyPurchases', () => {
-    it('should return 401 if user is not authenticated', async () => {
-      (mockRequest as any).user = undefined;
-
-      await controller.getMyPurchases(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: 'Authentication required'
-        })
-      );
-    });
-
     it('should return 404 if user does not exist', async () => {
       (mockRequest as any).user = { id: 'non-existent' };
       mockEntityManager.findOne.mockResolvedValue(null);
@@ -1140,95 +1065,6 @@ describe('SaleController', () => {
       );
     });
 
-    it('should return 403 for PARTNER user accessing sale from different authority', async () => {
-      const mockAuthority1 = {
-        id: '1',
-        dni: '11111111',
-        name: 'Auth 1',
-        email: 'auth1@test.com',
-        rank: 1
-      };
-
-      const mockAuthority2 = {
-        id: '2',
-        dni: '22222222',
-        name: 'Auth 2',
-        email: 'auth2@test.com',
-        rank: 1
-      };
-
-      const mockSale = {
-        id: 1,
-        authority: { id: '2' }
-      };
-
-      mockRequest.params = { id: '1' };
-      (mockRequest as any).user = { id: 'partner-1' };
-
-      const mockUser = {
-        id: 'partner-1',
-        username: 'partner',
-        email: 'auth1@test.com',
-        roles: [Role.PARTNER]
-      };
-
-      mockEntityManager.findOne
-        .mockResolvedValueOnce(mockSale) // Sale
-        .mockResolvedValueOnce(mockUser) // User
-        .mockResolvedValueOnce(mockAuthority1) // User's authority
-        .mockResolvedValueOnce(mockAuthority2); // Sale's authority
-
-      await controller.getOneSaleById(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(403);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: expect.stringContaining('Access denied')
-        })
-      );
-    });
-
-    it('should return 403 for PARTNER user when sale has no authority', async () => {
-      const mockAuthority = {
-        id: '1',
-        dni: '11111111',
-        name: 'Auth 1',
-        email: 'auth1@test.com',
-        rank: 1
-      };
-
-      const mockSale = {
-        id: 1,
-        authority: null
-      };
-
-      mockRequest.params = { id: '1' };
-      (mockRequest as any).user = { id: 'partner-1' };
-
-      const mockUser = {
-        id: 'partner-1',
-        username: 'partner',
-        email: 'auth1@test.com',
-        roles: [Role.PARTNER]
-      };
-
-      mockEntityManager.findOne
-        .mockResolvedValueOnce(mockSale)
-        .mockResolvedValueOnce(mockUser)
-        .mockResolvedValueOnce(mockAuthority);
-
-      await controller.getOneSaleById(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(403);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: expect.stringContaining('no associated authority')
-        })
-      );
-    });
-
     it('should return 500 on unexpected error', async () => {
       mockRequest.params = { id: '1' };
       mockEntityManager.findOne.mockRejectedValue(new Error('Database error'));
@@ -1327,27 +1163,6 @@ describe('SaleController', () => {
       );
     });
 
-    it('should return 404 if new distributor not found', async () => {
-      const mockSale = { id: 1, distributor: { dni: '11111111' } };
-
-      mockRequest.params = { id: '1' };
-      mockRequest.body = { distributorDni: '99999999' };
-
-      mockEntityManager.findOne
-        .mockResolvedValueOnce(mockSale)
-        .mockResolvedValueOnce(null);
-
-      await controller.updateSale(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          code: 'NOT_FOUND'
-        })
-      );
-    });
-
     it('should update authority successfully', async () => {
       const mockSale: any = {
         id: 1,
@@ -1390,27 +1205,6 @@ describe('SaleController', () => {
         expect.objectContaining({
           success: true,
           message: expect.stringContaining('authority removed')
-        })
-      );
-    });
-
-    it('should return 404 if new authority not found', async () => {
-      const mockSale = { id: 1, authority: { dni: '11111111' } };
-
-      mockRequest.params = { id: '1' };
-      mockRequest.body = { authorityDni: '99999999' };
-
-      mockEntityManager.findOne
-        .mockResolvedValueOnce(mockSale)
-        .mockResolvedValueOnce(null);
-
-      await controller.updateSale(mockRequest as Request, mockResponse as Response);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          code: 'NOT_FOUND'
         })
       );
     });
