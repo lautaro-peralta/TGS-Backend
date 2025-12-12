@@ -2,7 +2,7 @@
 // SCHEDULER SERVICE - Automated task scheduling service
 // ============================================================================
 
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import { cleanupService } from './cleanup.service.js';
 import logger from '../utils/logger.js';
 
@@ -47,7 +47,6 @@ export class SchedulerService {
         logger.error({ err: error }, 'Scheduled cleanup failed');
       }
     }, {
-      scheduled: true,
       timezone: 'America/Argentina/Buenos_Aires' // Use your timezone
     });
 

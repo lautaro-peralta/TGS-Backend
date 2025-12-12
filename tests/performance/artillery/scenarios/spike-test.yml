@@ -1,0 +1,86 @@
+# Spike Testing - Prueba de picos repentinos
+# Objetivo: Verificar recuperación ante picos súbitos de tráfico
+
+config:
+  target: "{{ $processEnvironment.API_BASE_URL || 'http://localhost:3000' }}"
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint:
+      stripQueryString: true
+
+  processor: "../utils/helpers.js"
+
+  phases:
+    # Fase 1: Baseline (1 minuto)
+    - name: "Baseline"
+      duration: 60
+      arrivalRate: 10
+
+    # Fase 2: Spike súbito (30 segundos)
+    - name: "Sudden Spike"
+      duration: 30
+      arrivalRate: 100
+
+    # Fase 3: Recuperación (1 minuto)
+    - name: "Recovery"
+      duration: 60
+      arrivalRate: 10
+
+    # Fase 4: Segundo spike (30 segundos)
+    - name: "Second Spike"
+      duration: 30
+      arrivalRate: 150
+
+    # Fase 5: Normalización (1 minuto)
+    - name: "Normalization"
+      duration: 60
+      arrivalRate: 10
+
+  ensure:
+    p95: 800
+    p99: 1500
+    maxErrorRate: 3
+
+scenarios:
+  # Simular múltiples usuarios creando ventas simultáneamente
+  - name: "Concurrent Sale Creation"
+    weight: 70
+    flow:
+      - function: "generateAuthToken"
+
+      - post:
+          url: "/api/sales"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            productId: "{{ $randomNumber(1, 10) }}"
+            distributorId: "{{ $randomNumber(1, 5) }}"
+            clientId: "{{ $randomNumber(1, 20) }}"
+            quantity: "{{ $randomNumber(1, 30) }}"
+            date: "1920-05-15"
+          expect:
+            - statusCode: [201, 400, 401, 429, 500]
+            - contentType: json
+
+  # Múltiples consultas simultáneas
+  - name: "Concurrent Queries"
+    weight: 30
+    flow:
+      - function: "generateAuthToken"
+
+      - parallel:
+          - get:
+              url: "/api/sales"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+
+          - get:
+              url: "/api/products"
+              headers:
+                Authorization: "Bearer {{ authToken }}"
+
+          - get:
+              url: "/api/zones"
+              headers:
+                Authorization: "Bearer {{ authToken }}"

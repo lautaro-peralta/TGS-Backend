@@ -1,0 +1,895 @@
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import type { Request, Response, NextFunction } from 'express';
+import argon2 from 'argon2';
+import { UserController } from '../../../src/modules/auth/user/user.controller.js';
+import { User, Role } from '../../../src/modules/auth/user/user.entity.js';
+import { BasePersonEntity } from '../../../src/shared/base.person.entity.js';
+import { orm } from '../../../src/shared/db/orm.js';
+
+// Mock dependencies
+jest.mock('../../../src/shared/db/orm.js', () => ({
+  orm: {
+    em: {
+      fork: jest.fn()
+    }
+  }
+}));
+
+jest.mock('../../../src/shared/utils/logger.js', () => {
+  const mockFn = jest.fn();
+  return {
+    __esModule: true,
+    default: {
+      debug: mockFn,
+      warn: mockFn,
+      error: mockFn,
+      info: mockFn
+    }
+  };
+});
+
+jest.mock('argon2');
+jest.mock('uuid', () => ({
+  validate: jest.fn()
+}));
+
+import { validate as isUuid } from 'uuid';
+
+describe('UserController', () => {
+  let userController: UserController;
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let mockNext: NextFunction;
+  let mockEntityManager: any;
+
+  beforeEach(() => {
+    userController = new UserController();
+
+    mockRequest = {
+      params: {},
+      query: {},
+      body: {}
+    };
+
+    mockResponse = {
+      status: jest.fn() as any,
+      json: jest.fn() as any,
+      set: jest.fn() as any,
+      locals: {
+        validated: {
+          params: {},
+          body: {}
+        }
+      }
+    };
+
+    // Setup chaining for status().json().set()
+    (mockResponse.status as jest.Mock).mockReturnValue(mockResponse);
+    (mockResponse.json as jest.Mock).mockReturnValue(mockResponse);
+    (mockResponse.set as jest.Mock).mockReturnValue(mockResponse);
+
+    mockNext = jest.fn() as NextFunction;
+
+    // Mock entity manager
+    mockEntityManager = {
+      findOne: jest.fn(),
+      find: jest.fn(),
+      persistAndFlush: jest.fn(),
+      flush: jest.fn(),
+      create: jest.fn(),
+      assign: jest.fn(),
+      refresh: jest.fn(),
+      fork: jest.fn().mockReturnThis()
+    };
+
+    (orm.em.fork as jest.Mock).mockReturnValue(mockEntityManager);
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('getUserProfile', () => {
+    it('should return user profile successfully', async () => {
+      const mockUser = new User('testuser', 'test@test.com', 'hashedpwd');
+      mockUser.id = 'user-123';
+      mockUser.updateProfileCompleteness = jest.fn();
+      mockUser.toDTO = jest.fn().mockReturnValue({ id: 'user-123', username: 'testuser' }) as any;
+
+      (mockRequest as any).user = { id: 'user-123' };
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.getUserProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockEntityManager.findOne).toHaveBeenCalledWith(User, { id: 'user-123' }, { populate: ['person'] });
+      expect(mockUser.updateProfileCompleteness).toHaveBeenCalled();
+      expect(mockEntityManager.flush).toHaveBeenCalled();
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'User profile obtained successfully'
+        })
+      );
+    });
+
+    it('should return 404 if user not found', async () => {
+      (mockRequest as any).user = { id: 'non-existent' };
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.getUserProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('User')
+        })
+      );
+    });
+
+    it('should handle database errors gracefully', async () => {
+      (mockRequest as any).user = { id: 'user-123' };
+      mockEntityManager.findOne.mockRejectedValue(new Error('DB error'));
+
+      await userController.getUserProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Error getting user')
+        })
+      );
+    });
+  });
+
+  describe('getAllUsers', () => {
+    it('should return all users successfully', async () => {
+      const mockUsers = [
+        { toDTO: jest.fn().mockReturnValue({ id: '1', username: 'user1' }) },
+        { toDTO: jest.fn().mockReturnValue({ id: '2', username: 'user2' }) }
+      ];
+
+      mockEntityManager.find.mockResolvedValue(mockUsers);
+
+      await userController.getAllUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockEntityManager.find).toHaveBeenCalledWith(User, {}, { populate: ['person'] });
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.any(Array)
+        })
+      );
+    });
+
+    it('should handle database errors', async () => {
+      mockEntityManager.find.mockRejectedValue(new Error('DB error'));
+
+      await userController.getAllUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('getVerifiedUsers', () => {
+    const createMockUser = (roles: Role[], hasPersonalInfo: boolean = true) => {
+      return {
+        roles,
+        hasPersonalInfo,
+        toDTO: jest.fn().mockReturnValue({ roles })
+      };
+    };
+
+    it('should return verified users with complete profiles', async () => {
+      const mockUsers = [
+        createMockUser([Role.USER]),
+        createMockUser([Role.USER, Role.PARTNER])
+      ];
+
+      mockEntityManager.find.mockResolvedValue(mockUsers);
+
+      await userController.getVerifiedUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockEntityManager.find).toHaveBeenCalledWith(
+        User,
+        { isVerified: true, profileCompleteness: 100 },
+        { populate: ['person'] }
+      );
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true
+        })
+      );
+    });
+
+    it('should filter by targetRole=AUTHORITY', async () => {
+      mockRequest.query = { targetRole: 'AUTHORITY' };
+      const mockUsers = [
+        createMockUser([Role.USER]),
+        createMockUser([Role.USER, Role.PARTNER]),  // Should be excluded
+        createMockUser([Role.USER, Role.ADMIN])      // Should be excluded
+      ];
+
+      mockEntityManager.find.mockResolvedValue(mockUsers);
+
+      await userController.getVerifiedUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({ roles: [Role.USER] })
+          ])
+        })
+      );
+    });
+
+    it('should filter by targetRole=PARTNER', async () => {
+      mockRequest.query = { targetRole: 'PARTNER' };
+      const mockUsers = [
+        createMockUser([Role.USER]),
+        createMockUser([Role.USER, Role.AUTHORITY]), // Should be excluded
+        createMockUser([Role.USER, Role.PARTNER])    // Should be excluded (already PARTNER)
+      ];
+
+      mockEntityManager.find.mockResolvedValue(mockUsers);
+
+      await userController.getVerifiedUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      const response: any = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(response.data).toHaveLength(1);
+      expect(response.data[0].roles).toEqual([Role.USER]);
+    });
+
+    it('should exclude users without personal info', async () => {
+      const mockUsers = [
+        createMockUser([Role.USER], true),
+        createMockUser([Role.USER], false)  // Should be excluded
+      ];
+
+      mockEntityManager.find.mockResolvedValue(mockUsers);
+
+      await userController.getVerifiedUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      const response: any = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(response.data).toHaveLength(1);
+    });
+
+    it('should exclude ADMIN users by default', async () => {
+      const mockUsers = [
+        createMockUser([Role.USER]),
+        createMockUser([Role.USER, Role.ADMIN])  // Should be excluded
+      ];
+
+      mockEntityManager.find.mockResolvedValue(mockUsers);
+
+      await userController.getVerifiedUsers(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      const response: any = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(response.data).toHaveLength(1);
+    });
+  });
+
+  describe('getOneUserById', () => {
+    it('should find user by username', async () => {
+      mockRequest.params = { identifier: 'testuser' };
+      (isUuid as jest.Mock).mockReturnValue(false);
+
+      const mockUser = new User('testuser', 'test@test.com', 'pwd');
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.getOneUserById(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockEntityManager.findOne).toHaveBeenCalledWith(User, { username: 'testuser' });
+    });
+
+    it('should return 404 if user not found', async () => {
+      mockRequest.params = { identifier: 'unknown' };
+      (isUuid as jest.Mock).mockReturnValue(false);
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.getOneUserById(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe('updateUserRoles', () => {
+    let mockUser: any;
+
+    beforeEach(() => {
+      mockUser = {
+        id: 'user-123',
+        roles: [Role.USER],
+        hasPersonalInfo: true,
+        toDTO: jest.fn().mockReturnValue({ id: 'user-123' })
+      };
+
+      mockResponse.locals = {
+        validated: {
+          params: { id: 'user-123' },
+          body: { role: Role.PARTNER }
+        }
+      };
+    });
+
+    it('should add PARTNER role successfully', async () => {
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockUser.roles).toContain(Role.PARTNER);
+      expect(mockEntityManager.flush).toHaveBeenCalled();
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Role added successfully'
+        })
+      );
+    });
+
+    it('should return error for invalid role', async () => {
+      mockResponse.locals!.validated.body.role = 'INVALID_ROLE';
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid role'
+        })
+      );
+    });
+
+    it('should return 404 if user not found', async () => {
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should clear all roles when assigning ADMIN', async () => {
+      mockUser.roles = [Role.USER, Role.PARTNER, Role.DISTRIBUTOR];
+      mockResponse.locals!.validated.body.role = Role.ADMIN;
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockUser.roles).toEqual([Role.ADMIN, Role.USER]);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'ADMIN role assigned - all other roles have been removed'
+        })
+      );
+    });
+
+    it('should reject AUTHORITY role with PARTNER', async () => {
+      mockUser.roles = [Role.USER, Role.PARTNER];
+      mockResponse.locals!.validated.body.role = Role.AUTHORITY;
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('AUTHORITY role is incompatible')
+        })
+      );
+    });
+
+    it('should reject ADMIN without personal info', async () => {
+      mockUser.hasPersonalInfo = false;
+      mockResponse.locals!.validated.body.role = Role.ADMIN;
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('complete personal information')
+        })
+      );
+    });
+
+    it('should not duplicate existing role', async () => {
+      mockUser.roles = [Role.USER, Role.PARTNER];
+      mockResponse.locals!.validated.body.role = Role.PARTNER;
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUserRoles(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockUser.roles).toEqual([Role.USER, Role.PARTNER]);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'User updated successfully'
+        })
+      );
+    });
+  });
+
+  describe('createUser', () => {
+    beforeEach(() => {
+      mockResponse.locals = {
+        validated: {
+          body: {
+            personId: 'person-123',
+            username: 'newuser',
+            email: 'new@test.com',
+            password: 'Password123!',
+            roles: [Role.USER]
+          }
+        }
+      };
+
+      (argon2.hash as any).mockResolvedValue('hashed_password');
+    });
+
+    it('should create user successfully', async () => {
+      const mockPerson = { id: 'person-123', user: null };
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(mockPerson)  // person lookup
+        .mockResolvedValueOnce(null)         // username check
+        .mockResolvedValueOnce(null);        // email check
+
+      await userController.createUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(argon2.hash).toHaveBeenCalledWith('Password123!');
+      expect(mockEntityManager.persistAndFlush).toHaveBeenCalled();
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'User created successfully'
+        })
+      );
+    });
+
+    it('should return 404 if person not found', async () => {
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.createUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Person')
+        })
+      );
+    });
+
+    it('should return 409 if person already has user', async () => {
+      const mockPerson = { id: 'person-123', user: { id: 'existing-user' } };
+      mockEntityManager.findOne.mockResolvedValue(mockPerson);
+
+      await userController.createUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(409);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('already has a user')
+        })
+      );
+    });
+
+    it('should return 409 if username exists', async () => {
+      const mockPerson = { id: 'person-123', user: null };
+      const existingUser = new User('newuser', 'other@test.com', 'pwd');
+
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(mockPerson)
+        .mockResolvedValueOnce(existingUser);
+
+      await userController.createUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(409);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('already in use')
+        })
+      );
+    });
+
+    it('should return 409 if email exists', async () => {
+      const mockPerson = { id: 'person-123', user: null };
+      const existingUser = new User('otheruser', 'new@test.com', 'pwd');
+
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(mockPerson)
+        .mockResolvedValueOnce(null)        // username doesn't exist
+        .mockResolvedValueOnce(existingUser); // email exists
+
+      await userController.createUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(409);
+    });
+  });
+
+  describe('updateUser', () => {
+    let mockUser: any;
+
+    beforeEach(() => {
+      mockUser = {
+        id: 'user-123',
+        roles: [Role.USER],
+        hasPersonalInfo: true,
+        isVerified: false,
+        emailVerified: false,
+        isActive: true,
+        toDTO: jest.fn().mockReturnValue({ id: 'user-123' })
+      };
+
+      mockResponse.locals = {
+        validated: {
+          params: { id: 'user-123' },
+          body: {
+            isVerified: true,
+            isActive: true
+          }
+        }
+      };
+    });
+
+    it('should update user properties successfully', async () => {
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockUser.isVerified).toBe(true);
+      expect(mockEntityManager.flush).toHaveBeenCalled();
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: expect.stringContaining('updated successfully')
+        })
+      );
+    });
+
+    it('should return 404 if user not found', async () => {
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should update roles with validation', async () => {
+      mockResponse.locals!.validated.body.roles = [Role.USER, Role.PARTNER];
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockUser.roles).toEqual([Role.USER, Role.PARTNER]);
+    });
+
+    it('should reject incompatible roles', async () => {
+      mockResponse.locals!.validated.body.roles = [Role.USER, Role.AUTHORITY, Role.PARTNER];
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('AUTHORITY role is incompatible')
+        })
+      );
+    });
+
+    it('should process ADMIN role assignment', async () => {
+      mockResponse.locals!.validated.body.roles = [Role.USER, Role.PARTNER, Role.ADMIN];
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockUser.roles).toEqual([Role.ADMIN, Role.USER]);
+    });
+  });
+
+  describe('completeProfile', () => {
+    let mockUser: any;
+
+    beforeEach(() => {
+      mockUser = {
+        id: 'user-123',
+        email: 'test@test.com',
+        person: null,
+        updateProfileCompleteness: jest.fn(),
+        toDTO: jest.fn().mockReturnValue({ id: 'user-123' })
+      };
+
+      (mockRequest as any).user = { id: 'user-123' };
+      mockResponse.locals = {
+        validated: {
+          body: {
+            dni: '12345678',
+            name: 'John Doe',
+            phone: '555-1234',
+            address: '123 Main St'
+          }
+        }
+      };
+    });
+
+    it('should complete profile successfully', async () => {
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(mockUser)      // user lookup
+        .mockResolvedValueOnce(null);         // DNI check
+
+      const mockPerson = { id: 'person-123' };
+      mockEntityManager.create.mockReturnValue(mockPerson);
+
+      await userController.completeProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockEntityManager.create).toHaveBeenCalledWith(
+        BasePersonEntity,
+        expect.objectContaining({
+          dni: '12345678',
+          name: 'John Doe',
+          email: 'test@test.com'
+        })
+      );
+      expect(mockUser.person).toBe(mockPerson);
+      expect(mockUser.updateProfileCompleteness).toHaveBeenCalled();
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Profile completed successfully'
+        })
+      );
+    });
+
+    it('should return 404 if user not found', async () => {
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.completeProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return error if profile already complete', async () => {
+      mockUser.person = { id: 'existing-person' };
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.completeProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('already complete')
+        })
+      );
+    });
+
+    it('should return 409 if DNI already registered', async () => {
+      mockEntityManager.findOne
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce({ id: 'existing-person' }); // DNI exists
+
+      await userController.completeProfile(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(409);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('DNI')
+        })
+      );
+    });
+  });
+
+  describe('updatePersonalInfo', () => {
+    let mockUser: any;
+    let mockPerson: any;
+
+    beforeEach(() => {
+      mockPerson = {
+        dni: '12345678',
+        name: 'John Doe',
+        phone: '555-1234',
+        address: '123 Main St'
+      };
+
+      mockUser = {
+        id: 'user-123',
+        roles: [Role.USER],
+        person: mockPerson,
+        toDTO: jest.fn().mockReturnValue({ id: 'user-123' })
+      };
+
+      (mockRequest as any).user = { id: 'user-123' };
+      mockRequest.body = {
+        phone: '555-5678',
+        address: '456 New St'
+      };
+    });
+
+    it('should update personal info successfully', async () => {
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updatePersonalInfo(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockPerson.phone).toBe('555-5678');
+      expect(mockPerson.address).toBe('456 New St');
+      expect(mockEntityManager.flush).toHaveBeenCalled();
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Personal information updated successfully'
+        })
+      );
+    });
+
+    it('should return error if no fields provided', async () => {
+      mockRequest.body = {};
+
+      await userController.updatePersonalInfo(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('At least one field')
+        })
+      );
+    });
+
+    it('should return 404 if user not found', async () => {
+      mockEntityManager.findOne.mockResolvedValue(null);
+
+      await userController.updatePersonalInfo(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return error if profile not complete', async () => {
+      mockUser.person = null;
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updatePersonalInfo(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('must be completed first')
+        })
+      );
+    });
+
+    it('should update only phone if address not provided', async () => {
+      mockRequest.body = { phone: '555-9999' };
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updatePersonalInfo(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockPerson.phone).toBe('555-9999');
+      expect(mockPerson.address).toBe('123 Main St'); // unchanged
+    });
+
+    it('should update only address if phone not provided', async () => {
+      mockRequest.body = { address: '789 Other St' };
+      mockEntityManager.findOne.mockResolvedValue(mockUser);
+
+      await userController.updatePersonalInfo(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(mockPerson.address).toBe('789 Other St');
+      expect(mockPerson.phone).toBe('555-1234'); // unchanged
+    });
+  });
+});
