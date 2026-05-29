@@ -3,7 +3,7 @@
 Este repositorio contiene el backend del sistema **The Garrison System**, desarrollado en **Node.js** con **TypeScript** y utilizando **MikroORM** para la gestión de la base de datos PostgreSQL.
 
 Repo general (repositorio padre):
-<https://github.com/Lau-prog/GarrSYS>
+<https://github.com/lautaro-peralta/GarrSYS>
 
 ---
 
