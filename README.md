@@ -26,7 +26,7 @@ pnpm start:dev
 
 ### Sin Docker
 
-Si prefieres instalar PostgreSQL y Redis localmente, sigue las instrucciones en la sección [Configuración del Entorno](#configuración-del-entorno) o consulta la documentación completa en [docs/01-QUICK-START.md](docs/01-QUICK-START.md).
+Si prefieres instalar PostgreSQL y Redis localmente, sigue las instrucciones en la sección [Configuración del Entorno](#configuración-del-entorno) o consulta la documentación completa en [docs](docs/).
 
 ---
 
@@ -128,7 +128,7 @@ DB_PASSWORD=postgres
 DB_NAME=tpdesarrollo
 
 # Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_SECRET=Th1sIsMyN3wSupaDupaS3cureS3cr3ttt
 JWT_EXPIRES_IN=15m
 
 # Logging
@@ -147,11 +147,11 @@ REDIS_PORT=6379
 REDIS_DB=0
 
 # Email Service (SMTP) - Para verificación de emails
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=tu-email@gmail.com
-SMTP_PASS=tu-app-password
+# Usar Mailtrap para desarrollo
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=your-mailtrap-user
+SMTP_PASS=your-mailtrap-password
 SMTP_FROM=noreply@tgs-system.com
 
 # Frontend URL
@@ -201,6 +201,6 @@ Si necesitas habilitar Redis (recomendado para producción):
 
 1. Instala y ejecuta Redis en tu máquina
 2. Establece `REDIS_ENABLED=true` en tu archivo `.env`
-3. Consulta [`docs/REDIS_CONFIGURATION.md`](docs/REDIS_CONFIGURATION.md) para más detalles
+3. Configura los valores de conexión según tu instalación de Redis
 
 **Nota**: Si anteriormente veías errores de conexión a Redis al iniciar el servidor, esto ya está resuelto. El servidor ya no intenta conectarse a Redis cuando está deshabilitado.
