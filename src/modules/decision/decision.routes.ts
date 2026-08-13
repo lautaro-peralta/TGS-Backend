@@ -2,6 +2,12 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Router } from 'express';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../auth/auth.middleware.js';
+import { Role } from '../auth/user/user.entity.js';
+
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -138,6 +144,8 @@ decisionRouter.get('/:id', decisionController.getOneDecisionById);
  */
 decisionRouter.post(
   '/',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: createDecisionSchema }),
   decisionController.createDecision
 );
@@ -185,6 +193,8 @@ decisionRouter.post(
  */
 decisionRouter.patch(
   '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: updateDecisionSchema }),
   decisionController.updateDecision
 );
@@ -213,4 +223,9 @@ decisionRouter.patch(
  *       401:
  *         description: Not authenticated
  */
-decisionRouter.delete('/:id', decisionController.deleteDecision);
+decisionRouter.delete(
+  '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  decisionController.deleteDecision
+);

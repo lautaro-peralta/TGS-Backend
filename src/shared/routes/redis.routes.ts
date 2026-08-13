@@ -3,14 +3,25 @@
 // ============================================================================
 
 import { Router } from 'express';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../../modules/auth/auth.middleware.js';
+import { Role } from '../../modules/auth/user/user.entity.js';
 import { RedisController } from '../controllers/redis.controller.js';
 
 /**
  * Redis administration routes
- * Note: These routes should be open only for administrator access
+ * Acceso restringido a ADMIN mediante authMiddleware + rolesMiddleware.
  */
 export const redisRouter = Router();
 const redisController = new RedisController();
+
+// Todas las rutas de abajo son de administración: exponen el contenido de
+// la caché y operaciones destructivas, así que exigen sesión y rol ADMIN.
+// Va aquí y no en el montaje de app.ts para que la garantía viaje con el
+// router y no dependa de cómo se monte.
+redisRouter.use(authMiddleware, rolesMiddleware([Role.ADMIN]));
 
 // Get Redis service status
 redisRouter.get('/status', redisController.getRedisStatus.bind(redisController));
