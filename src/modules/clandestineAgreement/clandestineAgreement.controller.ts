@@ -17,6 +17,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchClandestineAgreementsSchema } from './clandestineAgreement.schema.js';
 import { EntityFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - ClandestineAgreement
@@ -171,7 +172,7 @@ export class ClandestineAgreementController {
   async getOneClandestineAgreementById(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -208,7 +209,7 @@ export class ClandestineAgreementController {
   async updateClandestineAgreement(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -260,7 +261,7 @@ export class ClandestineAgreementController {
   async deleteClandestineAgreement(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

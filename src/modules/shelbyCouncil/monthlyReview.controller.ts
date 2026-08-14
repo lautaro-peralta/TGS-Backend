@@ -16,6 +16,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchMonthlyReviewsSchema, salesStatsSchema } from './monthlyReview.schema.js';
 import { MonthlyReviewFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - MonthlyReview
@@ -174,7 +175,7 @@ export class MonthlyReviewController {
     const em = orm.em.fork();
 
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -213,7 +214,7 @@ export class MonthlyReviewController {
     const em = orm.em.fork();
 
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -262,7 +263,7 @@ export class MonthlyReviewController {
     const em = orm.em.fork();
 
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

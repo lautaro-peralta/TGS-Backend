@@ -19,6 +19,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchAuthoritiesSchema, authorityBribesQuerySchema } from './authority.schema.js';
 import { AuthorityFilters, BribeFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 // ============================================================================
 // CONTROLLER - Authority
 // ============================================================================
@@ -92,7 +93,7 @@ export class AuthorityController {
   async getAuthorityBribes(req: Request, res: Response) {
     const em = orm.em.fork();
     const user = (req as any).user;
-    const authorityDniFromParam = req.params.dni;
+    const authorityDniFromParam = routeParam(req.params.dni);
 
     // Validate query params
     const validated = validateQueryParams(req, res, authorityBribesQuerySchema);
@@ -368,7 +369,7 @@ export class AuthorityController {
    */
   async getOneAuthorityByDni(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni;
+    const dni = routeParam(req.params.dni);
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -415,7 +416,7 @@ export class AuthorityController {
    */
   async putUpdateAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni;
+    const dni = routeParam(req.params.dni);
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -488,7 +489,7 @@ export class AuthorityController {
    */
   async patchUpdateAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni;
+    const dni = routeParam(req.params.dni);
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -550,7 +551,7 @@ export class AuthorityController {
    */
   async deleteAuthority(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni;
+    const dni = routeParam(req.params.dni);
 
     try {
       // ──────────────────────────────────────────────────────────────────────

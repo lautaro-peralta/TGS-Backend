@@ -20,6 +20,7 @@ import { Bribe } from '../bribe/bribe.entity.js';
 import { searchSalesSchema } from './sale.schema.js';
 import { User, Role } from '../auth/user/user.entity.js';
 import { SalesFilters, ChartData } from '../../shared/types/common.types';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 
 // ============================================================================
@@ -679,7 +680,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract sale ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -747,7 +748,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract sale ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -847,7 +848,7 @@ export class SaleController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract sale ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

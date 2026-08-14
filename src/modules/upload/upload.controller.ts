@@ -10,6 +10,7 @@ import { UTApi } from 'uploadthing/server';
 import { orm } from '../../shared/db/orm.js';
 import { Product } from '../product/product.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // UPLOADTHING API CLIENT
@@ -56,7 +57,7 @@ export class UploadController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate product exists
       // ──────────────────────────────────────────────────────────────────────
-      const productId = Number(req.params.id);
+      const productId = Number(routeParam(req.params.id));
       const product = await em.findOne(Product, { id: productId });
 
       if (!product) {
@@ -170,7 +171,7 @@ export class UploadController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate product exists
       // ──────────────────────────────────────────────────────────────────────
-      const productId = Number(req.params.id);
+      const productId = Number(routeParam(req.params.id));
       const product = await em.findOne(Product, { id: productId });
 
       if (!product) {

@@ -17,6 +17,7 @@ import { CACHE_TTL } from '../../shared/services/cache.service.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
 import logger from '../../shared/utils/logger.js';
 import { searchClientsSchema } from './client.schema.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 
 // ============================================================================
@@ -231,7 +232,7 @@ export class ClientController {
    */
   async getOneClientByDni(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -273,7 +274,7 @@ export class ClientController {
    */
   async patchUpdateClient(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -318,7 +319,7 @@ export class ClientController {
    */
   async deleteClient(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────

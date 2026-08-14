@@ -13,6 +13,7 @@ import { emailService } from '../../../shared/services/email.service.js';
 import { cacheService } from '../../../shared/services/cache.service.js';
 import { User } from '../user/user.entity.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
+import { routeParam } from '../../../shared/utils/route-param.util.js';
 
 /**
  * Controller for handling automatic email verification
@@ -255,7 +256,7 @@ export class EmailVerificationController {
 
     try {
       // Token is already validated by Zod schema
-      const { token } = req.params;
+      const token = routeParam(req.params.token);
 
       // Find verification request
       const verification = await em.findOne(EmailVerification, { token });
@@ -650,7 +651,7 @@ export class EmailVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
 
       // Find verifications for this email
       const verifications = await em.find(EmailVerification, { email }, {
@@ -686,7 +687,7 @@ export class EmailVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
 
       // Find pending verification
       const verification = await em.findOne(EmailVerification, {
@@ -782,7 +783,7 @@ export class EmailVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
 
       // ────────────────────────────────────────────────────────────────────
       // 1. Find the pending verification request
@@ -974,7 +975,7 @@ export class EmailVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
       const { reason } = req.body; // Optional reason for rejection
 
       // ────────────────────────────────────────────────────────────────────

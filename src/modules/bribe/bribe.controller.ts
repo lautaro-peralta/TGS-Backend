@@ -17,6 +17,7 @@ import logger from '../../shared/utils/logger.js';
 import { searchBribesSchema } from './bribe.schema.js';
 import { BribeFilters } from '../../shared/types/common.types.js';
 import { User, Role } from '../auth/user/user.entity.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - Bribe
@@ -282,7 +283,7 @@ export class BribeController {
    */
   async getOneBribeById(req: Request, res: Response) {
     const em = orm.em.fork();
-    const id = Number(req.params.id);
+    const id = Number(routeParam(req.params.id));
 
     if (isNaN(id)) {
       return ResponseUtil.validationError(res, 'Invalid ID', [
@@ -349,7 +350,7 @@ export class BribeController {
    */
   async payBribe(req: Request, res: Response) {
     const em = orm.em.fork();
-    const id = Number(req.params.id);
+    const id = Number(routeParam(req.params.id));
 
     if (isNaN(id)) {
       return ResponseUtil.validationError(res, 'Invalid ID', [
@@ -402,7 +403,7 @@ export class BribeController {
    */
   async payBribes(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni;
+    const dni = routeParam(req.params.dni);
     const { ids } = res.locals.validated.body;
 
     try {
@@ -496,7 +497,7 @@ export class BribeController {
    */
   async payBribeAmount(req: Request, res: Response) {
     const em = orm.em.fork();
-    const id = Number(req.params.id);
+    const id = Number(routeParam(req.params.id));
     const { amount } = res.locals.validated.body;
 
     if (isNaN(id)) {
@@ -567,7 +568,7 @@ export class BribeController {
    */
   async deleteBribe(req: Request, res: Response) {
     const em = orm.em.fork();
-    const id = Number(req.params.id);
+    const id = Number(routeParam(req.params.id));
 
     if (isNaN(id)) {
       return ResponseUtil.validationError(res, 'Invalid ID', [

@@ -20,6 +20,7 @@ import { ProductFilters } from '../../shared/types/common.types.js';
 import { searchEntityWithPagination, searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
 import { CACHE_TTL } from '../../shared/services/cache.service.js';
 import { validateQueryParams, validateBusinessRules } from '../../shared/middleware/validation.middleware.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - Product
@@ -243,7 +244,7 @@ export class ProductController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch product by ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id);
+      const id = Number(routeParam(req.params.id));
       const product = await em.findOne(Product, { id });
       if (!product) {
         return ResponseUtil.notFound(res, 'Product', id);
@@ -280,7 +281,7 @@ export class ProductController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate request and fetch product
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id);
+      const id = Number(routeParam(req.params.id));
       const validatedData = updateProductSchema.parse(req.body);
 
       const product = await em.findOne(Product, { id });
@@ -348,7 +349,7 @@ export class ProductController {
       // ──────────────────────────────────────────────────────────────────────
       // Fetch product and handle related entities
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id);
+      const id = Number(routeParam(req.params.id));
       const product = await em.findOne(
         Product,
         { id },

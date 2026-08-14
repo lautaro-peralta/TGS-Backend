@@ -16,6 +16,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchShelbyCouncilSchema } from './shelbyCouncil.schema.js';
 import { EntityFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - ConsejoShelby
@@ -162,7 +163,7 @@ export class ShelbyCouncilController {
   async getOneShelbyCouncilById(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -199,7 +200,7 @@ export class ShelbyCouncilController {
   async updateConsejoShelby(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -247,7 +248,7 @@ export class ShelbyCouncilController {
   async deleteShelbyCouncil(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

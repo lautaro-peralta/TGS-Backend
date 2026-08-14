@@ -16,6 +16,7 @@ import { CACHE_TTL } from '../../shared/services/cache.service.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
 import logger from '../../shared/utils/logger.js';
 import { searchAdminsSchema } from './admin.schema.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - Admin
@@ -190,7 +191,7 @@ export class AdminController {
   async getOneAdminByDni(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const dni = req.params.dni.trim();
+      const dni = routeParam(req.params.dni).trim();
       if (!dni) {
         return ResponseUtil.validationError(res, 'Invalid DNI', [
           { field: 'dni', message: 'The DNI is required' },
@@ -220,7 +221,7 @@ export class AdminController {
   async updateAdmin(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const dni = req.params.dni.trim();
+      const dni = routeParam(req.params.dni).trim();
       if (!dni) {
         return ResponseUtil.validationError(res, 'Invalid DNI', [
           { field: 'dni', message: 'The DNI is required' },
@@ -262,7 +263,7 @@ export class AdminController {
   async deleteAdmin(req: Request, res: Response) {
     const em = orm.em.fork();
     try {
-      const dni = req.params.dni.trim();
+      const dni = routeParam(req.params.dni).trim();
       if (!dni) {
         return ResponseUtil.validationError(res, 'Invalid DNI', [
           { field: 'dni', message: 'The DNI is required' },

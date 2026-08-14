@@ -14,6 +14,7 @@ import { orm } from '../../../shared/db/orm.js';
 import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 import { ResponseUtil } from '../../../shared/utils/response.util.js';
 import logger from '../../../shared/utils/logger.js';
+import { routeParam } from '../../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -310,7 +311,7 @@ export class UserController {
    * GET /api/users/john_doe  // By username
    */
   async getOneUserById(req: Request, res: Response) {
-    const { identifier } = req.params;
+    const identifier = routeParam(req.params.identifier);
     const em = orm.em.fork();
 
     try {

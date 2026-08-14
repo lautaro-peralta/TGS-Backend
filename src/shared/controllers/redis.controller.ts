@@ -7,6 +7,7 @@ import { redisService } from '../services/redis.service.js';
 import { cacheService } from '../services/cache.service.js';
 import { ResponseUtil } from '../utils/response.util.js';
 import logger from '../utils/logger.js';
+import { routeParam } from '../utils/route-param.util.js';
 
 /**
  * Redis administration controller
@@ -70,7 +71,7 @@ export class RedisController {
    */
   async getCacheKey(req: Request, res: Response) {
     try {
-      const { key } = req.params;
+      const key = routeParam(req.params.key);
 
       if (!key) {
         return ResponseUtil.validationError(res, 'Se requiere clave de caché', [
@@ -90,7 +91,7 @@ export class RedisController {
         type: typeof value,
       });
     } catch (error) {
-      logger.error({ err: error, key: req.params.key }, 'Error al obtener clave de caché');
+      logger.error({ err: error, key: routeParam(req.params.key) }, 'Error al obtener clave de caché');
       return ResponseUtil.internalError(res, 'Error al obtener clave de caché', error);
     }
   }
@@ -100,7 +101,7 @@ export class RedisController {
    */
   async setCacheKey(req: Request, res: Response) {
     try {
-      const { key } = req.params;
+      const key = routeParam(req.params.key);
       const { value, ttl } = req.body;
 
       if (!key || value === undefined) {
@@ -119,7 +120,7 @@ export class RedisController {
         return ResponseUtil.error(res, 'Fallo al establecer clave de caché', 500);
       }
     } catch (error) {
-      logger.error({ err: error, key: req.params.key }, 'Error al establecer clave de caché');
+      logger.error({ err: error, key: routeParam(req.params.key) }, 'Error al establecer clave de caché');
       return ResponseUtil.internalError(res, 'Error al establecer clave de caché', error);
     }
   }
@@ -129,7 +130,7 @@ export class RedisController {
    */
   async deleteCacheKey(req: Request, res: Response) {
     try {
-      const { key } = req.params;
+      const key = routeParam(req.params.key);
 
       if (!key) {
         return ResponseUtil.validationError(res, 'Se requiere clave de caché', [
@@ -146,7 +147,7 @@ export class RedisController {
         return ResponseUtil.notFound(res, 'Clave de caché', key);
       }
     } catch (error) {
-      logger.error({ err: error, key: req.params.key }, 'Error al eliminar clave de caché');
+      logger.error({ err: error, key: routeParam(req.params.key) }, 'Error al eliminar clave de caché');
       return ResponseUtil.internalError(res, 'Error al eliminar clave de caché', error);
     }
   }
