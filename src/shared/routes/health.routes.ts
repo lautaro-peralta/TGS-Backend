@@ -4,6 +4,11 @@
 
 import { Router } from 'express';
 import { HealthController } from '../controllers/health.controller.js';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../../modules/auth/auth.middleware.js';
+import { Role } from '../../modules/auth/user/user.entity.js';
 
 export const healthRouter = Router();
 const healthController = new HealthController();
@@ -21,4 +26,13 @@ healthRouter.get('/ready', healthController.readiness);
 healthRouter.get('/live', healthController.liveness);
 
 // Email service debug (temporary)
-healthRouter.get('/email-debug', healthController.emailDebug);
+// SECURITY: exposes email provider configuration (including a masked SendGrid
+// API key prefix and can trigger sending test emails), so it is restricted to
+// authenticated administrators. The other /health endpoints stay public so
+// container orchestrators / uptime monitors can probe them.
+healthRouter.get(
+  '/email-debug',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  healthController.emailDebug
+);

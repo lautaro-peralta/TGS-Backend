@@ -594,10 +594,10 @@ app.get('/', (_req, res) => {
 // Health checks - Should be before other routes for proper monitoring
 app.use('/health', healthRouter);
 
-// Redis management - Admin only routes for Redis monitoring and management
+// Redis management - Admin only (auth + ADMIN role enforced inside redisRouter)
 app.use('/admin/redis', redisRouter);
 
-// Cleanup management - Admin only routes for cleanup and scheduler operations
+// Cleanup management - Admin only (auth + ADMIN role enforced inside cleanupRouter)
 app.use('/admin/cleanup', cleanupRouter);
 
 // Authentication & User management

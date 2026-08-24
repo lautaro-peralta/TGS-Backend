@@ -4,13 +4,26 @@
 
 import { Router } from 'express';
 import { CleanupController } from '../controllers/cleanup.controller.js';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../../modules/auth/auth.middleware.js';
+import { Role } from '../../modules/auth/user/user.entity.js';
 
 /**
  * Cleanup and scheduler administration routes
- * Note: These routes should be protected with admin authentication
+ *
+ * SECURITY: These endpoints trigger destructive maintenance operations
+ * (deleting expired accounts and verifications, forcing cleanup runs). They
+ * must only be reachable by authenticated administrators. The guard is applied
+ * at the router level so the protection travels with the router regardless of
+ * where it is mounted and cannot be accidentally bypassed.
  */
 export const cleanupRouter = Router();
 const cleanupController = new CleanupController();
+
+// Require an authenticated ADMIN for every route in this router
+cleanupRouter.use(authMiddleware, rolesMiddleware([Role.ADMIN]));
 
 // Get scheduler status and information
 cleanupRouter.get('/scheduler/status', cleanupController.getSchedulerStatus.bind(cleanupController));
