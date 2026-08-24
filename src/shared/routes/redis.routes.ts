@@ -12,15 +12,17 @@ import { RedisController } from '../controllers/redis.controller.js';
 
 /**
  * Redis administration routes
- * Acceso restringido a ADMIN mediante authMiddleware + rolesMiddleware.
+ *
+ * SECURITY: These endpoints expose and mutate cache internals (clearing the
+ * cache, reading/writing/deleting arbitrary keys). They must only be reachable
+ * by authenticated administrators. The guard is applied at the router level so
+ * the protection travels with the router regardless of where it is mounted and
+ * cannot be accidentally bypassed by a future route being added below.
  */
 export const redisRouter = Router();
 const redisController = new RedisController();
 
-// Todas las rutas de abajo son de administración: exponen el contenido de
-// la caché y operaciones destructivas, así que exigen sesión y rol ADMIN.
-// Va aquí y no en el montaje de app.ts para que la garantía viaje con el
-// router y no dependa de cómo se monte.
+// Require an authenticated ADMIN for every route in this router
 redisRouter.use(authMiddleware, rolesMiddleware([Role.ADMIN]));
 
 // Get Redis service status

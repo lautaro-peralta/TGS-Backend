@@ -12,15 +12,17 @@ import { CleanupController } from '../controllers/cleanup.controller.js';
 
 /**
  * Cleanup and scheduler administration routes
- * Acceso restringido a ADMIN mediante authMiddleware + rolesMiddleware.
+ *
+ * SECURITY: These endpoints trigger destructive maintenance operations
+ * (deleting expired accounts and verifications, forcing cleanup runs). They
+ * must only be reachable by authenticated administrators. The guard is applied
+ * at the router level so the protection travels with the router regardless of
+ * where it is mounted and cannot be accidentally bypassed.
  */
 export const cleanupRouter = Router();
 const cleanupController = new CleanupController();
 
-// Todas las rutas de abajo son de administración: disparan borrados de
-// cuentas y verificaciones, así que exigen sesión y rol ADMIN. Va aquí y no
-// en el montaje de app.ts para que la garantía viaje con el router y no
-// dependa de cómo se monte.
+// Require an authenticated ADMIN for every route in this router
 cleanupRouter.use(authMiddleware, rolesMiddleware([Role.ADMIN]));
 
 // Get scheduler status and information
