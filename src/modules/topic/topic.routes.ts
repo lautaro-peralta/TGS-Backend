@@ -2,6 +2,12 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Router } from 'express';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../auth/auth.middleware.js';
+import { Role } from '../auth/user/user.entity.js';
+
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -189,6 +195,8 @@ topicRouter.get('/:id', topicController.getOneTopicById);
  */
 topicRouter.post(
   '/',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: createTopicSchema }),
   topicController.createTopic
 );
@@ -246,6 +254,8 @@ topicRouter.post(
  */
 topicRouter.patch(
   '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: updateTopicSchema }),
   topicController.updateTopic
 );
@@ -282,4 +292,9 @@ topicRouter.patch(
  *       404:
  *         description: Topic not found
  */
-topicRouter.delete('/:id', topicController.deleteTopic);
+topicRouter.delete(
+  '/:id',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  topicController.deleteTopic
+);

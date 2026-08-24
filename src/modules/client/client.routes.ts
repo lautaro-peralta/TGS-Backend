@@ -142,6 +142,8 @@ clientRouter.get('/:dni',
  */
 clientRouter.post(
   '/',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   validateWithSchema({ body: createClientSchema }),
   clientController.createClient
 );
@@ -187,6 +189,8 @@ clientRouter.post(
  */
 clientRouter.patch(
   '/:dni',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
   validateWithSchema({ body: updateClientSchema }),
   clientController.patchUpdateClient
 );
@@ -215,4 +219,9 @@ clientRouter.patch(
  *       401:
  *         description: Not authenticated
  */
-clientRouter.delete('/:dni', clientController.deleteClient);
+clientRouter.delete(
+  '/:dni',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.DISTRIBUTOR]),
+  clientController.deleteClient
+);

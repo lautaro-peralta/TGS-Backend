@@ -17,6 +17,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchPartnersSchema } from './partner.schema.js';
 import { PartnerFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - Partner
@@ -241,7 +242,7 @@ export class PartnerController {
    */
   async getPartnerByDni(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -283,7 +284,7 @@ export class PartnerController {
    */
   async updatePartner(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -341,7 +342,7 @@ export class PartnerController {
    */
   async deletePartner(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────

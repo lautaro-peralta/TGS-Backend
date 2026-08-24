@@ -16,6 +16,7 @@ import { BasePersonEntity } from '../../../shared/base.person.entity.js';
 import { env } from '../../../config/env.js';
 import { sendNotificationToUser } from '../../notification/notification.controller.js';
 import { NotificationType } from '../../notification/notification.entity.js';
+import { routeParam } from '../../../shared/utils/route-param.util.js';
 
 /**
  * Controller for handling user verification requests
@@ -276,7 +277,7 @@ export class UserVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
 
       // Find verifications for this email
       const verifications = await em.find(UserVerification, { email }, {
@@ -314,7 +315,7 @@ export class UserVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
 
       // Find pending verification
       const verification = await em.findOne(UserVerification, {
@@ -402,7 +403,7 @@ export class UserVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
 
       // ────────────────────────────────────────────────────────────────────
       // 1. Find the pending verification request
@@ -649,7 +650,7 @@ export class UserVerificationController {
 
     try {
       // Email is already validated by Zod schema
-      const { email } = req.params;
+      const email = routeParam(req.params.email);
       const { reason } = req.body; // Motivo opcional del rechazo
 
       // ────────────────────────────────────────────────────────────────────

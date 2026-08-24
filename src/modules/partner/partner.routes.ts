@@ -2,6 +2,12 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Router } from 'express';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../auth/auth.middleware.js';
+import { Role } from '../auth/user/user.entity.js';
+
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -140,6 +146,8 @@ partnerRouter.get('/:dni', partnerController.getPartnerByDni);
  */
 partnerRouter.post(
   '/',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: createPartnerSchema }),
   partnerController.createPartner
 );
@@ -187,6 +195,8 @@ partnerRouter.post(
  */
 partnerRouter.patch(
   '/:dni',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: updatePartnerSchema }),
   partnerController.updatePartner
 );
@@ -215,7 +225,12 @@ partnerRouter.patch(
  *       401:
  *         description: Not authenticated
  */
-partnerRouter.delete('/:dni', partnerController.deletePartner);
+partnerRouter.delete(
+  '/:dni',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  partnerController.deletePartner
+);
 
 /**
  * @swagger
@@ -232,4 +247,9 @@ partnerRouter.delete('/:dni', partnerController.deletePartner);
  *       401:
  *         description: Not authenticated
  */
-partnerRouter.post('/migrate/roles', partnerController.migratePartnerRoles);
+partnerRouter.post(
+  '/migrate/roles',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN]),
+  partnerController.migratePartnerRoles
+);

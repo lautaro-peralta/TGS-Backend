@@ -15,6 +15,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchDecisionsSchema } from './decision.schema.js';
 import { DateFilter, EntityFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 
 // ============================================================================
@@ -212,7 +213,7 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract decision ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -266,7 +267,7 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract decision ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -338,7 +339,7 @@ export class DecisionController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract decision ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

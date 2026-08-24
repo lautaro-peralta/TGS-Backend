@@ -3,12 +3,12 @@
 // ============================================================================
 
 import { Router } from 'express';
-import { RedisController } from '../controllers/redis.controller.js';
 import {
   authMiddleware,
   rolesMiddleware,
 } from '../../modules/auth/auth.middleware.js';
 import { Role } from '../../modules/auth/user/user.entity.js';
+import { RedisController } from '../controllers/redis.controller.js';
 
 /**
  * Redis administration routes

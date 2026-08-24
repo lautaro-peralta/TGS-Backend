@@ -14,6 +14,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchTopicsSchema } from './topic.schema.js';
 import { EntityFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 
 // ============================================================================
@@ -152,7 +153,7 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract topic ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -203,7 +204,7 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract topic ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -256,7 +257,7 @@ export class TopicController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract topic ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = Number(req.params.id.trim());
+      const id = Number(routeParam(req.params.id).trim());
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

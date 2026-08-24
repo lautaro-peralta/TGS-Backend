@@ -18,6 +18,7 @@ import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
 import logger from '../../shared/utils/logger.js';
 import { searchDistributorsSchema } from './distributor.schema.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 // ============================================================================
 // CONTROLLER - Distributor
 // ============================================================================
@@ -98,7 +99,7 @@ export class DistributorController {
    */
   async getOneDistributorByDni(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -291,7 +292,7 @@ export class DistributorController {
    */
   async patchUpdateDistributor(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────
@@ -351,7 +352,7 @@ export class DistributorController {
    */
   async deleteDistributor(req: Request, res: Response) {
     const em = orm.em.fork();
-    const dni = req.params.dni.trim();
+    const dni = routeParam(req.params.dni).trim();
 
     try {
       // ──────────────────────────────────────────────────────────────────────

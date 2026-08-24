@@ -12,6 +12,7 @@ import { Notification, NotificationStatus, NotificationType } from './notificati
 import { User } from '../auth/user/user.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import logger from '../../shared/utils/logger.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -146,7 +147,7 @@ export class NotificationController {
   async markAsRead(req: Request, res: Response) {
     const em = orm.em.fork();
     const userId = (req as any).user.id;
-    const notificationId = req.params.id;
+    const notificationId = routeParam(req.params.id);
 
     try {
       const notification = await em.findOne(Notification, {
@@ -248,7 +249,7 @@ export class NotificationController {
   async deleteNotification(req: Request, res: Response) {
     const em = orm.em.fork();
     const userId = (req as any).user.id;
-    const notificationId = req.params.id;
+    const notificationId = routeParam(req.params.id);
 
     try {
       const notification = await em.findOne(Notification, {

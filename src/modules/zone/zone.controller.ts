@@ -15,6 +15,7 @@ import { validateQueryParams } from '../../shared/middleware/validation.middlewa
 import logger from '../../shared/utils/logger.js';
 import { searchZonesSchema } from './zone.schema.js';
 import { ZoneFilters } from '../../shared/types/common.types.js';
+import { routeParam } from '../../shared/utils/route-param.util.js';
 
 // ============================================================================
 // CONTROLLER - Zone
@@ -184,7 +185,7 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract zone ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = parseInt(req.params.id);
+      const id = parseInt(routeParam(req.params.id));
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -226,7 +227,7 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract zone ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = parseInt(req.params.id);
+      const id = parseInt(routeParam(req.params.id));
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },
@@ -340,7 +341,7 @@ export class ZoneController {
       // ──────────────────────────────────────────────────────────────────────
       // Validate and extract zone ID
       // ──────────────────────────────────────────────────────────────────────
-      const id = parseInt(req.params.id);
+      const id = parseInt(routeParam(req.params.id));
       if (isNaN(id)) {
         return ResponseUtil.validationError(res, 'Invalid ID', [
           { field: 'id', message: 'The ID must be a valid number' },

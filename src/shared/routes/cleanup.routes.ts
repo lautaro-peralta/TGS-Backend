@@ -3,12 +3,12 @@
 // ============================================================================
 
 import { Router } from 'express';
-import { CleanupController } from '../controllers/cleanup.controller.js';
 import {
   authMiddleware,
   rolesMiddleware,
 } from '../../modules/auth/auth.middleware.js';
 import { Role } from '../../modules/auth/user/user.entity.js';
+import { CleanupController } from '../controllers/cleanup.controller.js';
 
 /**
  * Cleanup and scheduler administration routes

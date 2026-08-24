@@ -2,6 +2,12 @@
 // IMPORTS - Dependencies
 // ============================================================================
 import { Router } from 'express';
+import {
+  authMiddleware,
+  rolesMiddleware,
+} from '../auth/auth.middleware.js';
+import { Role } from '../auth/user/user.entity.js';
+
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -261,6 +267,8 @@ distributorRouter.get('/:dni', distributorController.getOneDistributorByDni);
  */
 distributorRouter.post(
   '/',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: createDistributorSchema }),
   distributorController.createDistributor
 );
@@ -328,6 +336,8 @@ distributorRouter.post(
  */
 distributorRouter.patch(
   '/:dni',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
   validateWithSchema({ body: updateDistributorSchema }),
   distributorController.patchUpdateDistributor
 );
@@ -364,4 +374,9 @@ distributorRouter.patch(
  *       404:
  *         description: Distributor not found
  */
-distributorRouter.delete('/:dni', distributorController.deleteDistributor);
+distributorRouter.delete(
+  '/:dni',
+  authMiddleware,
+  rolesMiddleware([Role.ADMIN, Role.PARTNER]),
+  distributorController.deleteDistributor
+);
