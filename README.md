@@ -42,6 +42,7 @@ Para una documentación académica completa y detallada, consulta la carpeta [do
 - **[Autenticación](docs/05-AUTHENTICATION.md)** - Sistema de autenticación con JWT
 - **[API Endpoints](docs/06-API-ENDPOINTS.md)** - Documentación completa de endpoints
 - **[Seguridad](docs/07-SECURITY.md)** - Mejores prácticas de seguridad
+- **[Testing & Automatización](docs/TESTING.md)** - Estrategia completa de testing y CI/CD
 
 ---
 
@@ -204,3 +205,67 @@ Si necesitas habilitar Redis (recomendado para producción):
 3. Configura los valores de conexión según tu instalación de Redis
 
 **Nota**: Si anteriormente veías errores de conexión a Redis al iniciar el servidor, esto ya está resuelto. El servidor ya no intenta conectarse a Redis cuando está deshabilitado.
+
+---
+
+## 🧪 Testing & Calidad de Código
+
+El proyecto cuenta con una estrategia completa de testing y automatización que garantiza la calidad y confiabilidad del código.
+
+### Ejecutar Tests
+
+```bash
+# Todos los tests
+pnpm test
+
+# Por tipo
+pnpm run test:unit              # Tests unitarios (rápidos)
+pnpm run test:integration       # Tests de integración (con DB)
+pnpm run test:e2e               # Tests end-to-end (flujos completos)
+pnpm run test:performance       # Pruebas de carga con Artillery
+pnpm run test:security          # Escaneo de seguridad (Snyk + npm audit)
+pnpm run test:regression        # Tests de regresión (API contracts)
+
+# Con cobertura
+pnpm run test:coverage
+
+# Modo watch (desarrollo)
+pnpm run test:watch
+```
+
+### Servicios de Test con Docker
+
+```bash
+# Iniciar servicios de test (PostgreSQL, Redis, MailHog)
+docker-compose -f docker-compose.test.yml up -d
+
+# Detener servicios
+docker-compose -f docker-compose.test.yml down
+```
+
+### Cobertura de Código
+
+- **Objetivo Global**: ≥ 80% en branches, functions, lines, statements
+- **Módulos Críticos**: ≥ 90% (Auth, User, Security)
+- **Reportes**: Disponibles en `coverage/index.html` después de ejecutar tests
+
+### CI/CD
+
+El proyecto incluye un pipeline completo de CI/CD con GitHub Actions que ejecuta:
+
+- ✅ Linting y type checking
+- ✅ Tests unitarios (paralelos)
+- ✅ Tests de integración (con PostgreSQL)
+- ✅ Tests E2E (full stack)
+- ✅ Escaneo de seguridad (Snyk + npm audit)
+- ✅ Tests de performance (Artillery)
+- ✅ Tests de regresión (API snapshots)
+- ✅ Reportes de cobertura (Codecov)
+- ✅ Notificaciones automáticas
+
+### Documentación Completa
+
+Para más detalles sobre testing, consulta:
+- **[Guía de Testing](docs/TESTING.md)** - Documentación completa de estrategia de testing
+- **[Tests README](tests/README.md)** - Guía rápida del directorio de tests
+- **[Resumen de Implementación](TESTING_IMPLEMENTATION_SUMMARY.md)** - Resumen técnico de la implementación

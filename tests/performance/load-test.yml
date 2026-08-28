@@ -1,0 +1,159 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    # Ramp up load
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up load"
+    # Sustained load
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained load"
+    # Spike test
+    - duration: 60
+      arrivalRate: 100
+      name: "Spike test"
+  processor: "./load-test-processor.js"
+  plugins:
+    expect: {}
+  variables:
+    baseUrl: "http://localhost:3000"
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1  # Max 1% error rate
+    p95: 1000        # 95th percentile response time < 1000ms
+    p99: 2000        # 99th percentile response time < 2000ms
+
+scenarios:
+  # Authentication flow
+  - name: "User Registration and Login"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/register"
+          json:
+            username: "loadtest_user_{{ $randomString() }}"
+            email: "loadtest_{{ $randomString() }}@example.com"
+            password: "LoadTest123!"
+          expect:
+            - statusCode: 201
+          capture:
+            - json: "$.data.id"
+              as: "userId"
+
+      - think: 2
+
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ username }}"
+            password: "LoadTest123!"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.data.accessToken"
+              as: "accessToken"
+            - header: "set-cookie"
+              as: "cookies"
+
+  # Read-heavy operations
+  - name: "Browse and Search"
+    weight: 50
+    flow:
+      - get:
+          url: "/api/sales?page=1&limit=20"
+          expect:
+            - statusCode: [200, 401]  # May be unauthorized
+
+      - think: 1
+
+      - get:
+          url: "/api/sales/search?dateFrom=2024-01-01&dateTo=2024-12-31"
+          expect:
+            - statusCode: [200, 401]
+
+      - think: 1
+
+      - get:
+          url: "/api/products?page=1&limit=20"
+          expect:
+            - statusCode: [200, 401]
+
+  # Authenticated user operations
+  - name: "Authenticated Operations"
+    weight: 20
+    flow:
+      # First login
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "testuser"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.data.accessToken"
+              as: "accessToken"
+            - header: "set-cookie"
+              as: "cookies"
+
+      - think: 1
+
+      # View profile
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+            Cookie: "{{ cookies }}"
+          expect:
+            - statusCode: 200
+
+      - think: 2
+
+      # Create a sale (if authorized)
+      - post:
+          url: "/api/sales"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+            Cookie: "{{ cookies }}"
+          json:
+            productId: "test-product-{{ $randomNumber(1, 100) }}"
+            quantity: "{{ $randomNumber(1, 10) }}"
+            totalAmount: "{{ $randomNumber(10, 1000) }}"
+          expect:
+            - statusCode: [201, 403]  # May be forbidden if not client
+
+      - think: 1
+
+      # Search sales
+      - get:
+          url: "/api/sales/search?page=1&limit=10"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+            Cookie: "{{ cookies }}"
+          expect:
+            - statusCode: 200
+
+  # Database-intensive operations
+  - name: "Complex Queries"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/sales/search?dateFrom=2024-01-01&dateTo=2024-12-31&status=completed&sortBy=date&sortOrder=desc&page=1&limit=50"
+          expect:
+            - statusCode: [200, 401]
+
+      - think: 2
+
+      - get:
+          url: "/api/clients?page=1&limit=100"
+          expect:
+            - statusCode: [200, 401]
+
+after:
+  flow:
+    - log: "Load test completed"
