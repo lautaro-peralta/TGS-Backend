@@ -1,6 +1,7 @@
 # Base de Datos - TGS Backend
 
 ## Índice
+
 - [Visión General](#visión-general)
 - [Diagrama Entidad-Relación (ER)](#diagrama-entidad-relación-er)
 - [Entidades Principales](#entidades-principales)
@@ -30,6 +31,7 @@
 **MikroORM** es el ORM (Object-Relational Mapping) utilizado para mapear objetos TypeScript a tablas de PostgreSQL.
 
 **Ventajas:**
+
 - Type-safe: Aprovecha TypeScript para validación de tipos
 - Data Mapper Pattern: Separa entidades de la lógica de persistencia
 - Unit of Work: Gestiona automáticamente transacciones y cambios
@@ -208,16 +210,16 @@ Entidad central de autenticación y autorización.
 
 ```typescript
 // Tabla: users
-@Entity({ tableName: 'users' })
+@Entity({ tableName: "users" })
 export class User {
-  id: string;                 // UUID v7
-  username: string;           // Único
-  email: string;              // Único
-  password: string;           // Hasheado con Argon2
-  roles: Role[];              // Array de roles [ADMIN, CLIENT, etc.]
-  isActive: boolean;          // Cuenta activa
-  isVerified: boolean;        // Verificado por admin
-  emailVerified: boolean;     // Email validado
+  id: string; // UUID v7
+  username: string; // Único
+  email: string; // Único
+  password: string; // Hasheado con Argon2
+  roles: Role[]; // Array de roles [ADMIN, CLIENT, etc.]
+  isActive: boolean; // Cuenta activa
+  isVerified: boolean; // Verificado por admin
+  emailVerified: boolean; // Email validado
   lastLoginAt?: Date;
   profileCompleteness: number; // 0-100%
   createdAt: Date;
@@ -229,18 +231,20 @@ export class User {
 ```
 
 **Roles Disponibles:**
+
 ```typescript
 enum Role {
-  ADMIN = 'ADMIN',           // Administrador del sistema
-  PARTNER = 'PARTNER',       // Socio (Shelby Council)
-  DISTRIBUTOR = 'DISTRIBUTOR', // Distribuidor de productos
-  CLIENT = 'CLIENT',         // Cliente
-  USER = 'USER',             // Usuario básico (sin rol específico)
-  AUTHORITY = 'AUTHORITY',   // Autoridad (policía, gobierno)
+  ADMIN = "ADMIN", // Administrador del sistema
+  PARTNER = "PARTNER", // Socio (Shelby Council)
+  DISTRIBUTOR = "DISTRIBUTOR", // Distribuidor de productos
+  CLIENT = "CLIENT", // Cliente
+  USER = "USER", // Usuario básico (sin rol específico)
+  AUTHORITY = "AUTHORITY", // Autoridad (policía, gobierno)
 }
 ```
 
 **Completitud de Perfil:**
+
 - **25%**: Usuario registrado
 - **+25%**: Usuario verificado por admin
 - **+50%**: Información personal completa
@@ -254,14 +258,14 @@ Entidad base para todas las personas en el sistema.
 
 ```typescript
 // Tabla: persons
-@Entity({ tableName: 'persons' })
+@Entity({ tableName: "persons" })
 export class BasePersonEntity {
-  id: string;           // UUID v7
-  dni: string;          // Único (DNI/ID)
-  name: string;         // Nombre completo
-  email: string;        // Email de contacto
-  phone: string;        // Teléfono
-  address: string;      // Dirección
+  id: string; // UUID v7
+  dni: string; // Único (DNI/ID)
+  name: string; // Nombre completo
+  email: string; // Email de contacto
+  phone: string; // Teléfono
+  address: string; // Dirección
 
   // Relación 1:1 con User (opcional)
   user?: Ref<User>;
@@ -270,6 +274,7 @@ export class BasePersonEntity {
 
 **Herencia:**
 Varias entidades heredan de `BasePersonEntity`:
+
 - `Client` (Cliente)
 - `Admin` (Administrador)
 - `Partner` (Socio)
@@ -277,6 +282,7 @@ Varias entidades heredan de `BasePersonEntity`:
 - `Authority` (Autoridad)
 
 **Diagrama de Herencia:**
+
 ```
        BasePersonEntity (Abstract)
                 │
@@ -293,7 +299,7 @@ Cliente que realiza compras.
 
 ```typescript
 // Tabla: clients
-@Entity({ tableName: 'clients' })
+@Entity({ tableName: "clients" })
 export class Client extends BasePersonEntity {
   // Hereda: id, dni, name, email, phone, address
 
@@ -303,6 +309,7 @@ export class Client extends BasePersonEntity {
 ```
 
 **Relaciones:**
+
 - Puede tener muchas compras (`Sale`)
 
 ---
@@ -313,7 +320,7 @@ Representa una venta realizada en el sistema.
 
 ```typescript
 // Tabla: sales
-@Entity({ tableName: 'sales' })
+@Entity({ tableName: "sales" })
 export class Sale extends BaseObjectEntity {
   id: string;
   description?: string;
@@ -321,14 +328,15 @@ export class Sale extends BaseObjectEntity {
   saleAmount: number;
 
   // Relaciones
-  distributor: Ref<Distributor>;  // Requerido
-  client?: Ref<Client>;           // Opcional
-  authority?: Ref<Authority>;     // Opcional
-  details: Collection<Detail>;    // Detalles de la venta
+  distributor: Ref<Distributor>; // Requerido
+  client?: Ref<Client>; // Opcional
+  authority?: Ref<Authority>; // Opcional
+  details: Collection<Detail>; // Detalles de la venta
 }
 ```
 
 **Relaciones:**
+
 - **N:1** con `Distributor` (un distributor puede tener muchas ventas)
 - **N:1** con `Client` (un cliente puede tener muchas ventas)
 - **N:1** con `Authority` (una autoridad puede tener muchas ventas asociadas)
@@ -342,7 +350,7 @@ Detalle de productos en una venta (línea de venta).
 
 ```typescript
 // Tabla: details
-@Entity({ tableName: 'details' })
+@Entity({ tableName: "details" })
 export class Detail {
   id: string;
   quantity: number;
@@ -356,6 +364,7 @@ export class Detail {
 ```
 
 **Fórmula:**
+
 ```
 subtotal = quantity × unitPrice
 ```
@@ -368,22 +377,23 @@ Productos disponibles para venta.
 
 ```typescript
 // Tabla: products
-@Entity({ tableName: 'products' })
+@Entity({ tableName: "products" })
 export class Product extends BaseObjectEntity {
   id: string;
   description: string;
   detail?: string;
   price: number;
   stock: number;
-  isIllegal: boolean;  // Producto ilegal (contrabando, etc.)
+  isIllegal: boolean; // Producto ilegal (contrabando, etc.)
 
   // Relaciones
   distributors: Collection<Distributor>; // N:M
-  details: Collection<Detail>;           // 1:N
+  details: Collection<Detail>; // 1:N
 }
 ```
 
 **Relaciones:**
+
 - **N:M** con `Distributor` (muchos productos pueden ser vendidos por muchos distribuidores)
 - **1:N** con `Detail` (un producto puede estar en muchos detalles de venta)
 
@@ -395,20 +405,21 @@ Distribuidor de productos en una zona.
 
 ```typescript
 // Tabla: distributors
-@Entity({ tableName: 'distributors' })
+@Entity({ tableName: "distributors" })
 export class Distributor extends BasePersonEntity {
   // Hereda: id, dni, name, email, phone, address
 
   commission: number;
 
   // Relaciones
-  zone: Ref<Zone>;                    // N:1
-  products: Collection<Product>;      // N:M
-  sales: Collection<Sale>;            // 1:N
+  zone: Ref<Zone>; // N:1
+  products: Collection<Product>; // N:M
+  sales: Collection<Sale>; // 1:N
 }
 ```
 
 **Relaciones:**
+
 - **N:1** con `Zone` (un distribuidor opera en una zona)
 - **N:M** con `Product` (distribuye múltiples productos)
 - **1:N** con `Sale` (realiza múltiples ventas)
@@ -421,10 +432,10 @@ Zonas de operación del negocio.
 
 ```typescript
 // Tabla: zones
-@Entity({ tableName: 'zones' })
+@Entity({ tableName: "zones" })
 export class Zone extends BaseObjectEntity {
   id: string;
-  name: string;         // Único (ej: "Birmingham", "London")
+  name: string; // Único (ej: "Birmingham", "London")
   isHeadquarters: boolean;
 
   // Relaciones
@@ -433,6 +444,7 @@ export class Zone extends BaseObjectEntity {
 ```
 
 **Zonas por Defecto (Development):**
+
 - Birmingham (Headquarters)
 - London
 - Camden Town
@@ -446,13 +458,13 @@ Socios que participan en el consejo Shelby.
 
 ```typescript
 // Tabla: partners
-@Entity({ tableName: 'partners' })
+@Entity({ tableName: "partners" })
 export class Partner extends BasePersonEntity {
   // Hereda: id, dni, name, email, phone, address
 
   // Relaciones
   shelbyCouncil: Collection<ShelbyCouncil>; // N:M
-  decisions: Collection<Decision>;          // 1:N
+  decisions: Collection<Decision>; // 1:N
 }
 ```
 
@@ -464,14 +476,14 @@ Consejo directivo de la organización.
 
 ```typescript
 // Tabla: shelby_councils
-@Entity({ tableName: 'shelby_councils' })
+@Entity({ tableName: "shelby_councils" })
 export class ShelbyCouncil extends BaseObjectEntity {
   id: string;
   name: string;
   foundedDate: Date;
 
   // Relaciones
-  partners: Collection<Partner>;          // N:M
+  partners: Collection<Partner>; // N:M
   monthlyReviews: Collection<MonthlyReview>; // 1:N
 }
 ```
@@ -484,15 +496,15 @@ Autoridades gubernamentales o policiales.
 
 ```typescript
 // Tabla: authorities
-@Entity({ tableName: 'authorities' })
+@Entity({ tableName: "authorities" })
 export class Authority extends BasePersonEntity {
   // Hereda: id, dni, name, email, phone, address
 
-  rank: string;  // Rango (ej: "Inspector", "Detective")
+  rank: string; // Rango (ej: "Inspector", "Detective")
 
   // Relaciones
-  bribes: Collection<Bribe>;  // 1:N
-  sales: Collection<Sale>;    // 1:N (ventas relacionadas)
+  bribes: Collection<Bribe>; // 1:N
+  sales: Collection<Sale>; // 1:N (ventas relacionadas)
 }
 ```
 
@@ -517,11 +529,13 @@ user?: Ref<User>;
 ```
 
 **Explicación:**
+
 - Un usuario tiene **una** información personal
 - Una información personal pertenece a **un** usuario
 - `owner: true` indica que User tiene la foreign key
 
 **Tabla SQL:**
+
 ```sql
 CREATE TABLE users (
   id VARCHAR(36) PRIMARY KEY,
@@ -548,11 +562,13 @@ client?: Ref<Client>;
 ```
 
 **Explicación:**
+
 - Un cliente puede tener **muchas** ventas
 - Una venta pertenece a **un** cliente
 - `mappedBy` indica que Sale tiene la foreign key
 
 **Tabla SQL:**
+
 ```sql
 CREATE TABLE sales (
   id VARCHAR(36) PRIMARY KEY,
@@ -579,11 +595,13 @@ distributors = new Collection<Distributor>(this);
 ```
 
 **Explicación:**
+
 - Un distribuidor vende **muchos** productos
 - Un producto es vendido por **muchos** distribuidores
 - Requiere tabla intermedia (junction table)
 
 **Tabla SQL (generada automáticamente):**
+
 ```sql
 CREATE TABLE distributor_products (
   distributor_id VARCHAR(36),
@@ -621,6 +639,7 @@ CREATE TABLE distributor_products (
 ```
 
 **Lectura del Diagrama:**
+
 1. Un `Client` realiza una `Sale`
 2. Un `Distributor` gestiona la `Sale`
 3. La `Sale` contiene múltiples `Detail` (líneas de venta)
@@ -637,26 +656,26 @@ CREATE TABLE distributor_products (
 
 export default {
   driver: PostgreSqlDriver,
-  entities: ['dist/**/*.entity.js'],       // Entidades compiladas
-  entitiesTs: ['src/**/*.entity.ts'],      // Entidades TypeScript (desarrollo)
+  entities: ["dist/**/*.entity.js"], // Entidades compiladas
+  entitiesTs: ["src/**/*.entity.ts"], // Entidades TypeScript (desarrollo)
 
   // Conexión
-  dbName: process.env.DB_NAME || 'tpdesarrollo',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
+  dbName: process.env.DB_NAME || "tpdesarrollo",
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "postgres",
+  host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "5432"),
 
   // Pool de conexiones
   pool: {
-    min: 2,                      // Mínimo de conexiones abiertas
-    max: 10,                     // Máximo de conexiones simultáneas
+    min: 2, // Mínimo de conexiones abiertas
+    max: 10, // Máximo de conexiones simultáneas
     acquireTimeoutMillis: 30000, // Timeout para obtener conexión
-    idleTimeoutMillis: 30000,    // Cerrar conexiones inactivas
+    idleTimeoutMillis: 30000, // Cerrar conexiones inactivas
   },
 
   // Debugging
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
   highlighter: new SqlHighlighter(),
 } as Options;
 ```
@@ -666,8 +685,8 @@ export default {
 ```typescript
 // src/shared/db/orm.ts
 
-import config from './orm.config.js';
-import { MikroORM } from '@mikro-orm/core';
+import config from "./orm.config.js";
+import { MikroORM } from "@mikro-orm/core";
 
 // Instancia singleton del ORM
 export let orm: MikroORM;
@@ -684,13 +703,13 @@ export async function initORM() {
  * Sincroniza el schema (solo desarrollo)
  */
 export async function syncSchema() {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     const generator = orm.getSchemaGenerator();
 
     // Actualizar schema sin perder datos
     await generator.updateSchema();
 
-    logger.info('Database schema synchronized successfully');
+    logger.info("Database schema synchronized successfully");
   }
 }
 ```
@@ -705,19 +724,21 @@ En desarrollo, el schema se sincroniza automáticamente al iniciar:
 
 ```typescript
 // src/app.ts - initDev()
-if (process.env.NODE_ENV === 'development') {
-  await syncSchema();  // Actualiza tablas automáticamente
-  await createAdminDev();  // Crea datos de prueba
+if (process.env.NODE_ENV === "development") {
+  await syncSchema(); // Actualiza tablas automáticamente
+  await createAdminDev(); // Crea datos de prueba
   await createZoneDev();
 }
 ```
 
 **Ventajas:**
+
 - Desarrollo rápido
 - No necesitas ejecutar migraciones manualmente
 - Los cambios en entidades se reflejan inmediatamente
 
 **Desventajas:**
+
 - Puede perder datos si cambias tipos de columnas
 - No es apto para producción
 
@@ -739,10 +760,11 @@ npx mikro-orm migration:down
 ```
 
 **Ejemplo de Migración:**
+
 ```typescript
 // src/migrations/Migration20251016000000.ts
 
-import { Migration } from '@mikro-orm/migrations';
+import { Migration } from "@mikro-orm/migrations";
 
 export class Migration20251016000000 extends Migration {
   async up(): Promise<void> {
@@ -753,12 +775,12 @@ export class Migration20251016000000 extends Migration {
         price DECIMAL(10, 2) NOT NULL,
         stock INT NOT NULL,
         is_illegal BOOLEAN DEFAULT FALSE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      );
     `);
   }
 
   async down(): Promise<void> {
-    this.addSql('DROP TABLE IF EXISTS products;');
+    this.addSql("DROP TABLE IF EXISTS products;");
   }
 }
 ```
@@ -772,23 +794,24 @@ export class Migration20251016000000 extends Migration {
 MikroORM usa el patrón **Unit of Work** para rastrear cambios en entidades.
 
 ```typescript
-const em = orm.em.fork();  // Crear EntityManager
+const em = orm.em.fork(); // Crear EntityManager
 
 // Crear nueva entidad
 const client = em.create(Client, {
-  dni: '12345678',
-  name: 'Thomas Shelby',
-  email: 'thomas@shelby.com',
-  phone: '+44 121 234 5678',
-  address: 'Watery Lane, Birmingham'
+  dni: "12345678",
+  name: "Thomas Shelby",
+  email: "thomas@shelby.com",
+  phone: "+44 121 234 5678",
+  address: "Watery Lane, Birmingham",
 });
 
 // MikroORM rastrea que 'client' es nuevo (INSERT pendiente)
 
-await em.flush();  // Ejecuta INSERT en base de datos
+await em.flush(); // Ejecuta INSERT en base de datos
 ```
 
 **Diagrama:**
+
 ```
 ┌────────────────────────────────────────────────────┐
 │            Unit of Work Pattern                    │
@@ -820,13 +843,14 @@ Previene duplicados de la misma entidad en memoria.
 ```typescript
 const em = orm.em.fork();
 
-const client1 = await em.findOne(Client, { id: 'uuid-123' });
-const client2 = await em.findOne(Client, { id: 'uuid-123' });
+const client1 = await em.findOne(Client, { id: "uuid-123" });
+const client2 = await em.findOne(Client, { id: "uuid-123" });
 
-console.log(client1 === client2);  // true (misma referencia)
+console.log(client1 === client2); // true (misma referencia)
 ```
 
 **Ventajas:**
+
 - Evita inconsistencias
 - Optimiza memoria
 - Mejora rendimiento (una sola query por entidad)
@@ -849,12 +873,17 @@ details = new Collection<Detail>(this);
 ```
 
 **Ejemplo:**
+
 ```typescript
 const em = orm.em.fork();
 
-const sale = await em.findOne(Sale, { id: 'sale-123' }, {
-  populate: ['details']
-});
+const sale = await em.findOne(
+  Sale,
+  { id: "sale-123" },
+  {
+    populate: ["details"],
+  },
+);
 
 // Eliminar sale
 em.remove(sale);
@@ -870,27 +899,32 @@ await em.flush();
 #### Lazy Loading (por defecto)
 
 ```typescript
-const client = await em.findOne(Client, { id: 'client-123' });
+const client = await em.findOne(Client, { id: "client-123" });
 
 // purchases NO está cargado
-console.log(client.purchases.isInitialized());  // false
+console.log(client.purchases.isInitialized()); // false
 
 // Cargar manualmente
 await client.purchases.init();
-console.log(client.purchases.isInitialized());  // true
+console.log(client.purchases.isInitialized()); // true
 ```
 
 #### Eager Loading (populate)
 
 ```typescript
-const client = await em.findOne(Client, { id: 'client-123' }, {
-  populate: ['purchases']  // Cargar compras en la misma query
-});
+const client = await em.findOne(
+  Client,
+  { id: "client-123" },
+  {
+    populate: ["purchases"], // Cargar compras en la misma query
+  },
+);
 
-console.log(client.purchases.isInitialized());  // true
+console.log(client.purchases.isInitialized()); // true
 ```
 
 **SQL Generado:**
+
 ```sql
 -- Lazy (2 queries)
 SELECT * FROM clients WHERE id = 'client-123';

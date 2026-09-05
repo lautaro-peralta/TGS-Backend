@@ -63,25 +63,28 @@ Bienvenido a la documentación académica completa del backend de **The Garrison
 ## 🎯 ¿Por dónde empezar?
 
 ### Si eres nuevo en el proyecto:
+
 1. Lee la **[Guía de Inicio Rápido](01-QUICK-START.md)** para poner en marcha la aplicación
 2. Revisa la **[Arquitectura del Proyecto](02-ARCHITECTURE.md)** para entender la estructura
 3. Consulta la **[Configuración de Entorno](03-ENVIRONMENT-CONFIG.md)** para personalizar tu entorno
 
 ### Si quieres entender la lógica de negocio:
+
 1. Estudia el **[Modelo de Base de Datos](04-DATABASE.md)** para comprender las entidades
 2. Revisa los **[API Endpoints](06-API-ENDPOINTS.md)** para ver las operaciones disponibles
 3. Lee sobre **[Autenticación](05-AUTHENTICATION.md)** para entender el control de acceso
 
 ### Si vas a contribuir al proyecto:
+
 1. Familiarízate con **[Seguridad y Mejores Prácticas](07-SECURITY.md)**
-2. Revisa la **[Arquitectura de Validación](VALIDATION_ARCHITECTURE.md)**
-3. Consulta las guías técnicas específicas según tu área de trabajo
+2. Consulta las guías técnicas específicas según tu área de trabajo
 
 ---
 
 ## 📊 Diagramas y Recursos Visuales
 
 A lo largo de esta documentación encontrarás:
+
 - Diagramas de flujo de procesos
 - Diagramas de arquitectura
 - Diagramas de entidad-relación (ER)
@@ -111,4 +114,4 @@ A lo largo de esta documentación encontrarás:
 
 ---
 
-**Última actualización**: 2025-11-15
+**Última actualización**: 2026-09-04

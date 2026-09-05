@@ -1,6 +1,7 @@
 # Arquitectura del Proyecto - TGS Backend
 
 ## Índice
+
 - [Visión General](#visión-general)
 - [Estructura de Directorios](#estructura-de-directorios)
 - [Patrones de Diseño](#patrones-de-diseño)
@@ -65,7 +66,9 @@ TGS-Backend/
 │   │   ├── decision/             # Gestión de decisiones
 │   │   ├── topic/                # Gestión de temas
 │   │   ├── shelbyCouncil/        # Consejo Shelby y revisiones
-│   │   └── clandestineAgreement/ # Acuerdos clandestinos
+│   │   ├── clandestineAgreement/ # Acuerdos clandestinos
+│   │   ├── notification/         # Notificaciones in-app
+│   │   └── upload/               # Gestión de subida de archivos
 │   │
 │   └── shared/                   # Código compartido entre módulos
 │       ├── db/                   # Configuración de base de datos
@@ -159,13 +162,14 @@ MikroORM actúa como un patrón Repository, abstrayendo el acceso a datos:
 
 ```typescript
 // En lugar de SQL directo:
-const users = await orm.em.find(User, { role: 'ADMIN' });
+const users = await orm.em.find(User, { role: "ADMIN" });
 
 // MikroORM genera y ejecuta:
 // SELECT * FROM user WHERE role = 'ADMIN'
 ```
 
 **Ventajas:**
+
 - Abstracción de la base de datos
 - Métodos de consulta reutilizables
 - Facilita testing con mocks
@@ -176,12 +180,12 @@ Los middlewares procesan requests secuencialmente:
 
 ```typescript
 // Flujo de middleware en app.ts
-app.use(cors(secureCors));              // 1. CORS
-app.use(securityMiddleware);             // 2. Headers de seguridad
-app.use(authRateLimit);                  // 3. Rate limiting
-app.use(express.json());                 // 4. Parseo de JSON
-app.use(cookieParser());                 // 5. Parseo de cookies
-app.use(RequestContext.create);          // 6. Contexto de ORM
+app.use(cors(secureCors)); // 1. CORS
+app.use(securityMiddleware); // 2. Headers de seguridad
+app.use(authRateLimit); // 3. Rate limiting
+app.use(express.json()); // 4. Parseo de JSON
+app.use(cookieParser()); // 5. Parseo de cookies
+app.use(RequestContext.create); // 6. Contexto de ORM
 ```
 
 ### 4. Dependency Injection (DI)
@@ -204,11 +208,11 @@ Usado para crear objetos complejos:
 // Ejemplo: Creación de tokens
 export const createTokens = (userId: string, role: string) => {
   const accessToken = jwt.sign({ userId, role }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN
+    expiresIn: env.JWT_EXPIRES_IN,
   });
 
   const refreshToken = jwt.sign({ userId }, env.JWT_SECRET, {
-    expiresIn: '7d'
+    expiresIn: "7d",
   });
 
   return { accessToken, refreshToken };
@@ -378,13 +382,13 @@ INFO: POST /api/clients - 201 (45ms)
 
 Cada archivo/clase tiene una única responsabilidad:
 
-| Archivo | Responsabilidad |
-|---------|-----------------|
-| `*.entity.ts` | Definir estructura de datos y relaciones |
-| `*.controller.ts` | Lógica de negocio y operaciones |
-| `*.routes.ts` | Definir endpoints HTTP y aplicar middlewares |
-| `*.schema.ts` | Validación de entrada de datos |
-| `*.middleware.ts` | Procesamiento transversal de requests |
+| Archivo           | Responsabilidad                              |
+| ----------------- | -------------------------------------------- |
+| `*.entity.ts`     | Definir estructura de datos y relaciones     |
+| `*.controller.ts` | Lógica de negocio y operaciones              |
+| `*.routes.ts`     | Definir endpoints HTTP y aplicar middlewares |
+| `*.schema.ts`     | Validación de entrada de datos               |
+| `*.middleware.ts` | Procesamiento transversal de requests        |
 
 ### Capas de la Aplicación
 
@@ -582,6 +586,7 @@ Cada archivo/clase tiene una única responsabilidad:
 Cada módulo es independiente y contiene todo lo necesario para gestionar una entidad:
 
 **Ventajas:**
+
 - Fácil de entender y mantener
 - Cambios en un módulo no afectan a otros
 - Facilita el trabajo en equipo (cada dev puede trabajar en un módulo)
@@ -592,11 +597,11 @@ El directorio `shared/` contiene código reutilizable:
 
 ```typescript
 // Ejemplo: Logger usado en toda la aplicación
-import logger from './shared/utils/logger.js';
+import logger from "./shared/utils/logger.js";
 
 // En cualquier archivo:
-logger.info('Usuario creado exitosamente');
-logger.error({ err: error }, 'Error al crear usuario');
+logger.info("Usuario creado exitosamente");
+logger.error({ err: error }, "Error al crear usuario");
 ```
 
 ### 3. Inyección de Dependencias
@@ -608,7 +613,7 @@ Servicios singleton importados:
 export const redisService = new RedisService();
 
 // Cualquier módulo lo importa:
-import { redisService } from '@/shared/services/redis.service.js';
+import { redisService } from "@/shared/services/redis.service.js";
 ```
 
 ### 4. Validación en Capas
@@ -625,8 +630,7 @@ Para profundizar en la arquitectura, consulta:
 
 - **[Base de Datos (04-DATABASE.md)](04-DATABASE.md)** - Para entender el modelo de datos
 - **[API Endpoints (06-API-ENDPOINTS.md)](06-API-ENDPOINTS.md)** - Para ver cómo se exponen los módulos
-- **[Validación (VALIDATION_ARCHITECTURE.md)](VALIDATION_ARCHITECTURE.md)** - Para detalles sobre Zod
 
 ---
 
-**Última actualización**: 2025-10-16
+**Última actualización**: 2026-09-04

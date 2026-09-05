@@ -1,6 +1,7 @@
 # API Endpoints - TGS Backend
 
 ## Índice
+
 - [Convenciones y Estándares](#convenciones-y-estándares)
 - [Autenticación](#autenticación)
 - [Gestión de Usuarios](#gestión-de-usuarios)
@@ -20,7 +21,7 @@
 
 ```
 Development:  http://localhost:3000
-Production:   https://api.tgs-system.com
+Production:   https://tgs-backend-u5xz.onrender.com
 ```
 
 ### Formato de Respuesta Estándar
@@ -61,8 +62,8 @@ Todas las respuestas siguen el formato:
 
 ### Headers Requeridos
 
-| Header | Valor | Cuándo |
-|--------|-------|--------|
+| Header         | Valor              | Cuándo               |
+| -------------- | ------------------ | -------------------- |
 | `Content-Type` | `application/json` | En requests con body |
 
 ### Autenticación
@@ -70,6 +71,7 @@ Todas las respuestas siguen el formato:
 Los endpoints protegidos requieren un JWT válido enviado como cookie HTTP-Only. Las cookies se envían **automáticamente** por el navegador después de iniciar sesión, no necesitas configurarlas manualmente en cada request.
 
 **Símbolos en la documentación:**
+
 - 🔓 Endpoint público (sin autenticación)
 - 🔒 Endpoint protegido (requiere autenticación)
 - 👤 Requiere rol específico
@@ -110,6 +112,7 @@ Content-Type: application/json
 ```
 
 **Validaciones:**
+
 - `username`: 3-50 caracteres
 - `email`: Formato de email válido, único
 - `password`: Mínimo 8 caracteres
@@ -150,10 +153,12 @@ Content-Type: application/json
 ```
 
 **Cookies Establecidas:**
+
 - `access_token` (15 min de vida)
 - `refresh_token` (7 días de vida)
 
 **Errores Comunes:**
+
 - `401`: Credenciales inválidas
 - `403`: Email no verificado (si `EMAIL_VERIFICATION_REQUIRED=true`)
 
@@ -175,6 +180,7 @@ POST /api/auth/logout
 ```
 
 **Efecto:**
+
 - Revoca refresh token en la base de datos
 - Limpia cookies `access_token` y `refresh_token`
 
@@ -199,6 +205,7 @@ POST /api/auth/refresh
 ```
 
 **Efecto:**
+
 - Genera nuevo `access_token` (15 min)
 - Rota `refresh_token` (nuevo token de 7 días)
 - Revoca refresh token antiguo
@@ -358,6 +365,7 @@ Content-Type: application/json
 ```
 
 **Roles Disponibles:**
+
 - `CLIENT`
 - `DISTRIBUTOR`
 - `PARTNER`
@@ -422,7 +430,7 @@ GET /api/clients/client-uuid-1
       {
         "id": "sale-uuid-1",
         "date": "2025-10-15T10:00:00Z",
-        "amount": 1500.50,
+        "amount": 1500.5,
         "description": "Whisky order"
       }
     ]
@@ -473,6 +481,7 @@ GET /api/products
 ```
 
 **Query Parameters (Opcionales):**
+
 - `isIllegal=true` - Filtrar productos ilegales
 - `minPrice=100` - Precio mínimo
 - `maxPrice=500` - Precio máximo
@@ -487,7 +496,7 @@ GET /api/products
       "id": "product-uuid-1",
       "description": "Premium Whisky",
       "detail": "Aged 12 years",
-      "price": 150.00,
+      "price": 150.0,
       "stock": 50,
       "isIllegal": false
     },
@@ -495,7 +504,7 @@ GET /api/products
       "id": "product-uuid-2",
       "description": "Contraband Tobacco",
       "detail": "Premium quality",
-      "price": 75.00,
+      "price": 75.0,
       "stock": 200,
       "isIllegal": true
     }
@@ -520,7 +529,7 @@ GET /api/products/:id
     "id": "product-uuid-1",
     "description": "Premium Whisky",
     "detail": "Aged 12 years",
-    "price": 150.00,
+    "price": 150.0,
     "stock": 50,
     "isIllegal": false,
     "distributorsCount": 5,
@@ -555,7 +564,7 @@ Content-Type: application/json
   "data": {
     "id": "product-uuid-3",
     "description": "Irish Whisky",
-    "price": 200.00,
+    "price": 200.0,
     "stock": 30,
     "isIllegal": false
   }
@@ -585,7 +594,7 @@ Content-Type: application/json
   "data": {
     "id": "product-uuid-3",
     "description": "Irish Whisky",
-    "price": 180.00,
+    "price": 180.0,
     "stock": 45
   }
 }
@@ -602,6 +611,7 @@ GET /api/sales
 ```
 
 **Query Parameters (Opcionales):**
+
 - `clientId=uuid` - Filtrar por cliente
 - `distributorId=uuid` - Filtrar por distribuidor
 - `startDate=2025-10-01` - Fecha inicio
@@ -617,7 +627,7 @@ GET /api/sales
       "id": "sale-uuid-1",
       "description": "Whisky order",
       "date": "2025-10-15T10:00:00Z",
-      "amount": 1500.50,
+      "amount": 1500.5,
       "client": {
         "id": "client-uuid-1",
         "name": "Thomas Shelby"
@@ -634,8 +644,8 @@ GET /api/sales
             "description": "Premium Whisky"
           },
           "quantity": 10,
-          "unitPrice": 150.00,
-          "subtotal": 1500.00
+          "unitPrice": 150.0,
+          "subtotal": 1500.0
         }
       ]
     }
@@ -689,6 +699,7 @@ Content-Type: application/json
 ```
 
 **Validaciones:**
+
 - `distributorId`: Requerido, debe existir
 - `details`: Mínimo 1 producto
 - `quantity`: Mayor a 0
@@ -892,27 +903,27 @@ Content-Type: application/json
 
 ### Respuestas Exitosas
 
-| Código | Significado | Uso |
-|--------|-------------|-----|
-| `200 OK` | Éxito | GET, PATCH, DELETE exitosos |
-| `201 Created` | Recurso creado | POST exitoso |
-| `204 No Content` | Sin contenido | DELETE exitoso sin body |
+| Código           | Significado    | Uso                         |
+| ---------------- | -------------- | --------------------------- |
+| `200 OK`         | Éxito          | GET, PATCH, DELETE exitosos |
+| `201 Created`    | Recurso creado | POST exitoso                |
+| `204 No Content` | Sin contenido  | DELETE exitoso sin body     |
 
 ### Errores del Cliente
 
-| Código | Significado | Cuándo |
-|--------|-------------|--------|
-| `400 Bad Request` | Datos inválidos | Validación de Zod falla |
-| `401 Unauthorized` | No autenticado | Token faltante o inválido |
-| `403 Forbidden` | Sin permisos | Usuario sin rol requerido |
-| `404 Not Found` | No encontrado | Recurso no existe |
-| `409 Conflict` | Conflicto | Email/username duplicado |
-| `422 Unprocessable Entity` | Error de lógica | Stock insuficiente, etc. |
+| Código                     | Significado     | Cuándo                    |
+| -------------------------- | --------------- | ------------------------- |
+| `400 Bad Request`          | Datos inválidos | Validación de Zod falla   |
+| `401 Unauthorized`         | No autenticado  | Token faltante o inválido |
+| `403 Forbidden`            | Sin permisos    | Usuario sin rol requerido |
+| `404 Not Found`            | No encontrado   | Recurso no existe         |
+| `409 Conflict`             | Conflicto       | Email/username duplicado  |
+| `422 Unprocessable Entity` | Error de lógica | Stock insuficiente, etc.  |
 
 ### Errores del Servidor
 
-| Código | Significado | Cuándo |
-|--------|-------------|--------|
+| Código                      | Significado        | Cuándo                |
+| --------------------------- | ------------------ | --------------------- |
 | `500 Internal Server Error` | Error del servidor | Excepción no manejada |
 
 ---
