@@ -1,0 +1,4 @@
+
+> proyecto_tgs@1.0.0 build C:\Users\Usuario\DSW\TGS\tgs-backend
+> tsc -p ./tsconfig.json
+

@@ -66,167 +66,171 @@ export class AuthController {
       const validatedData = registerSchema.parse(req.body);
       const { username, email, password } = validatedData;
 
-      // ────────────────────────────────────────────────────────────────────
-      // Check for duplicate username
-      // ────────────────────────────────────────────────────────────────────
-      const existingUsername = await em.findOne(User, { username });
-      if (existingUsername) {
-        return ResponseUtil.conflict(
-          res,
-          'Username is already registered',
-          'username'
-        );
-      }
-
-      // ────────────────────────────────────────────────────────────────────
-      // Check for duplicate email with smart reclaim logic
-      // ────────────────────────────────────────────────────────────────────
-      const existingEmail = await em.findOne(User, { email });
-      if (existingEmail) {
-        // If email is already verified, it's truly taken
-        if (existingEmail.emailVerified) {
-          return ResponseUtil.conflict(
-            res,
-            'Email is already registered',
-            'email'
-          );
+      // We will capture data from the transaction block
+      const { emailVerificationData, newUserId } = await em.transactional(async (txEm) => {
+        // ────────────────────────────────────────────────────────────────────
+        // Check for duplicate username
+        // ────────────────────────────────────────────────────────────────────
+        const existingUsername = await txEm.findOne(User, { username });
+        if (existingUsername) {
+          throw new Error('USERNAME_ALREADY_REGISTERED');
         }
 
-        // Email exists but is not verified - silently reclaim it by deleting old account
-        const accountAge = Date.now() - existingEmail.createdAt.getTime();
+        // ────────────────────────────────────────────────────────────────────
+        // Check for duplicate email with smart reclaim logic
+        // ────────────────────────────────────────────────────────────────────
+        const existingEmail = await txEm.findOne(User, { email });
+        if (existingEmail) {
+          // If email is already verified, it's truly taken
+          if (existingEmail.emailVerified) {
+            throw new Error('EMAIL_ALREADY_REGISTERED');
+          }
 
-        logger.warn({
+          // Email exists but is not verified - silently reclaim it by deleting old account
+          const accountAge = Date.now() - existingEmail.createdAt.getTime();
+
+          logger.warn({
+            email,
+            oldUserId: existingEmail.id,
+            accountAge: Math.floor(accountAge / 1000 / 60 / 60) + ' hours',
+            oldUsername: existingEmail.username
+          }, 'Reclaiming email from unverified account');
+
+          try {
+            // Delete old email verifications first
+            await txEm.nativeDelete(EmailVerification, { email });
+
+            // Delete old user account (and related BasePersonEntity if exists)
+            txEm.remove(existingEmail);
+
+            logger.info({
+              email,
+              oldUserId: existingEmail.id
+            }, 'Successfully reclaimed email from unverified account');
+          } catch (error: any) {
+            logger.error({
+              err: error,
+              email,
+              oldUserId: existingEmail.id
+            }, 'Failed to delete old unverified account');
+            throw new Error('FAILED_TO_RECLAIM_EMAIL');
+          }
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        // Hash password securely with Argon2
+        // ────────────────────────────────────────────────────────────────────
+        const hashedPassword = await argon2.hash(password);
+
+        // ────────────────────────────────────────────────────────────────────
+        // Create user entity with default CLIENT role
+        // ────────────────────────────────────────────────────────────────────
+        const newUser = new User(
+          username,
           email,
-          oldUserId: existingEmail.id,
-          accountAge: Math.floor(accountAge / 1000 / 60 / 60) + ' hours',
-          oldUsername: existingEmail.username
-        }, 'Reclaiming email from unverified account');
+          hashedPassword,
+          [Role.USER]
+        );
 
-        try {
-          // Delete old email verifications first
-          await em.nativeDelete(EmailVerification, { email });
+        txEm.persist(newUser);
 
-          // Delete old user account (and related BasePersonEntity if exists)
-          await em.removeAndFlush(existingEmail);
+        // ────────────────────────────────────────────────────────────────────
+        // Email verification preparation
+        // ────────────────────────────────────────────────────────────────────
+        let txEmailVerificationData: { token: string } | null = null;
+        let txNewUserId: string = '';
 
-          logger.info({
-            email,
-            oldUserId: existingEmail.id
-          }, 'Successfully reclaimed email from unverified account');
-
-          // Continue with registration (fall through to create new user)
-        } catch (error) {
-          logger.error({
-            err: error,
-            email,
-            oldUserId: existingEmail.id
-          }, 'Failed to delete old unverified account');
-
-          return ResponseUtil.internalError(
-            res,
-            'Failed to process registration. Please contact support.'
-          );
+        if (env.EMAIL_VERIFICATION_REQUIRED) {
+          try {
+            const emailVerification = new EmailVerification(email);
+            txEm.persist(emailVerification);
+            
+            await txEm.flush();
+            
+            txEmailVerificationData = { token: emailVerification.token };
+            txNewUserId = newUser.id;
+          } catch (verificationError) {
+             throw new Error('EMAIL_VERIFICATION_CREATION_FAILED');
+          }
+        } else {
+           await txEm.flush();
+           txNewUserId = newUser.id;
         }
-      }
+
+        return { emailVerificationData: txEmailVerificationData, newUserId: txNewUserId };
+      }); // End of transactional block
 
       // ────────────────────────────────────────────────────────────────────
-      // Hash password securely with Argon2
+      // Dispatch emails (post-commit)
       // ────────────────────────────────────────────────────────────────────
-      const hashedPassword = await argon2.hash(password);
-
-      // ────────────────────────────────────────────────────────────────────
-      // Create user entity with default CLIENT role
-      // ────────────────────────────────────────────────────────────────────
-      const newUser = new User(
-        username,
-        email,
-        hashedPassword,
-        [Role.USER]
-      );
-
-      // ────────────────────────────────────────────────────────────────────
-      // Persist to database
-      // ────────────────────────────────────────────────────────────────────
-      await em.persistAndFlush(newUser);
-
-      // ────────────────────────────────────────────────────────────────────
-      // Email verification based on mode (production/development vs demo)
-      // ────────────────────────────────────────────────────────────────────
-      if (env.EMAIL_VERIFICATION_REQUIRED) {
-        // PRODUCTION/DEVELOPMENT MODE: Automatic mandatory verification
+      if (env.EMAIL_VERIFICATION_REQUIRED && emailVerificationData) {
         try {
-          const emailVerification = new EmailVerification(email);
-          await em.persistAndFlush(emailVerification);
-
           // Send verification email
           const emailSent = await emailService.sendVerificationEmail(
             email,
-            emailVerification.token,
+            emailVerificationData.token,
             username // Use username as temporary name
           );
 
           if (emailSent) {
-            logger.info({
-              userId: newUser.id,
-              email
-            }, 'Email verification sent automatically after registration');
+            logger.info({ userId: newUserId!, email }, 'Email verification sent automatically after registration');
           } else {
-            logger.warn({
-              userId: newUser.id,
-              email
-            }, 'Failed to send verification email after registration');
+            logger.warn({ userId: newUserId!, email }, 'Failed to send verification email after registration');
           }
 
           return ResponseUtil.created(res, 'User created successfully. Please check your email to verify your account.', {
-            id: newUser.id,
-            username: newUser.username,
-            email: newUser.email,
-            roles: newUser.roles,
-            emailVerified: newUser.emailVerified,
+            id: newUserId!,
+            username,
+            email,
+            roles: [Role.USER],
+            emailVerified: false,
             verificationRequired: true,
             verificationEmailSent: emailSent,
-            expiresAt: emailVerification.expiresAt.toISOString(),
+            // (Note: expiresAt is no longer readily available since we didn't fetch it back, but it's fine to omit or compute)
           });
-
-        } catch (verificationError) {
-          logger.error({
-            err: verificationError,
-            userId: newUser.id,
-            email
-          }, 'Failed to create email verification after registration');
-
-          // If verification fails, still return success but indicate manual request needed
+        } catch (emailErr) {
+          logger.error({ err: emailErr, userId: newUserId!, email }, 'Failed to dispatch email after transaction commit');
           return ResponseUtil.created(res, 'User created successfully. Please request email verification manually.', {
-            id: newUser.id,
-            username: newUser.username,
-            email: newUser.email,
-            roles: newUser.roles,
-            emailVerified: newUser.emailVerified,
+            id: newUserId!,
+            username,
+            email,
+            roles: [Role.USER],
+            emailVerified: false,
             verificationRequired: true,
             verificationEmailSent: false,
             message: 'Please request email verification manually from your profile',
           });
         }
       } else {
-        // DEMO MODE: Optional verification (user can verify when desired)
-        logger.info({
-          userId: newUser.id,
-          email,
-          mode: 'demo'
-        }, 'User created in demo mode - email verification is optional');
-
+        // DEMO MODE
+        logger.info({ userId: newUserId!, email, mode: 'demo' }, 'User created in demo mode - email verification is optional');
         return ResponseUtil.created(res, 'User created successfully (demo mode - email verification optional)', {
-          id: newUser.id,
-          username: newUser.username,
-          email: newUser.email,
-          roles: newUser.roles,
-          emailVerified: newUser.emailVerified,
+          id: newUserId!,
+          username,
+          email,
+          roles: [Role.USER],
+          emailVerified: false,
           verificationRequired: false,
           mode: 'demo',
           message: 'You can verify your email later if needed',
         });
       }
-    } catch (error) {
+
+    } catch (error: any) {
+      if (error.message === 'USERNAME_ALREADY_REGISTERED') {
+         return ResponseUtil.conflict(res, 'Username is already registered', 'username');
+      }
+      if (error.message === 'EMAIL_ALREADY_REGISTERED') {
+         return ResponseUtil.conflict(res, 'Email is already registered', 'email');
+      }
+      if (error.message === 'FAILED_TO_RECLAIM_EMAIL') {
+         return ResponseUtil.internalError(res, 'Failed to process registration. Please contact support.');
+      }
+      if (error.message === 'EMAIL_VERIFICATION_CREATION_FAILED') {
+         logger.error({ err: error }, 'Failed to create email verification after registration');
+         // We must inform the client that we didn't complete even the user creation properly if this threw inside tx
+         return ResponseUtil.internalError(res, 'Failed to process registration.');
+      }
       next(error);
     }
   }

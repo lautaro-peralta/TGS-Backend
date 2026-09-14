@@ -83,99 +83,106 @@ export class PartnerController {
         ]);
       }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Verify if a partner with that DNI already exists
-      // ──────────────────────────────────────────────────────────────────────
-      const existingPartner = await em.findOne(Partner, { dni });
-      if (existingPartner) {
-        return ResponseUtil.conflict(
-          res,
-          'A partner with that DNI already exists',
-          'dni'
-        );
-      }
-
       const createUser = !!(username && password);
+      let responseData: any;
 
-      if (createUser) {
+      await em.transactional(async (txEm) => {
         // ──────────────────────────────────────────────────────────────────────
-        // Additional validation when creating credentials
+        // Verify if a partner with that DNI already exists
         // ──────────────────────────────────────────────────────────────────────
-        const existingUser = await em.findOne(User, { username });
-        if (existingUser) {
-          return ResponseUtil.conflict(
-            res,
-            'A user with that username already exists',
-            'username'
-          );
+        const existingPartner = await txEm.findOne(Partner, { dni });
+        if (existingPartner) {
+          throw new Error('PARTNER_ALREADY_EXISTS');
         }
-      }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Find or create base person
-      // ──────────────────────────────────────────────────────────────────────
-      let person = await em.findOne(BasePersonEntity, { dni });
-      if (!person) {
-        person = em.create(BasePersonEntity, {
+        if (createUser) {
+          // ──────────────────────────────────────────────────────────────────────
+          // Additional validation when creating credentials
+          // ──────────────────────────────────────────────────────────────────────
+          const existingUser = await txEm.findOne(User, { username });
+          if (existingUser) {
+             throw new Error('USERNAME_ALREADY_EXISTS');
+          }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Find or create base person
+        // ──────────────────────────────────────────────────────────────────────
+        let person = await txEm.findOne(BasePersonEntity, { dni });
+        if (!person) {
+          person = txEm.create(BasePersonEntity, {
+            dni,
+            name,
+            email,
+            address: address ?? '',
+            phone: phone ?? '',
+          });
+          txEm.persist(person);
+        }
+
+        let user;
+        if (createUser) {
+          // ──────────────────────────────────────────────────────────────────────
+          // Create user if credentials are provided (manual mode)
+          // ──────────────────────────────────────────────────────────────────────
+          user = await txEm.findOne(User, { person: { dni } });
+
+          if (!user) {
+            const hashedPassword = await argon2.hash(password);
+            user = new User(
+              username,
+              email,
+              hashedPassword,
+              [Role.PARTNER]
+            );
+            user.person = person as any;
+            txEm.persist(user);
+          }
+        } else {
+          // ──────────────────────────────────────────────────────────────────────
+          // If creating from existing user (fromUser mode), assign PARTNER role
+          // ──────────────────────────────────────────────────────────────────────
+          user = await txEm.findOne(User, { person: { dni } });
+
+          if (user) {
+            // Add PARTNER role if not already present
+            if (!user.roles.includes(Role.PARTNER)) {
+              user.roles.push(Role.PARTNER);
+              logger.info({ userId: user.id, dni }, 'Assigned PARTNER role to existing user');
+            }
+          }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Create partner
+        // ──────────────────────────────────────────────────────────────────────
+        const partner = txEm.create(Partner, {
           dni,
           name,
           email,
           address: address ?? '',
           phone: phone ?? '',
         });
-        await em.persistAndFlush(person);
-      }
 
-      let user;
-      if (createUser) {
-        // ──────────────────────────────────────────────────────────────────────
-        // Create user if credentials are provided (manual mode)
-        // ──────────────────────────────────────────────────────────────────────
-        user = await em.findOne(User, { person: { dni } });
+        txEm.persist(partner);
 
-        if (!user) {
-          const hashedPassword = await argon2.hash(password);
-          const user = new User(
-            username,
-            email,
-            hashedPassword,
-            [Role.PARTNER]
-          );
-          user.person = person as any;
-          await em.persistAndFlush(user);
+        await txEm.flush(); // Flush to generate DB IDs
 
-          if (!user.id) {
-            return ResponseUtil.internalError(res, 'Could not create user');
-          }
+        if (user && !user.id) {
+           throw new Error('USER_CREATION_FAILED');
         }
-      } else {
-        // ──────────────────────────────────────────────────────────────────────
-        // If creating from existing user (fromUser mode), assign PARTNER role
-        // ──────────────────────────────────────────────────────────────────────
-        user = await em.findOne(User, { person: { dni } });
 
-        if (user) {
-          // Add PARTNER role if not already present
-          if (!user.roles.includes(Role.PARTNER)) {
-            user.roles.push(Role.PARTNER);
-            await em.flush();
-            logger.info({ userId: user.id, dni }, 'Assigned PARTNER role to existing user');
-          }
-        }
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create partner
-      // ──────────────────────────────────────────────────────────────────────
-      const partner = em.create(Partner, {
-        dni,
-        name,
-        email,
-        address: address ?? '',
-        phone: phone ?? '',
+        responseData = {
+          partner: partner.toDTO(),
+          ...(user && {
+            user: {
+              id: (user as User).id,
+              username: (user as User).username,
+              email: (user as User).email,
+            },
+          }),
+        };
       });
-
-      await em.persistAndFlush(partner);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -184,20 +191,19 @@ export class PartnerController {
         ? 'Partner and user created successfully'
         : 'Partner created successfully';
 
-      const responseData = {
-        partner: partner.toDTO(),
-        ...(user && {
-          user: {
-            id: (user as User).id,
-            username: (user as User).username,
-            email: (user as User).email,
-          },
-        }),
-      };
-
       return ResponseUtil.created(res, message, responseData);
-    } catch (error) {
+
+    } catch (error: any) {
       logger.error({ err: error }, 'Error creating partner');
+      if (error.message === 'PARTNER_ALREADY_EXISTS') {
+         return ResponseUtil.conflict(res, 'A partner with that DNI already exists', 'dni');
+      }
+      if (error.message === 'USERNAME_ALREADY_EXISTS') {
+         return ResponseUtil.conflict(res, 'A user with that username already exists', 'username');
+      }
+      if (error.message === 'USER_CREATION_FAILED') {
+         return ResponseUtil.internalError(res, 'Could not create user');
+      }
       return ResponseUtil.internalError(res, 'Error creating partner', error);
     }
   }
@@ -345,42 +351,45 @@ export class PartnerController {
     const dni = routeParam(req.params.dni).trim();
 
     try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch partner by DNI
-      // ──────────────────────────────────────────────────────────────────────
-      const partner = await em.findOne(Partner, { dni });
-      if (!partner) {
-        return ResponseUtil.notFound(res, 'Partner', dni);
-      }
+      let partnerName = '';
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Remove PARTNER role from associated user if exists
-      // ──────────────────────────────────────────────────────────────────────
-      const person = await em.findOne(BasePersonEntity, { dni });
-      if (person) {
-        const user = await em.findOne(User, { person: { dni } });
+      await em.transactional(async (txEm) => {
+        // ──────────────────────────────────────────────────────────────────────
+        // Fetch partner by DNI
+        // ──────────────────────────────────────────────────────────────────────
+        const partner = await txEm.findOne(Partner, { dni });
+        if (!partner) {
+          throw new Error('PARTNER_NOT_FOUND');
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Remove PARTNER role from associated user if exists
+        // ──────────────────────────────────────────────────────────────────────
+        const user = await txEm.findOne(User, { person: { dni } });
         if (user && user.roles.includes(Role.PARTNER)) {
           user.roles = user.roles.filter(role => role !== Role.PARTNER);
-          await em.flush();
           logger.info({ userId: user.id, dni }, 'Removed PARTNER role from user');
         }
-      }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Delete the partner
-      // ──────────────────────────────────────────────────────────────────────
-      const name = partner.name;
-      await em.removeAndFlush(partner);
+        // ──────────────────────────────────────────────────────────────────────
+        // Delete the partner
+        // ──────────────────────────────────────────────────────────────────────
+        partnerName = partner.name;
+        txEm.remove(partner);
+      });
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(
         res,
-        `${name}, DNI ${dni} successfully removed from the list of partners`
+        `${partnerName}, DNI ${dni} successfully removed from the list of partners`
       );
-    } catch (err) {
+    } catch (err: any) {
       logger.error({ err }, 'Error deleting partner');
+      if (err.message === 'PARTNER_NOT_FOUND') {
+         return ResponseUtil.notFound(res, 'Partner', dni);
+      }
       return ResponseUtil.internalError(res, 'Error deleting partner', err);
     }
   }
