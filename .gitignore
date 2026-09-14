@@ -37,3 +37,4 @@ scripts/test-sendgrid.ts
 estructura.sql
 
 .claude/graphify-out/
+graphify-out/
