@@ -319,7 +319,7 @@ export class AuthController {
       // Generate refresh token (long-lived)
       // ────────────────────────────────────────────────────────────────────
       const refreshTokenString = crypto.randomBytes(64).toString('hex');
-      const hashedRefreshToken = await argon2.hash(refreshTokenString);
+      const hashedRefreshToken = crypto.createHash('sha256').update(refreshTokenString).digest('hex');
 
       // Store refresh token in database
       const refreshToken = em.create(RefreshToken, {
@@ -390,14 +390,14 @@ export class AuthController {
       const refreshTokenString = req.cookies.refresh_token;
 
       if (refreshTokenString) {
-        // Find and revoke all matching refresh tokens
-        const tokens = await em.find(RefreshToken, {});
-        for (const token of tokens) {
-          if (await argon2.verify(token.token, refreshTokenString)) {
-            token.revoke();
-          }
+        // Find and revoke the exact matching token (O(1) lookup instead of O(N) Argon2)
+        const hashedToken = crypto.createHash('sha256').update(refreshTokenString).digest('hex');
+        const token = await em.findOne(RefreshToken, { token: hashedToken });
+        
+        if (token) {
+          token.revoke();
+          await em.flush();
         }
-        await em.flush();
       }
 
       res
@@ -454,16 +454,16 @@ export class AuthController {
         return ResponseUtil.unauthorized(res, 'Refresh token not found');
       }
 
-      // Find matching refresh token in database
-      const tokens = await em.find(RefreshToken, {}, { populate: ['user'] });
-      let validToken: RefreshToken | null = null;
-
-      for (const token of tokens) {
-        if (await argon2.verify(token.token, refreshTokenString)) {
-          validToken = token;
-          break;
-        }
-      }
+      // ────────────────────────────────────────────────────────────────────
+      // Find matching refresh token in database (O(1) SHA-256 lookup)
+      // ────────────────────────────────────────────────────────────────────
+      const hashedToken = crypto.createHash('sha256').update(refreshTokenString).digest('hex');
+      
+      const validToken = await em.findOne(
+        RefreshToken, 
+        { token: hashedToken }, 
+        { populate: ['user'] }
+      );
 
       if (!validToken || !validToken.isActive()) {
         return ResponseUtil.unauthorized(res, 'Invalid or expired refresh token');
@@ -481,7 +481,7 @@ export class AuthController {
 
       // Optional: Rotate refresh token for added security
       const newRefreshTokenString = crypto.randomBytes(64).toString('hex');
-      const hashedNewRefreshToken = await argon2.hash(newRefreshTokenString);
+      const hashedNewRefreshToken = crypto.createHash('sha256').update(newRefreshTokenString).digest('hex');
 
       // Revoke old token
       validToken.revoke();
