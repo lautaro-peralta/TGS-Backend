@@ -616,6 +616,8 @@ export const redisService = new RedisService();
 import { redisService } from "@/shared/services/redis.service.js";
 ```
 
+> **Nota (mejora futura):** `redis.service.ts` expone métodos `.publish()`/`.subscribe()` para pub/sub sobre canales Redis, pero actualmente **no tienen ningún caller** en el código — no están implementados/usados. El módulo de notificaciones (`modules/notification/`) funciona hoy por polling desde el frontend; reemplazarlo con este pub/sub existente es una mejora futura posible, no algo ya implementado.
+
 ### 4. Validación en Capas
 
 - **Nivel 1:** Validación de esquema (Zod) en middleware

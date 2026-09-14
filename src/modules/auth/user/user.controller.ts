@@ -4,7 +4,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { validate as isUuid } from 'uuid';
 import { wrap } from '@mikro-orm/core';
-import argon2 from 'argon2';
 
 // ============================================================================
 // IMPORTS - Internal modules
@@ -457,95 +456,6 @@ export class UserController {
     } catch (err) {
       return ResponseUtil.internalError(res, 'Error updating user', err);
     }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // USER CREATION
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Creates a new user and associates with existing person
-   *
-   * Process:
-   * 1. Validates person exists and has no user assigned
-   * 2. Checks username and email uniqueness
-   * 3. Hashes password with Argon2
-   * 4. Creates user entity with specified roles
-   * 5. Associates user with person (one-to-one relationship)
-   *
-   * @param req - Express request
-   * @param res - Express response
-   * @returns 201 with created user data or appropriate error
-   *
-   * @example
-   * POST /api/users
-   * Body: {
-   *   personId: "uuid",
-   *   username: "john_doe",
-   *   email: "john@example.com",
-   *   password: "secure123",
-   *   roles: ["CLIENT"]
-   * }
-   */
-  async createUser(req: Request, res: Response) {
-    const em = orm.em.fork();
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Extract validated data from middleware
-    // ──────────────────────────────────────────────────────────────────────
-    const { personId, username, email, password, roles } =
-      res.locals.validated.body;
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Validate person exists
-    // ──────────────────────────────────────────────────────────────────────
-    const person = await em.findOne(BasePersonEntity, { id: personId });
-    if (!person) return ResponseUtil.notFound(res, 'Person', personId);
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Verify person doesn't already have a user (one-to-one constraint)
-    // ──────────────────────────────────────────────────────────────────────
-    if (person.user)
-      return ResponseUtil.conflict(
-        res,
-        'The person already has a user assigned'
-      );
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Check username and email uniqueness
-    // ──────────────────────────────────────────────────────────────────────
-    const usernameExists = await em.findOne(User, { username });
-    const emailExists = await em.findOne(User, { email });
-
-    if (usernameExists || emailExists) {
-      return ResponseUtil.conflict(
-        res,
-        'The username or email are already in use'
-      );
-    }
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Hash password securely
-    // ──────────────────────────────────────────────────────────────────────
-    const hashedPassword = await argon2.hash(password);
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Create user entity with person association
-    // ──────────────────────────────────────────────────────────────────────
-    const user = new User(
-      username,
-      email,
-      hashedPassword,
-      roles
-    );
-    user.person = person as any;
-
-    // ──────────────────────────────────────────────────────────────────────
-    // Persist to database
-    // ──────────────────────────────────────────────────────────────────────
-    await em.persistAndFlush(user);
-
-    return ResponseUtil.success(res, 'User created successfully', user.toDTO());
   }
 
   // ──────────────────────────────────────────────────────────────────────────

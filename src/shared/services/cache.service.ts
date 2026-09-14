@@ -89,59 +89,6 @@ export class CacheService {
   }
 
   /**
-   * Establece múltiples valores en el cache
-   */
-  async mset<T>(items: Array<{ key: string; value: T; ttl?: number }>): Promise<boolean> {
-    const redisItems = items.map(item => ({
-      key: item.key,
-      value: JSON.stringify(item.value),
-      ttl: item.ttl || CACHE_TTL.API_RESPONSE,
-    }));
-
-    let redisSuccess = false;
-    try {
-      redisSuccess = await redisService.mset(redisItems);
-    } catch (error) {
-      logger.warn({ err: error }, 'Failed to set multiple values in Redis');
-    }
-
-    // Always set in memory as fallback
-    items.forEach(item => {
-      this.setInMemory(item.key, item.value, item.ttl || CACHE_TTL.API_RESPONSE);
-    });
-
-    return redisSuccess;
-  }
-
-  /**
-   * Obtiene múltiples valores del cache
-   */
-  async mget<T>(keys: string[]): Promise<Array<T | null>> {
-    // Try to get from Redis first
-    try {
-      const redisValues = await redisService.mget(keys);
-      const results: Array<T | null> = [];
-
-      for (let i = 0; i < keys.length; i++) {
-        if (redisValues[i]) {
-          results.push(JSON.parse(redisValues[i]!) as T);
-        } else {
-          // Fallback to memory for keys not found in Redis
-          const memoryValue = this.getFromMemory<T>(keys[i]);
-          results.push(memoryValue);
-        }
-      }
-
-      return results;
-    } catch (error) {
-      logger.warn({ err: error, keys }, 'Failed to get multiple values from Redis, using memory fallback');
-
-      // Complete fallback to memory
-      return keys.map(key => this.getFromMemory(key));
-    }
-  }
-
-  /**
    * Elimina un valor del cache
    */
   async delete(key: string): Promise<boolean> {
@@ -200,70 +147,6 @@ export class CacheService {
   }
 
   /**
-   * Cache inteligente para consultas de búsqueda frecuentes
-   */
-  async cacheSearchResults<T>(
-    searchKey: string,
-    searchFn: () => Promise<T>,
-    ttl: number = CACHE_TTL.SEARCH_RESULTS
-  ): Promise<T> {
-    const cacheKey = `search:${searchKey}`;
-
-    // Check cache
-    const cached = await this.get<T>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    // Execute search and cache result
-    const result = await searchFn();
-    await this.set(cacheKey, result, ttl);
-
-    return result;
-  }
-
-  /**
-   * Cache para respuestas API con patrón de claves inteligente
-   */
-  async cacheApiResponse<T>(
-    endpoint: string,
-    params: Record<string, any>,
-    responseFn: () => Promise<T>,
-    ttl: number = CACHE_TTL.API_RESPONSE
-  ): Promise<T> {
-    // Create cache key based on endpoint and parameters
-    const paramsStr = Object.entries(params)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => `${key}:${value}`)
-      .join(':');
-
-    const cacheKey = `api:${endpoint}:${paramsStr}`;
-
-    return this.cacheSearchResults(cacheKey, responseFn, ttl);
-  }
-
-  /**
-   * Cache para datos de usuario con invalidación por ID
-   */
-  async cacheUserData<T>(
-    userId: string,
-    dataFn: () => Promise<T>,
-    ttl: number = CACHE_TTL.USER_DATA
-  ): Promise<T> {
-    const cacheKey = `user:${userId}`;
-
-    const cached = await this.get<T>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const data = await dataFn();
-    await this.set(cacheKey, data, ttl);
-
-    return data;
-  }
-
-  /**
    * Invalida cache relacionado con un usuario
    */
   async invalidateUserCache(userId: string): Promise<void> {
@@ -278,21 +161,6 @@ export class CacheService {
     }
 
     logger.info({ userId, patterns }, 'User cache invalidated');
-  }
-
-  /**
-   * Invalida cache relacionado con una entidad específica
-   */
-  async invalidateEntityCache(entityType: string, entityId?: string): Promise<void> {
-    const patterns = entityId
-      ? [`${entityType}:${entityId}`, `${entityType}:list`]
-      : [`${entityType}:*`];
-
-    for (const pattern of patterns) {
-      await this.delete(pattern);
-    }
-
-    logger.info({ entityType, entityId, patterns }, 'Entity cache invalidated');
   }
 
   /**

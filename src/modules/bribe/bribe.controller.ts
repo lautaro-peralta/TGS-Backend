@@ -9,7 +9,6 @@ import { Request, Response } from 'express';
 import { orm } from '../../shared/db/orm.js';
 import { Authority } from '../authority/authority.entity.js';
 import { Bribe } from './bribe.entity.js';
-import { Sale } from '../sale/sale.entity.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPagination } from '../../shared/utils/search.util.js';
 import { validateQueryParams } from '../../shared/middleware/validation.middleware.js';
@@ -158,70 +157,6 @@ export class BribeController {
     } catch (err: any) {
       logger.error({ err }, 'Error searching bribes');
       return ResponseUtil.internalError(res, 'Error searching for bribes', err);
-    }
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // CREATE
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Creates a new bribe.
-   *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @returns {Promise<Response>} A promise that resolves to the response.
-   */
-  async createBribe(req: Request, res: Response) {
-    const em = orm.em.fork();
-    const { totalAmount, authorityId, saleId } = res.locals.validated.body;
-
-    try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Find related entities
-      // ──────────────────────────────────────────────────────────────────────
-      const authority = await em.findOne(Authority, { id: authorityId });
-      if (!authority) {
-        return ResponseUtil.notFound(res, 'Authority', authorityId);
-      }
-
-      const sale = await em.findOne(Sale, { id: saleId });
-      if (!sale) {
-        return ResponseUtil.notFound(res, 'Sale', saleId);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create and persist the new bribe
-      // ──────────────────────────────────────────────────────────────────────
-      const bribe = em.create(Bribe, {
-        totalAmount,
-        paidAmount: 0,
-        authority,
-        sale,
-        creationDate: new Date(),
-      } as any);
-
-      await em.persistAndFlush(bribe);
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
-      // ──────────────────────────────────────────────────────────────────────
-      const createdBribe = await em.findOne(
-        Bribe,
-        { id: bribe.id },
-        {
-          populate: ['authority', 'sale'],
-        }
-      );
-
-      return ResponseUtil.created(
-        res,
-        'Bribe created successfully',
-        createdBribe!.toDTO()
-      );
-    } catch (err: any) {
-      logger.error({ err }, 'Error creating bribe');
-      return ResponseUtil.internalError(res, 'Error creating bribe', err);
     }
   }
 

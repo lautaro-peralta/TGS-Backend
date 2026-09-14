@@ -11,7 +11,10 @@
 - [Zonas](#zonas)
 - [Distribuidores](#distribuidores)
 - [Entidades del Consejo](#entidades-del-consejo)
+- [Notificaciones](#notificaciones)
 - [Códigos de Estado HTTP](#códigos-de-estado-http)
+
+> **Nota:** La verificación de usuarios (documentos, aprobación/rechazo, sobornos/bribes) **no** vive bajo `/api/users`. Consulta **[08-USER-VERIFICATION-AND-BRIBES.md](08-USER-VERIFICATION-AND-BRIBES.md)** para esos endpoints.
 
 ---
 
@@ -343,7 +346,7 @@ Content-Type: application/json
 
 {
   "requestedRole": "CLIENT",
-  "reason": "I want to purchase products"
+  "justification": "I want to purchase products"
 }
 ```
 
@@ -358,7 +361,7 @@ Content-Type: application/json
     "userId": "uuid-123",
     "requestedRole": "CLIENT",
     "status": "PENDING",
-    "reason": "I want to purchase products",
+    "justification": "I want to purchase products",
     "createdAt": "2025-10-16T12:00:00Z"
   }
 }
@@ -894,6 +897,186 @@ Content-Type: application/json
     "isApproved": false,
     ...
   }
+}
+```
+
+---
+
+## Notificaciones
+
+> Ver también: existe infraestructura pub/sub en Redis (`shared/services/redis.service.ts`) documentada en [02-ARCHITECTURE.md](02-ARCHITECTURE.md) como mejora futura; el sistema de notificaciones actual funciona por polling desde el frontend, no por pub/sub.
+
+### 🔒 Obtener Mis Notificaciones
+
+```http
+GET /api/notifications/me
+```
+
+**Respuesta (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Notifications retrieved successfully",
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "INFO",
+      "title": "New notification",
+      "message": "You have a new update",
+      "status": "UNREAD",
+      "createdAt": "2025-11-11T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Tipos de notificación:** `INFO`, `SUCCESS`, `WARNING`, `ERROR`, `ROLE_REQUEST`
+
+---
+
+### 🔒 Obtener Cantidad de No Leídas
+
+```http
+GET /api/notifications/unread-count
+```
+
+**Respuesta (200 OK):**
+
+```json
+{
+  "count": 5
+}
+```
+
+---
+
+### 🔒 Marcar Notificación como Leída
+
+```http
+PATCH /api/notifications/:id/read
+```
+
+**Ejemplo:**
+
+```http
+PATCH /api/notifications/550e8400-e29b-41d4-a716-446655440000/read
+```
+
+**Respuesta (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Notification marked as read",
+  "data": { ... }
+}
+```
+
+---
+
+### 🔒 Marcar Todas como Leídas
+
+```http
+PATCH /api/notifications/read-all
+```
+
+**Respuesta (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "5 notifications marked as read",
+  "data": {
+    "count": 5
+  }
+}
+```
+
+---
+
+### 🔒 Eliminar Notificación
+
+```http
+DELETE /api/notifications/:id
+```
+
+**Respuesta (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Notification deleted successfully"
+}
+```
+
+---
+
+### 🔒 Crear Notificación (👤 ADMIN)
+
+```http
+POST /api/notifications
+Content-Type: application/json
+
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "INFO",
+  "title": "System Update",
+  "message": "Your account has been updated",
+  "relatedEntityId": "optional-entity-id",
+  "relatedEntityType": "role-request",
+  "metadata": {}
+}
+```
+
+**Campos:**
+
+- `userId` (requerido): ID del usuario a notificar
+- `type` (requerido): `INFO`, `SUCCESS`, `WARNING`, `ERROR`, `ROLE_REQUEST`
+- `title` (requerido): Título de la notificación
+- `message` (requerido): Mensaje de la notificación
+- `relatedEntityId` (opcional): ID de entidad relacionada
+- `relatedEntityType` (opcional): `role-request`, `user-verification`, `system`
+- `metadata` (opcional): Objeto con datos adicionales
+
+**Respuesta (201 Created):**
+
+```json
+{
+  "success": true,
+  "message": "Notification created successfully",
+  "data": { ... }
+}
+```
+
+---
+
+### 🔒 Buscar Notificaciones (👤 ADMIN)
+
+```http
+GET /api/notifications
+```
+
+**Query Parameters (Opcionales):**
+
+- `page=1` - Número de página (default: 1)
+- `limit=20` - Resultados por página (default: 20)
+- `status=UNREAD` - Filtrar por estado (`UNREAD`, `READ`)
+- `type=INFO` - Filtrar por tipo
+- `userId=uuid` - Filtrar por usuario
+
+**Respuesta (200 OK):**
+
+```json
+{
+  "data": [ ... ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 50,
+    "totalPages": 3
+  },
+  "unreadCount": 15
 }
 ```
 
