@@ -408,204 +408,117 @@ export class RoleRequestController {
       const { id: requestId } = res.locals.validated.params;
       const { action, comments } = res.locals.validated.body;
 
-      // ────────────────────────────────────────────────────────────────────
-      // Fetch admin user
-      // ────────────────────────────────────────────────────────────────────
-      const adminUser = await em.findOne(User, { id: adminUserId });
-      if (!adminUser) {
-        return ResponseUtil.notFound(res, 'Admin user', adminUserId);
-      }
+      let notificationPayload: any | null = null;
+      let finalResponsePayload: any | null = null;
+      let successMessage = '';
 
-      // ────────────────────────────────────────────────────────────────────
-      // Fetch role request with user
-      // ────────────────────────────────────────────────────────────────────
-      const roleRequest = await em.findOne(
-        RoleRequest,
-        { id: requestId },
-        { populate: ['user', 'user.person'] }
-      );
+      await em.transactional(async (txEm) => {
+        // ────────────────────────────────────────────────────────────────────
+        // Fetch admin user
+        // ────────────────────────────────────────────────────────────────────
+        const adminUser = await txEm.findOne(User, { id: adminUserId });
+        if (!adminUser) {
+          throw new Error('ADMIN_NOT_FOUND');
+        }
 
-      if (!roleRequest) {
-        return ResponseUtil.notFound(res, 'Role request', requestId);
-      }
-
-      // ────────────────────────────────────────────────────────────────────
-      // Validate request is still pending
-      // ────────────────────────────────────────────────────────────────────
-      if (!roleRequest.isPending()) {
-        return ResponseUtil.error(
-          res,
-          `This request has already been ${roleRequest.status.toLowerCase()}`,
-          400
+        // ────────────────────────────────────────────────────────────────────
+        // Fetch role request with user
+        // ────────────────────────────────────────────────────────────────────
+        const roleRequest = await txEm.findOne(
+          RoleRequest,
+          { id: requestId },
+          { populate: ['user', 'user.person'] }
         );
-      }
 
-      const requestUser = roleRequest.user as any;
+        if (!roleRequest) {
+          throw new Error('REQUEST_NOT_FOUND');
+        }
 
-      if (action === 'approve') {
-        const requestedRole = roleRequest.requestedRole;
-        const additionalData = roleRequest.additionalData;
+        // ────────────────────────────────────────────────────────────────────
+        // Validate request is still pending
+        // ────────────────────────────────────────────────────────────────────
+        if (!roleRequest.isPending()) {
+          throw new Error(`ALREADY_PROCESSED:${roleRequest.status.toLowerCase()}`);
+        }
 
-        if (requestedRole === Role.DISTRIBUTOR) {
-          if (!additionalData?.zoneId || !additionalData?.address) {
-            return ResponseUtil.validationError(
-              res,
-              'Cannot approve: This DISTRIBUTOR request is missing required additional data',
-              [
-                {
-                  field: 'additionalData',
-                  message: 'DISTRIBUTOR requests require zoneId and address. Please ask the user to create a new request with complete information.'
-                }
-              ]
-            );
+        const requestUser = roleRequest.user as any;
+
+        if (action === 'approve') {
+          const requestedRole = roleRequest.requestedRole;
+          const additionalData = roleRequest.additionalData;
+
+          if (requestedRole === Role.DISTRIBUTOR) {
+            if (!additionalData?.zoneId || !additionalData?.address) {
+              throw new Error('DISTRIBUTOR_MISSING_DATA');
+            }
+          }
+
+          if (requestedRole === Role.AUTHORITY) {
+            if (!additionalData?.rank || !additionalData?.zoneId) {
+              throw new Error('AUTHORITY_MISSING_DATA');
+            }
           }
         }
 
-        if (requestedRole === Role.AUTHORITY) {
-          if (!additionalData?.rank || !additionalData?.zoneId) {
-            return ResponseUtil.validationError(
-              res,
-              'Cannot approve: This AUTHORITY request is missing required additional data',
-              [
-                {
-                  field: 'additionalData',
-                  message: 'AUTHORITY requests require rank and zoneId. Please ask the user to create a new request with complete information.'
-                }
-              ]
-            );
-          }
-        }
-      }
+        if (action === 'approve') {
+          const isRoleChange = roleRequest.isRoleChangeRequest();
 
-      if (action === 'approve') {
-        const isRoleChange = roleRequest.isRoleChangeRequest();
+          if (isRoleChange) {
+            // ──────────────────────────────────────────────────────────────────
+            // Handle role change approval
+            // ──────────────────────────────────────────────────────────────────
 
-        if (isRoleChange) {
-          // ──────────────────────────────────────────────────────────────────
-          // Handle role change approval
-          // ──────────────────────────────────────────────────────────────────
+            if (!requestUser.roles.includes(roleRequest.roleToRemove!)) {
+              throw new Error('ROLE_TO_REMOVE_MISSING');
+            }
 
-          // Validate user still has the role to remove
-          if (!requestUser.roles.includes(roleRequest.roleToRemove!)) {
-            return ResponseUtil.error(
-              res,
-              `User no longer has the ${roleRequest.roleToRemove} role to remove`,
-              400
-            );
-          }
+            if (requestUser.roles.includes(roleRequest.requestedRole)) {
+              throw new Error('ALREADY_HAS_REQUESTED_ROLE');
+            }
 
-          // Validate user doesn't already have the requested role
-          if (requestUser.roles.includes(roleRequest.requestedRole)) {
-            return ResponseUtil.error(
-              res,
-              `User already has the ${roleRequest.requestedRole} role`,
-              400
-            );
-          }
+            let rolesAfterSwap: Role[];
+            if (roleRequest.requestedRole === Role.AUTHORITY) {
+              rolesAfterSwap = requestUser.roles
+                .filter((r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r))
+                .concat(roleRequest.requestedRole);
+            } else {
+              rolesAfterSwap = requestUser.roles
+                .filter((r: Role) => r !== roleRequest.roleToRemove)
+                .concat(roleRequest.requestedRole);
+            }
 
-          // Validate compatibility after swap
-          // ✅ SPECIAL CASE: For AUTHORITY, calculate roles after removing ALL incompatible roles
-          let rolesAfterSwap: Role[];
-          if (roleRequest.requestedRole === Role.AUTHORITY) {
-            // AUTHORITY removes ALL business roles (PARTNER, DISTRIBUTOR, ADMIN)
-            rolesAfterSwap = requestUser.roles
-              .filter((r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r))
-              .concat(roleRequest.requestedRole);
-          } else {
-            // Normal role swap - remove only the specified role
-            rolesAfterSwap = requestUser.roles
-              .filter((r: Role) => r !== roleRequest.roleToRemove)
-              .concat(roleRequest.requestedRole);
-          }
+            const compatibilityError = validateRoleCompatibility(rolesAfterSwap);
+            if (compatibilityError) {
+               throw new Error(`INCOMPATIBLE_ROLES:${compatibilityError}`);
+            }
 
-          const compatibilityError = validateRoleCompatibility(rolesAfterSwap);
-          if (compatibilityError) {
-            return ResponseUtil.validationError(
-              res,
-              'Cannot approve: Role change would result in incompatible roles',
-              [
-                {
-                  field: 'requestedRole',
-                  message: compatibilityError
-                }
-              ]
-            );
-          }
+            if (roleRequest.requestedRole === Role.AUTHORITY) {
+              const rolesToRemove = requestUser.roles.filter(
+                (r: Role) => [Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
+              );
 
-          // Perform the role swap
-          // ✅ SPECIAL CASE: If requesting AUTHORITY, remove ALL incompatible roles
-          if (roleRequest.requestedRole === Role.AUTHORITY) {
-            // AUTHORITY is incompatible with PARTNER, DISTRIBUTOR, and ADMIN
-            // Remove ALL of them if present
-            const rolesToRemove = requestUser.roles.filter(
-              (r: Role) => [Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
-            );
+              requestUser.roles = requestUser.roles.filter(
+                (r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
+              );
+              requestUser.roles.push(roleRequest.requestedRole);
 
-            requestUser.roles = requestUser.roles.filter(
-              (r: Role) => ![Role.PARTNER, Role.DISTRIBUTOR, Role.ADMIN].includes(r)
-            );
-            requestUser.roles.push(roleRequest.requestedRole);
-
-            logger.info(
-              `Removed all incompatible roles (PARTNER, DISTRIBUTOR, ADMIN) when approving AUTHORITY for user ${requestUser.id}`
-            );
-
-            // 🔥 FIX: Delete role records from database tables
-            try {
               for (const roleToRemove of rolesToRemove) {
-                await deleteRoleRecordForRoleChange(em, roleToRemove, requestUser.person);
+                await deleteRoleRecordForRoleChange(txEm, roleToRemove, requestUser.person);
               }
-            } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-              logger.error({ err }, 'Error deleting old role records');
-              return ResponseUtil.error(
-                res,
-                `Failed to remove old role records: ${errorMessage}`,
-                500
+            } else {
+              requestUser.roles = requestUser.roles.filter(
+                (r: Role) => r !== roleRequest.roleToRemove
               );
+              requestUser.roles.push(roleRequest.requestedRole);
+
+              await deleteRoleRecordForRoleChange(txEm, roleRequest.roleToRemove!, requestUser.person);
             }
-          } else {
-            // Normal role swap - remove only the specified role
-            requestUser.roles = requestUser.roles.filter(
-              (r: Role) => r !== roleRequest.roleToRemove
-            );
-            requestUser.roles.push(roleRequest.requestedRole);
 
-            // 🔥 FIX: Delete role record from database table
-            try {
-              await deleteRoleRecordForRoleChange(em, roleRequest.roleToRemove!, requestUser.person);
-            } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-              logger.error({ err }, 'Error deleting old role record');
-              return ResponseUtil.error(
-                res,
-                `Failed to remove old ${roleRequest.roleToRemove} record: ${errorMessage}`,
-                500
-              );
-            }
-          }
+            await createRoleRecordForApproval(txEm, roleRequest, requestUser);
+            
+            roleRequest.approve(adminUser, comments);
 
-          try {
-            await createRoleRecordForApproval(em, roleRequest, requestUser);
-          } catch (err) {
-            const errorMessage = err instanceof Error
-              ? err.message
-              : 'Unknown error occurred';
-
-            logger.error({ err }, 'Error creating role record');
-            return ResponseUtil.error(
-              res,
-              `Failed to create ${roleRequest.requestedRole} record: ${errorMessage}`,
-              500
-            );
-          }
-
-          roleRequest.approve(adminUser, comments);
-          await em.flush();
-
-          // Create notification for the user
-          try {
-            await sendNotificationToUser({
+            notificationPayload = {
               userId: requestUser.id,
               type: NotificationType.ROLE_REQUEST_APPROVED,
               title: 'Solicitud de rol aprobada',
@@ -617,58 +530,30 @@ export class RoleRequestController {
                 previousRole: roleRequest.roleToRemove,
                 isRoleChange: true,
               },
-            });
-          } catch (notifError) {
-            logger.error({ err: notifError }, 'Error creating notification for role change approval');
-            // Don't fail the request if notification fails
-          }
+            };
 
-          return ResponseUtil.success(
-            res,
-            `Role change approved. User role changed from ${roleRequest.roleToRemove} to ${roleRequest.requestedRole}.`,
-            roleRequest.toDTO()
-          );
-        } else {
-          if (!requestUser.roles.includes(roleRequest.requestedRole)) {
-            const potentialRoles = [...requestUser.roles, roleRequest.requestedRole];
-            const compatibilityError = validateRoleCompatibility(potentialRoles);
+            successMessage = `Role change approved. User role changed from ${roleRequest.roleToRemove} to ${roleRequest.requestedRole}.`;
+            finalResponsePayload = roleRequest.toDTO();
 
-            if (compatibilityError) {
-              return ResponseUtil.validationError(
-                res,
-                'Cannot approve: Role is incompatible with user\'s current roles',
-                [
-                  {
-                    field: 'requestedRole',
-                    message: compatibilityError
-                  }
-                ]
-              );
+          } else {
+            if (!requestUser.roles.includes(roleRequest.requestedRole)) {
+              const potentialRoles = [...requestUser.roles, roleRequest.requestedRole];
+              const compatibilityError = validateRoleCompatibility(potentialRoles);
+
+              if (compatibilityError) {
+                throw new Error(`INCOMPATIBLE_ROLES:${compatibilityError}`);
+              }
             }
-          }
 
-          try {
-            await createRoleRecordForApproval(em, roleRequest, requestUser);
-          } catch (err: any) {
-            logger.error({ err }, 'Error creating role record');
-            return ResponseUtil.error(
-              res,
-              `Failed to create ${roleRequest.requestedRole} record: ${err.message}`,
-              500
-            );
-          }
+            await createRoleRecordForApproval(txEm, roleRequest, requestUser);
 
-          roleRequest.approve(adminUser, comments);
+            roleRequest.approve(adminUser, comments);
 
-          if (!requestUser.roles.includes(roleRequest.requestedRole)) {
-            requestUser.roles.push(roleRequest.requestedRole);
-          }
+            if (!requestUser.roles.includes(roleRequest.requestedRole)) {
+              requestUser.roles.push(roleRequest.requestedRole);
+            }
 
-          await em.flush();
-
-          // Create notification for the user
-          try {
-            await sendNotificationToUser({
+            notificationPayload = {
               userId: requestUser.id,
               type: NotificationType.ROLE_REQUEST_APPROVED,
               title: 'Solicitud de rol aprobada',
@@ -679,25 +564,15 @@ export class RoleRequestController {
                 requestedRole: roleRequest.requestedRole,
                 isRoleChange: false,
               },
-            });
-          } catch (notifError) {
-            logger.error({ err: notifError }, 'Error creating notification for role approval');
-            // Don't fail the request if notification fails
+            };
+
+            successMessage = `Role request approved. User has been granted ${roleRequest.requestedRole} role.`;
+            finalResponsePayload = roleRequest.toDTO();
           }
+        } else {
+          roleRequest.reject(adminUser, comments);
 
-          return ResponseUtil.success(
-            res,
-            `Role request approved. User has been granted ${roleRequest.requestedRole} role.`,
-            roleRequest.toDTO()
-          );
-        }
-      } else {
-        roleRequest.reject(adminUser, comments);
-        await em.flush();
-
-        // Create notification for the user
-        try {
-          await sendNotificationToUser({
+          notificationPayload = {
             userId: requestUser.id,
             type: NotificationType.ROLE_REQUEST_REJECTED,
             title: 'Solicitud de rol rechazada',
@@ -708,20 +583,45 @@ export class RoleRequestController {
               requestedRole: roleRequest.requestedRole,
               adminComments: comments,
             },
-          });
-        } catch (notifError) {
-          logger.error({ err: notifError }, 'Error creating notification for role rejection');
-          // Don't fail the request if notification fails
-        }
+          };
 
-        return ResponseUtil.success(
-          res,
-          'Role request rejected',
-          roleRequest.toDTO()
-        );
+          successMessage = 'Role request rejected';
+          finalResponsePayload = roleRequest.toDTO();
+        }
+      });
+
+      // Execute non-database side effects (Notifications)
+      if (notificationPayload) {
+        try {
+          await sendNotificationToUser(notificationPayload);
+        } catch (notifError) {
+          logger.error({ err: notifError }, 'Error creating notification for role request decision');
+        }
       }
-    } catch (err) {
+
+      return ResponseUtil.success(res, successMessage, finalResponsePayload);
+
+    } catch (err: any) {
       logger.error({ err }, 'Error reviewing role request');
+      const errorMessage = err.message || '';
+
+      if (errorMessage === 'ADMIN_NOT_FOUND') return ResponseUtil.notFound(res, 'Admin user', (req as any).user.id);
+      if (errorMessage === 'REQUEST_NOT_FOUND') return ResponseUtil.notFound(res, 'Role request', res.locals.validated.params.id);
+      if (errorMessage.startsWith('ALREADY_PROCESSED:')) {
+         return ResponseUtil.error(res, `This request has already been ${errorMessage.split(':')[1]}`, 400);
+      }
+      if (errorMessage === 'DISTRIBUTOR_MISSING_DATA') {
+         return ResponseUtil.validationError(res, 'Cannot approve: This DISTRIBUTOR request is missing required additional data', [{ field: 'additionalData', message: 'DISTRIBUTOR requests require zoneId and address. Please ask the user to create a new request with complete information.' }]);
+      }
+      if (errorMessage === 'AUTHORITY_MISSING_DATA') {
+         return ResponseUtil.validationError(res, 'Cannot approve: This AUTHORITY request is missing required additional data', [{ field: 'additionalData', message: 'AUTHORITY requests require rank and zoneId. Please ask the user to create a new request with complete information.' }]);
+      }
+      if (errorMessage === 'ROLE_TO_REMOVE_MISSING') return ResponseUtil.error(res, `User no longer has the ${(res.locals.validated.body.roleToRemove || 'role')} role to remove`, 400); // minor interpolation fix
+      if (errorMessage === 'ALREADY_HAS_REQUESTED_ROLE') return ResponseUtil.error(res, `User already has the requested role`, 400);
+      if (errorMessage.startsWith('INCOMPATIBLE_ROLES:')) {
+         return ResponseUtil.validationError(res, 'Cannot approve: Role change would result in incompatible roles', [{ field: 'requestedRole', message: errorMessage.split(':')[1] }]);
+      }
+
       return ResponseUtil.internalError(res, 'Error reviewing request', err);
     }
   }
@@ -823,8 +723,8 @@ async function createPartnerRecord(em: any, person: any): Promise<void> {
     address: person.address || null,
   });
 
-  await em.persistAndFlush(partner);
-  logger.info(`✅ Partner created successfully with DNI: ${person.dni}`);
+  em.persist(partner);
+  logger.info(`✅ Partner created successfully with DNI: ${person.dni} (staged for commit)`);
 }
 
 async function createDistributorRecord(
@@ -861,8 +761,8 @@ async function createDistributorRecord(
     distributor.products.set(products);
   }
 
-  await em.persistAndFlush(distributor);
-  logger.info(`✅ Distributor created successfully with DNI: ${person.dni}`);
+  em.persist(distributor);
+  logger.info(`✅ Distributor created successfully with DNI: ${person.dni} (staged for commit)`);
 }
 
 async function createAuthorityRecord(
@@ -894,8 +794,8 @@ async function createAuthorityRecord(
     zone: zone,
   });
 
-  await em.persistAndFlush(authority);
-  logger.info(`✅ Authority created successfully with DNI: ${person.dni}`);
+  em.persist(authority);
+  logger.info(`✅ Authority created successfully with DNI: ${person.dni} (staged for commit)`);
 }
 
 /**
@@ -924,8 +824,8 @@ async function deleteRoleRecordForRoleChange(
       const { Partner } = await import('../../partner/partner.entity.js');
       const partner = await em.findOne(Partner, { dni });
       if (partner) {
-        await em.removeAndFlush(partner);
-        logger.info(`✅ Partner record deleted for DNI: ${dni}`);
+        em.remove(partner);
+        logger.info(`✅ Partner record deleted for DNI: ${dni} (staged for commit)`);
       } else {
         logger.warn(`⚠️ Partner record not found for DNI: ${dni}, skipping deletion`);
       }
@@ -936,8 +836,8 @@ async function deleteRoleRecordForRoleChange(
       const { Distributor } = await import('../../distributor/distributor.entity.js');
       const distributor = await em.findOne(Distributor, { dni });
       if (distributor) {
-        await em.removeAndFlush(distributor);
-        logger.info(`✅ Distributor record deleted for DNI: ${dni}`);
+        em.remove(distributor);
+        logger.info(`✅ Distributor record deleted for DNI: ${dni} (staged for commit)`);
       } else {
         logger.warn(`⚠️ Distributor record not found for DNI: ${dni}, skipping deletion`);
       }
@@ -948,8 +848,8 @@ async function deleteRoleRecordForRoleChange(
       const { Authority } = await import('../../authority/authority.entity.js');
       const authority = await em.findOne(Authority, { dni });
       if (authority) {
-        await em.removeAndFlush(authority);
-        logger.info(`✅ Authority record deleted for DNI: ${dni}`);
+        em.remove(authority);
+        logger.info(`✅ Authority record deleted for DNI: ${dni} (staged for commit)`);
       } else {
         logger.warn(`⚠️ Authority record not found for DNI: ${dni}, skipping deletion`);
       }

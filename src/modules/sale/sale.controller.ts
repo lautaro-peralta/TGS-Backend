@@ -3,6 +3,7 @@
 // ============================================================================
 import { Request, Response } from 'express';
 import { SqlEntityManager, Populate } from '@mikro-orm/postgresql';
+import { LockMode } from '@mikro-orm/core';
 import { orm } from '../../shared/db/orm.js';
 import { ResponseUtil } from '../../shared/utils/response.util.js';
 import { searchEntityWithPaginationCached } from '../../shared/utils/search.util.js';
@@ -228,6 +229,7 @@ export class SaleController {
 
     // Use authenticated user's DNI as client DNI if not provided
     const personEntity = user.person?.isInitialized?.() ? user.person : await user.person?.load?.();
+    const personEntity = user.person?.isInitialized?.() ? user.person : await user.person?.load?.();
     const effectiveClientDni = clientDni || (personEntity as any)?.dni;
 
     if (!effectiveClientDni) {
@@ -236,241 +238,207 @@ export class SaleController {
       ]);
     }
 
-    let client = await em.findOne(Client, { dni: String(effectiveClientDni) });
-
     try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Find distributor (required) - Populate zone for bribe assignment
-      // ──────────────────────────────────────────────────────────────────────
-      const distributor = await em.findOne(Distributor, { dni: String(distributorDni) }, { populate: ['zone'] });
-      if (!distributor) {
-        return ResponseUtil.notFound(res, 'Distributor', distributorDni);
-      }
+      const createdSale = await em.transactional(async (txEm) => {
+        // ──────────────────────────────────────────────────────────────────────
+        // Find distributor (required)
+        // ──────────────────────────────────────────────────────────────────────
+        const distributor = await txEm.findOne(Distributor, { dni: String(distributorDni) }, { populate: ['zone'] });
+        if (!distributor) {
+          throw new Error('DISTRIBUTOR_NOT_FOUND');
+        }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Find or create client
-      // ──────────────────────────────────────────────────────────────────────
-      if (!client) {
-        let basePerson = await em.findOne(BasePersonEntity, {
-          dni: String(effectiveClientDni),
-        });
+        // ──────────────────────────────────────────────────────────────────────
+        // Find or create person and client IN TX
+        // ──────────────────────────────────────────────────────────────────────
+        let client = await txEm.findOne(Client, { dni: String(effectiveClientDni) });
 
-        if (!basePerson) {
-          if (!person && !user.person) {
-            return res.status(400).json({
-              message:
-                'The person does not exist, the data is required to create it',
+        if (!client) {
+          let basePerson = await txEm.findOne(BasePersonEntity, {
+            dni: String(effectiveClientDni),
+          });
+
+          if (!basePerson) {
+            if (!person && !user.person) {
+              throw new Error('PERSON_DATA_REQUIRED');
+            }
+
+            const personData = person || {
+              name: (personEntity as any)?.name,
+              email: user.email,
+              phone: (personEntity as any)?.phone,
+              address: (personEntity as any)?.address,
+            };
+
+            basePerson = txEm.create(BasePersonEntity, {
+              dni: String(effectiveClientDni),
+              name: personData.name,
+              email: personData.email,
+              phone: personData.phone ?? '-',
+              address: personData.address ?? '-',
             });
+            txEm.persist(basePerson);
           }
 
-          // Use person data from request or from authenticated user
-          const personData = person || {
-            name: (personEntity as any)?.name,
-            email: user.email,
-            phone: (personEntity as any)?.phone,
-            address: (personEntity as any)?.address,
-          };
+          const txUser = await txEm.findOne(User, { id: userId });
+          if (txUser && !txUser.person) {
+            txUser.person = basePerson as any;
+            txEm.persist(txUser);
+          }
 
-          basePerson = em.create(BasePersonEntity, {
-            dni: String(effectiveClientDni),
-            name: personData.name,
-            email: personData.email,
-            phone: personData.phone ?? '-',
-            address: personData.address ?? '-',
+          client = txEm.create(Client, {
+            dni: basePerson.dni,
+            name: basePerson.name,
+            email: basePerson.email,
+            phone: basePerson.phone,
+            address: basePerson.address,
           });
-          await em.persistAndFlush(basePerson);
+          txEm.persist(client);
         }
 
-        // Associate person with user if not already associated
-        if (!user.person) {
-          user.person = basePerson as any;
-          await em.persistAndFlush(user);
-          logger.info({ userId: user.id, personDni: basePerson.dni }, 'Associated person with user during purchase');
-        }
-
-        client = em.create(Client, {
-          dni: basePerson.dni,
-          name: basePerson.name,
-          email: basePerson.email,
-          phone: basePerson.phone,
-          address: basePerson.address,
-        });
-        await em.persistAndFlush(client);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Create new sale and details
-      // ──────────────────────────────────────────────────────────────────────
-      const newSale = em.create(Sale, {
-        client,
-        distributor,
-        saleDate: new Date(),
-        saleAmount: 0,
-        details: [],
-      });
-
-      let isIllegalProduct = false;
-      let totalIllegalAmount = 0;
-
-      for (const detail of details) {
-        const product = await em.findOne(Product, { id: detail.productId });
-        if (!product) {
-          return res.status(400).send({
-            message: `Product with ID ${detail.productId} not found`,
-          });
-        }
-
-        const newDetail = em.create(Detail, {
-          product,
-          quantity: detail.quantity,
-          subtotal: product.price * detail.quantity,
-          sale: newSale,
+        // ──────────────────────────────────────────────────────────────────────
+        // Create new sale and details
+        // ──────────────────────────────────────────────────────────────────────
+        const newSale = txEm.create(Sale, {
+          client,
+          distributor,
+          saleDate: new Date(),
+          saleAmount: 0,
+          details: [],
         });
 
-        if (product.isIllegal) {
-          isIllegalProduct = true;
-          totalIllegalAmount += newDetail.subtotal;
+        let isIllegalProduct = false;
+        let totalIllegalAmount = 0;
+
+        for (const detail of details) {
+          // Acquire pessimistic write lock to prevent race conditions on stock decrement
+          const product = await txEm.findOne(Product, { id: detail.productId }, { lockMode: LockMode.PESSIMISTIC_WRITE });
+          if (!product) {
+            throw new Error(`PRODUCT_NOT_FOUND_${detail.productId}`);
+          }
+          
+          if (product.stock < detail.quantity) {
+             throw new Error(`INSUFFICIENT_STOCK_${product.name}`);
+          }
+          
+          // Decrement stock inside the transaction
+          product.stock -= detail.quantity;
+
+          const newDetail = txEm.create(Detail, {
+            product,
+            quantity: detail.quantity,
+            subtotal: product.price * detail.quantity,
+            sale: newSale,
+          });
+
+          if (product.isIllegal) {
+            isIllegalProduct = true;
+            totalIllegalAmount += newDetail.subtotal;
+          }
+
+          newSale.details.add(newDetail);
         }
 
-        newSale.details.add(newDetail);
-      }
+        newSale.saleAmount = newSale.details.getItems().reduce((acc, d) => acc + d.subtotal, 0);
 
-      newSale.saleAmount = newSale.details
-        .getItems()
-        .reduce((acc, d) => acc + d.subtotal, 0);
+        // ──────────────────────────────────────────────────────────────────────
+        // Handle illegal products and bribes
+        // ──────────────────────────────────────────────────────────────────────
+        if (isIllegalProduct) {
+          const distributorZoneId = distributor.zone?.id;
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Handle illegal products and bribes
-      // ──────────────────────────────────────────────────────────────────────
-      if (isIllegalProduct) {
-        // ✅ Buscar autoridad de la MISMA ZONA que el distribuidor
-        const distributorZoneId = distributor.zone?.id;
+          if (!distributorZoneId) {
+            logger.warn({ distributorDni: distributor.dni }, 'Illegal product detected, but distributor has no zone assigned.');
+          } else {
+            const authoritiesInZone = await txEm.find(Authority, { zone: distributorZoneId });
+            let selectedAuthority: Authority | null = null;
 
-        if (!distributorZoneId) {
-          logger.warn({
-            distributorDni: distributor.dni,
-            distributorName: distributor.name
-          }, 'Illegal product detected, but distributor has no zone assigned. Cannot assign bribe to authority.');
-        } else {
-          // ✅ Buscar TODAS las autoridades de la zona
-          const authoritiesInZone = await em.find(
-            Authority,
-            { zone: distributorZoneId }
-          );
+            if (authoritiesInZone.length > 0) {
+              const authoritiesWithCounts = await Promise.all(
+                authoritiesInZone.map(async (auth) => {
+                  const bribeCount = await txEm.count(Bribe, { authority: auth.id });
+                  return { authority: auth, bribeCount };
+                })
+              );
 
-          let selectedAuthority: Authority | null = null;
+              const minBribes = Math.min(...authoritiesWithCounts.map(a => a.bribeCount));
+              const candidatesWithMinBribes = authoritiesWithCounts.filter(a => a.bribeCount === minBribes);
+              candidatesWithMinBribes.sort((a, b) => a.authority.rank - b.authority.rank);
+              const minRank = candidatesWithMinBribes[0].authority.rank;
+              const finalCandidates = candidatesWithMinBribes.filter(a => a.authority.rank === minRank);
 
-          if (authoritiesInZone.length > 0) {
-            // Contar sobornos asignados para cada autoridad
-            const authoritiesWithCounts = await Promise.all(
-              authoritiesInZone.map(async (auth) => {
-                const bribeCount = await em.count(Bribe, { authority: auth.id });
-                return { authority: auth, bribeCount };
-              })
-            );
+              if (finalCandidates.length === 1) {
+                selectedAuthority = finalCandidates[0].authority;
+              } else {
+                const randomIndex = Math.floor(Math.random() * finalCandidates.length);
+                selectedAuthority = finalCandidates[randomIndex].authority;
+              }
+            }
 
-            // Encontrar el mínimo de sobornos
-            const minBribes = Math.min(...authoritiesWithCounts.map(a => a.bribeCount));
+            if (selectedAuthority) {
+              const authority = selectedAuthority;
+              newSale.authority = txEm.getReference(Authority, authority.id);
 
-            // Filtrar autoridades con el mínimo de sobornos
-            const candidatesWithMinBribes = authoritiesWithCounts.filter(
-              a => a.bribeCount === minBribes
-            );
+              const percentage = Authority.rankToCommission(authority.rank) ?? 0;
+              const bribe = txEm.create(Bribe, {
+                authority,
+                totalAmount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
+                paidAmount: 0,
+                sale: newSale,
+                creationDate: new Date(),
+              } as any);
 
-            // Ordenar por rango ascendente (menor rango = mayor prioridad)
-            candidatesWithMinBribes.sort((a, b) => a.authority.rank - b.authority.rank);
-
-            // Encontrar el menor rango entre los candidatos
-            const minRank = candidatesWithMinBribes[0].authority.rank;
-
-            // Filtrar solo las autoridades con el menor rango
-            const finalCandidates = candidatesWithMinBribes.filter(
-              a => a.authority.rank === minRank
-            );
-
-            // Seleccionar: si hay una sola, esa; si hay varias, random
-            if (finalCandidates.length === 1) {
-              selectedAuthority = finalCandidates[0].authority;
-              logger.info({
-                authorityDni: selectedAuthority.dni,
-                authorityName: selectedAuthority.name,
-                bribeCount: finalCandidates[0].bribeCount,
-                rank: selectedAuthority.rank,
-                selectionMethod: 'único con mínimo sobornos y menor rango'
-              }, 'Authority selected: only one with minimum bribes and lowest rank');
-            } else {
-              // Selección random entre las que tienen el mismo mínimo de sobornos y menor rango
-              const randomIndex = Math.floor(Math.random() * finalCandidates.length);
-              selectedAuthority = finalCandidates[randomIndex].authority;
-              logger.info({
-                authorityDni: selectedAuthority.dni,
-                authorityName: selectedAuthority.name,
-                bribeCount: finalCandidates[randomIndex].bribeCount,
-                rank: selectedAuthority.rank,
-                totalCandidates: finalCandidates.length,
-                selectionMethod: 'random entre empate (mismo sobornos y rango)'
-              }, 'Authority selected: random among authorities with same bribes and rank');
+              txEm.persist(bribe);
             }
           }
-
-          if (selectedAuthority) {
-            const authority = selectedAuthority;
-            newSale.authority = em.getReference(Authority, authority.id);
-
-            const percentage = Authority.rankToCommission(authority.rank) ?? 0;
-            const bribe = em.create(Bribe, {
-              authority,
-              totalAmount: parseFloat((totalIllegalAmount * percentage).toFixed(2)),
-              paidAmount: 0,
-              sale: newSale,
-              creationDate: new Date(),
-            } as any);
-
-            em.persist(bribe);
-            logger.info({
-              authorityDni: authority.dni,
-              authorityName: authority.name,
-              zoneId: distributorZoneId,
-              bribeAmount: parseFloat((totalIllegalAmount * percentage).toFixed(2))
-            }, 'Bribe created and assigned to authority from distributor zone');
-          } else {
-            logger.warn({
-              zoneId: distributorZoneId,
-              distributorDni: distributor.dni
-            }, 'Illegal product detected, but no authority is available in distributor zone.');
-          }
         }
-      }
+        
+        txEm.persist(newSale);
 
-      await em.persistAndFlush(newSale);
+        // ──────────────────────────────────────────────────────────────────────
+        // Assign CLIENT role to user
+        // ──────────────────────────────────────────────────────────────────────
+        const txUser = await txEm.findOne(User, { id: userId });
+        if (txUser && !txUser.roles.includes(Role.CLIENT)) {
+          txUser.roles.push(Role.CLIENT);
+          txEm.persist(txUser);
+        }
+
+        return newSale;
+      });
 
       // ──────────────────────────────────────────────────────────────────────
-      // Assign CLIENT role to user after successful purchase
-      // ──────────────────────────────────────────────────────────────────────
-      if (!user.roles.includes(Role.CLIENT)) {
-        user.roles.push(Role.CLIENT);
-        await em.persistAndFlush(user);
-        logger.info({ userId, email: user.email }, 'User promoted to CLIENT role after first purchase');
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Prepare and send response
+      // Prepare and send response (using outer em)
       // ──────────────────────────────────────────────────────────────────────
       const sale = await em.findOne(
         Sale,
-        { id: newSale.id },
+        { id: createdSale.id },
         { populate: ['details', 'client', 'authority'] }
       );
 
-      return res.status(201).send({
-        message: 'Sale registered successfully',
-        data: sale ? sale.toDTO() : null,
-      });
+      return ResponseUtil.created(res, 'Sale registered successfully', sale ? sale.toDTO() : null);
+
     } catch (err: any) {
       logger.error({ err }, 'Error registering sale');
-      return res
-        .status(500)
-        .send({ message: err.message || 'Error registering the sale' });
+      
+      const errorMessage = err.message || '';
+      
+      if (errorMessage === 'DISTRIBUTOR_NOT_FOUND') {
+          return ResponseUtil.notFound(res, 'Distributor', distributorDni);
+      }
+      if (errorMessage === 'PERSON_DATA_REQUIRED') {
+          return ResponseUtil.error(res, 'The person does not exist, the data is required to create it', 400);
+      }
+      if (errorMessage.startsWith('PRODUCT_NOT_FOUND_')) {
+          const pId = errorMessage.split('_')[2];
+          return ResponseUtil.error(res, `Product with ID ${pId} not found`, 400);
+      }
+      if (errorMessage.startsWith('INSUFFICIENT_STOCK_')) {
+          const pName = errorMessage.replace('INSUFFICIENT_STOCK_', '');
+          return ResponseUtil.error(res, `Insufficient stock for product: ${pName}`, 400);
+      }
+      
+      return ResponseUtil.internalError(res, 'Error registering the sale', err);
     }
   }
 

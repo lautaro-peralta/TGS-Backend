@@ -87,85 +87,94 @@ export class ClientController {
         ]);
       }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Verify if a client with that DNI already exists
-      // ──────────────────────────────────────────────────────────────────────
-      const existingClient = await em.findOne(Client, { dni: String(dni) });
-      if (existingClient) {
-        return ResponseUtil.conflict(
-          res,
-          'A client with that DNI already exists',
-          'dni'
-        );
-      }
-
       const createUser = !!(username && password);
+      let responseData: any;
 
-      if (createUser) {
+      await em.transactional(async (txEm) => {
         // ──────────────────────────────────────────────────────────────────────
-        // Additional validation when creating credentials
+        // Verify if a client with that DNI already exists
         // ──────────────────────────────────────────────────────────────────────
-        const existingUser = await em.findOne(User, { username });
-        if (existingUser) {
-          return ResponseUtil.conflict(
-            res,
-            'A user with that username already exists',
-            'username'
-          );
+        const existingClient = await txEm.findOne(Client, { dni: String(dni) });
+        if (existingClient) {
+          throw new Error('CLIENT_ALREADY_EXISTS');
         }
-      }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Find or create base person
-      // ──────────────────────────────────────────────────────────────────────
-      let person = await em.findOne(BasePersonEntity, { dni: String(dni) });
-      if (!person) {
-        person = em.create(BasePersonEntity, {
-          dni,
-          name,
-          email,
-          address: address ?? '',
-          phone: phone ?? '',
-        });
-        await em.persistAndFlush(person);
-      }
-
-      let user;
-      if (createUser) {
-        // ──────────────────────────────────────────────────────────────────────
-        // Create user if credentials are provided
-        // ──────────────────────────────────────────────────────────────────────
-        user = await em.findOne(User, { person: { dni: String(dni) } });
-
-        if (!user) {
-          const hashedPassword = await argon2.hash(password);
-          const user = new User(
-            username,
-            email,
-            hashedPassword,
-            [Role.USER]
-          );
-          user.person = person as any;
-          await em.persistAndFlush(user);
-
-          if (!user.id) {
-            return ResponseUtil.internalError(res, 'Could not create user');
+        if (createUser) {
+          // ──────────────────────────────────────────────────────────────────────
+          // Additional validation when creating credentials
+          // ──────────────────────────────────────────────────────────────────────
+          const existingUser = await txEm.findOne(User, { username });
+          if (existingUser) {
+             throw new Error('USERNAME_ALREADY_EXISTS');
           }
         }
-      }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Create client
-      // ──────────────────────────────────────────────────────────────────────
-      const client = em.create(Client, {
-        name,
-        dni,
-        email,
-        phone,
-        address,
+        // ──────────────────────────────────────────────────────────────────────
+        // Find or create base person
+        // ──────────────────────────────────────────────────────────────────────
+        let person = await txEm.findOne(BasePersonEntity, { dni: String(dni) });
+        if (!person) {
+          person = txEm.create(BasePersonEntity, {
+            dni,
+            name,
+            email,
+            address: address ?? '',
+            phone: phone ?? '',
+          });
+          txEm.persist(person);
+        }
+
+        let user;
+        if (createUser) {
+          // ──────────────────────────────────────────────────────────────────────
+          // Create user if credentials are provided
+          // ──────────────────────────────────────────────────────────────────────
+          user = await txEm.findOne(User, { person: { dni: String(dni) } });
+
+          if (!user) {
+            const hashedPassword = await argon2.hash(password);
+            user = new User(
+              username,
+              email,
+              hashedPassword,
+              [Role.USER]
+            );
+            user.person = person as any;
+            txEm.persist(user);
+          }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Create client
+        // ──────────────────────────────────────────────────────────────────────
+        const client = txEm.create(Client, {
+          name,
+          dni,
+          email,
+          phone,
+          address,
+        });
+
+        txEm.persist(client);
+
+        // Flush inside tx to generate IDs needed for response
+        await txEm.flush();
+
+        if (user && !user.id) {
+            throw new Error('USER_CREATION_FAILED');
+        }
+
+        responseData = {
+          client: client.toDTO(),
+          ...(user && {
+            user: {
+              id: (user as User).id,
+              username: (user as User).username,
+              email: (user as User).email,
+            },
+          }),
+        };
       });
-
-      await em.persistAndFlush(client);
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -174,20 +183,20 @@ export class ClientController {
         ? 'Client and user created successfully'
         : 'Client created successfully';
 
-      const responseData = {
-        client: client.toDTO(),
-        ...(user && {
-          user: {
-            id: (user as User).id,
-            username: (user as User).username,
-            email: (user as User).email,
-          },
-        }),
-      };
-
       return ResponseUtil.created(res, message, responseData);
-    } catch (error) {
+
+    } catch (error: any) {
       logger.error({ err: error }, 'Error creating client');
+      if (error.message === 'CLIENT_ALREADY_EXISTS') {
+         return ResponseUtil.conflict(res, 'A client with that DNI already exists', 'dni');
+      }
+      if (error.message === 'USERNAME_ALREADY_EXISTS') {
+         return ResponseUtil.conflict(res, 'A user with that username already exists', 'username');
+      }
+      if (error.message === 'USER_CREATION_FAILED') {
+         return ResponseUtil.internalError(res, 'Could not create user');
+      }
+      
       return ResponseUtil.internalError(res, 'Error creating client', error);
     }
   }
@@ -322,29 +331,36 @@ export class ClientController {
     const dni = routeParam(req.params.dni).trim();
 
     try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch client by DNI
-      // ──────────────────────────────────────────────────────────────────────
-      const client = await em.findOne(Client, { dni: String(dni) });
-      if (!client) {
-        return ResponseUtil.notFound(res, 'Client', dni);
-      }
+      let clientName = '';
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Delete the client
-      // ──────────────────────────────────────────────────────────────────────
-      const name = client.name;
-      await em.removeAndFlush(client);
+      await em.transactional(async (txEm) => {
+        // ──────────────────────────────────────────────────────────────────────
+        // Fetch client by DNI
+        // ──────────────────────────────────────────────────────────────────────
+        const client = await txEm.findOne(Client, { dni: String(dni) });
+        if (!client) {
+          throw new Error('CLIENT_NOT_FOUND');
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Delete the client
+        // ──────────────────────────────────────────────────────────────────────
+        clientName = client.name;
+        txEm.remove(client);
+      });
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
       // ──────────────────────────────────────────────────────────────────────
       return ResponseUtil.deleted(
         res,
-        `${name}, DNI ${dni} successfully removed from the list of clients`
+        `${clientName}, DNI ${dni} successfully removed from the list of clients`
       );
-    } catch (err) {
+    } catch (err: any) {
       logger.error({ err }, 'Error deleting client');
+      if (err.message === 'CLIENT_NOT_FOUND') {
+         return ResponseUtil.notFound(res, 'Client', dni);
+      }
       return ResponseUtil.internalError(res, 'Error deleting client', err);
     }
   }

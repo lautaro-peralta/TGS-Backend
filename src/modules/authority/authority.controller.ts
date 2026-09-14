@@ -186,111 +186,125 @@ export class AuthorityController {
       const { dni, name, email, address, phone, rank, zoneId, username, password } =
         res.locals.validated.body;
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Verify existing DNI in Authority
-      // ──────────────────────────────────────────────────────────────────────
-      const existingDNI = await em.findOne(Authority, { dni });
-      if (existingDNI) {
-        return ResponseUtil.conflict(
-          res,
-          'An authority with that DNI already exists',
-          'dni'
-        );
-      }
-
       const createUser = !!(username && password);
+      let responseData: any;
 
-      if (createUser) {
+      await em.transactional(async (txEm) => {
         // ──────────────────────────────────────────────────────────────────────
-        // Additional validation when creating credentials
+        // Verify existing DNI in Authority
         // ──────────────────────────────────────────────────────────────────────
-        const existingUser = await em.findOne(User, { username });
-        if (existingUser) {
-          return ResponseUtil.conflict(
-            res,
-            'A user with that username already exists',
-            'username'
-          );
+        const existingDNI = await txEm.findOne(Authority, { dni });
+        if (existingDNI) {
+          throw new Error('AUTHORITY_ALREADY_EXISTS');
         }
-      }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Verify zone existence
-      // ──────────────────────────────────────────────────────────────────────
-      const existingZone = await em.count(Zone, { id: zoneId });
-      if (!existingZone) {
-        return ResponseUtil.notFound(res, 'Zone', zoneId);
-      }
+        if (createUser) {
+          // ──────────────────────────────────────────────────────────────────────
+          // Additional validation when creating credentials
+          // ──────────────────────────────────────────────────────────────────────
+          const existingUser = await txEm.findOne(User, { username });
+          if (existingUser) {
+            throw new Error('USERNAME_ALREADY_EXISTS');
+          }
+        }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Find or create base person by DNI
-      // ──────────────────────────────────────────────────────────────────────
-      let basePerson = await em.findOne(BasePersonEntity, { dni });
-      if (!basePerson) {
-        logger.info('🏛️ Creating base person...');
-        basePerson = em.create(BasePersonEntity, {
+        // ──────────────────────────────────────────────────────────────────────
+        // Verify zone existence
+        // ──────────────────────────────────────────────────────────────────────
+        const existingZone = await txEm.count(Zone, { id: zoneId });
+        if (!existingZone) {
+          throw new Error('ZONE_NOT_FOUND');
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Find or create base person by DNI
+        // ──────────────────────────────────────────────────────────────────────
+        let basePerson = await txEm.findOne(BasePersonEntity, { dni });
+        if (!basePerson) {
+          logger.info('🏛️ Creating base person...');
+          basePerson = txEm.create(BasePersonEntity, {
+            dni,
+            name,
+            email,
+            phone: phone ?? '-',
+            address: address ?? '-',
+          });
+          txEm.persist(basePerson);
+          logger.info('✅ Base person created');
+        }
+
+        let user;
+        if (createUser) {
+          // ──────────────────────────────────────────────────────────────────────
+          // Create user if credentials are provided (manual mode)
+          // ──────────────────────────────────────────────────────────────────────
+          user = await txEm.findOne(User, { person: { dni } });
+
+          if (!user) {
+            const hashedPassword = await argon2.hash(password);
+            user = new User(
+              username,
+              email,
+              hashedPassword,
+              [Role.AUTHORITY]
+            );
+            user.person = basePerson as any;
+            txEm.persist(user);
+          }
+        } else {
+          // ──────────────────────────────────────────────────────────────────────
+          // If creating from existing user (fromUser mode), assign AUTHORITY role
+          // ──────────────────────────────────────────────────────────────────────
+          user = await txEm.findOne(User, { person: { dni } });
+
+          if (user) {
+            // Add AUTHORITY role if not already present
+            if (!user.roles.includes(Role.AUTHORITY)) {
+              user.roles.push(Role.AUTHORITY);
+              logger.info({ userId: user.id, dni }, 'Assigned AUTHORITY role to existing user');
+            }
+          }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Create Authority
+        // ──────────────────────────────────────────────────────────────────────
+        const authority = txEm.create(Authority, {
           dni,
           name,
           email,
-          phone: phone ?? '-',
           address: address ?? '-',
+          phone: phone ?? '-',
+          rank,
+          zone: txEm.getReference(Zone, zoneId),
         });
-        await em.persistAndFlush(basePerson);
-        logger.info('✅ Base person created');
-      }
+        txEm.persist(authority);
 
-      let user;
-      if (createUser) {
-        // ──────────────────────────────────────────────────────────────────────
-        // Create user if credentials are provided (manual mode)
-        // ──────────────────────────────────────────────────────────────────────
-        user = await em.findOne(User, { person: { dni } });
+        await txEm.flush();
+        logger.info('✅ Authority created');
 
-        if (!user) {
-          const hashedPassword = await argon2.hash(password);
-          user = new User(
-            username,
-            email,
-            hashedPassword,
-            [Role.AUTHORITY]
-          );
-          user.person = basePerson as any;
-          await em.persistAndFlush(user);
-
-          if (!user.id) {
-            return ResponseUtil.internalError(res, 'Could not create user');
-          }
+        if (user && !user.id) {
+           throw new Error('USER_CREATION_FAILED');
         }
-      } else {
-        // ──────────────────────────────────────────────────────────────────────
-        // If creating from existing user (fromUser mode), assign AUTHORITY role
-        // ──────────────────────────────────────────────────────────────────────
-        user = await em.findOne(User, { person: { dni } });
 
-        if (user) {
-          // Add AUTHORITY role if not already present
-          if (!user.roles.includes(Role.AUTHORITY)) {
-            user.roles.push(Role.AUTHORITY);
-            await em.flush();
-            logger.info({ userId: user.id, dni }, 'Assigned AUTHORITY role to existing user');
-          }
-        }
-      }
+        const authorityData = authority.toDTO?.() ?? {
+          id: authority.id,
+          dni: authority.dni,
+          name: authority.name,
+          email: authority.email,
+        };
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Create Authority
-      // ──────────────────────────────────────────────────────────────────────
-      const authority = em.create(Authority, {
-        dni,
-        name,
-        email,
-        address: address ?? '-',
-        phone: phone ?? '-',
-        rank,
-        zone: em.getReference(Zone, zoneId),
+        responseData = {
+          authority: authorityData,
+          ...(user && {
+            user: {
+              id: (user as User).id,
+              username: (user as User).username,
+              email: (user as User).email,
+            },
+          }),
+        };
       });
-      await em.persistAndFlush(authority);
-      logger.info('✅ Authority created');
 
       // ──────────────────────────────────────────────────────────────────────
       // Prepare and send response
@@ -299,31 +313,26 @@ export class AuthorityController {
         ? 'Authority and user created successfully'
         : 'Authority created successfully';
 
-      const authorityData = authority.toDTO?.() ?? {
-        id: authority.id,
-        dni: authority.dni,
-        name: authority.name,
-        email: authority.email,
-      };
-
-      const responseData = {
-        authority: authorityData,
-        ...(user && {
-          user: {
-            id: (user as User).id,
-            username: (user as User).username,
-            email: (user as User).email,
-          },
-        }),
-      };
-
       return ResponseUtil.created(
         res,
         message,
         responseData
       );
+
     } catch (error: any) {
       logger.error({ err: error }, '💥 Full error');
+      if (error.message === 'AUTHORITY_ALREADY_EXISTS') {
+         return ResponseUtil.conflict(res, 'An authority with that DNI already exists', 'dni');
+      }
+      if (error.message === 'USERNAME_ALREADY_EXISTS') {
+         return ResponseUtil.conflict(res, 'A user with that username already exists', 'username');
+      }
+      if (error.message === 'ZONE_NOT_FOUND') {
+         return ResponseUtil.notFound(res, 'Zone', res.locals.validated.body.zoneId);
+      }
+      if (error.message === 'USER_CREATION_FAILED') {
+         return ResponseUtil.internalError(res, 'Could not create user');
+      }
       return ResponseUtil.internalError(res, 'Error creating authority', error);
     }
   }
@@ -554,55 +563,57 @@ export class AuthorityController {
     const dni = routeParam(req.params.dni);
 
     try {
-      // ──────────────────────────────────────────────────────────────────────
-      // Fetch authority by DNI
-      // ──────────────────────────────────────────────────────────────────────
-      const authority = await em.findOne(
-        Authority,
-        { dni },
-        { populate: ['bribes'] }
-      );
+      let authorityName = '';
 
-      if (!authority) {
-        return ResponseUtil.notFound(res, 'Authority', dni);
-      }
-
-      // ──────────────────────────────────────────────────────────────────────
-      // Check for associated bribes before deletion
-      // ──────────────────────────────────────────────────────────────────────
-      if (authority.bribes.count() > 0) {
-        return ResponseUtil.error(
-          res,
-          'The authority cannot be deleted because it has associated pending bribes',
-          400
+      await em.transactional(async (txEm) => {
+        // ──────────────────────────────────────────────────────────────────────
+        // Fetch authority by DNI
+        // ──────────────────────────────────────────────────────────────────────
+        const authority = await txEm.findOne(
+          Authority,
+          { dni },
+          { populate: ['bribes'] }
         );
-      }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Remove AUTHORITY role from associated user if exists
-      // ──────────────────────────────────────────────────────────────────────
-      const person = await em.findOne(BasePersonEntity, { dni });
-      if (person) {
-        const user = await em.findOne(User, { person: { dni } });
+        if (!authority) {
+          throw new Error('AUTHORITY_NOT_FOUND');
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Check for associated bribes before deletion
+        // ──────────────────────────────────────────────────────────────────────
+        if (authority.bribes.count() > 0) {
+          throw new Error('AUTHORITY_HAS_BRIBES');
+        }
+
+        // ──────────────────────────────────────────────────────────────────────
+        // Remove AUTHORITY role from associated user if exists
+        // ──────────────────────────────────────────────────────────────────────
+        const user = await txEm.findOne(User, { person: { dni } });
         if (user && user.roles.includes(Role.AUTHORITY)) {
           user.roles = user.roles.filter(role => role !== Role.AUTHORITY);
-          await em.flush();
           logger.info({ userId: user.id, dni }, 'Removed AUTHORITY role from user');
         }
-      }
 
-      const name = authority.name;
+        // ──────────────────────────────────────────────────────────────────────
+        // Delete the authority
+        // ──────────────────────────────────────────────────────────────────────
+        authorityName = authority.name;
+        txEm.remove(authority);
+      });
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Delete the authority
-      // ──────────────────────────────────────────────────────────────────────
-      await em.removeAndFlush(authority);
       return ResponseUtil.deleted(
         res,
-        `${name}, DNI ${dni} successfully removed from the list of authorities`
+        `${authorityName}, DNI ${dni} successfully removed from the list of authorities`
       );
-    } catch (error) {
+    } catch (error: any) {
       logger.error({ err: error }, 'Error deleting authority');
+      if (error.message === 'AUTHORITY_NOT_FOUND') {
+         return ResponseUtil.notFound(res, 'Authority', dni);
+      }
+      if (error.message === 'AUTHORITY_HAS_BRIBES') {
+         return ResponseUtil.error(res, 'The authority cannot be deleted because it has associated pending bribes', 400);
+      }
       return ResponseUtil.internalError(res, 'Error deleting authority', error);
     }
   }
