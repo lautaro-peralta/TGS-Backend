@@ -66,10 +66,8 @@ export class AuthController {
       const validatedData = registerSchema.parse(req.body);
       const { username, email, password } = validatedData;
 
-      let emailVerificationData: { token: string } | null = null;
-      let newUserId: number;
-
-      await em.transactional(async (txEm) => {
+      // We will capture data from the transaction block
+      const { emailVerificationData, newUserId } = await em.transactional(async (txEm) => {
         // ────────────────────────────────────────────────────────────────────
         // Check for duplicate username
         // ────────────────────────────────────────────────────────────────────
@@ -139,25 +137,27 @@ export class AuthController {
         // ────────────────────────────────────────────────────────────────────
         // Email verification preparation
         // ────────────────────────────────────────────────────────────────────
+        let txEmailVerificationData: { token: string } | null = null;
+        let txNewUserId: string = '';
+
         if (env.EMAIL_VERIFICATION_REQUIRED) {
           try {
             const emailVerification = new EmailVerification(email);
             txEm.persist(emailVerification);
             
-            // Need to flush here to generate ID for newUser
-            // Wait, we don't strictly need to flush strictly for creating the verification,
-            // but we need an ID for response if we flush. Let's do it.
             await txEm.flush();
             
-            emailVerificationData = { token: emailVerification.token };
-            newUserId = newUser.id;
+            txEmailVerificationData = { token: emailVerification.token };
+            txNewUserId = newUser.id;
           } catch (verificationError) {
              throw new Error('EMAIL_VERIFICATION_CREATION_FAILED');
           }
         } else {
            await txEm.flush();
-           newUserId = newUser.id;
+           txNewUserId = newUser.id;
         }
+
+        return { emailVerificationData: txEmailVerificationData, newUserId: txNewUserId };
       }); // End of transactional block
 
       // ────────────────────────────────────────────────────────────────────

@@ -229,7 +229,6 @@ export class SaleController {
 
     // Use authenticated user's DNI as client DNI if not provided
     const personEntity = user.person?.isInitialized?.() ? user.person : await user.person?.load?.();
-    const personEntity = user.person?.isInitialized?.() ? user.person : await user.person?.load?.();
     const effectiveClientDni = clientDni || (personEntity as any)?.dni;
 
     if (!effectiveClientDni) {
@@ -318,7 +317,7 @@ export class SaleController {
           }
           
           if (product.stock < detail.quantity) {
-             throw new Error(`INSUFFICIENT_STOCK_${product.name}`);
+             throw new Error(`INSUFFICIENT_STOCK_${product.id}`);
           }
           
           // Decrement stock inside the transaction
