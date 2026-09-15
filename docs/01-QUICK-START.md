@@ -1,6 +1,7 @@
 # Guía de Inicio Rápido - TGS Backend
 
 ## Índice
+
 - [Requisitos Previos](#requisitos-previos)
 - [Instalación Paso a Paso](#instalación-paso-a-paso)
 - [Configuración Inicial](#configuración-inicial)
@@ -16,18 +17,18 @@ Antes de comenzar, asegúrate de tener instalado lo siguiente en tu sistema:
 
 ### Software Requerido
 
-| Software | Versión Mínima | Propósito |
-|----------|----------------|-----------|
-| **Node.js** | 18.x o superior | Runtime de JavaScript |
-| **pnpm** | 8.x o superior | Gestor de paquetes (recomendado) |
-| **PostgreSQL** | 16 o superior | Base de datos relacional |
-| **Git** | 2.x o superior | Control de versiones |
+| Software       | Versión Mínima  | Propósito                        |
+| -------------- | --------------- | -------------------------------- |
+| **Node.js**    | 18.x o superior | Runtime de JavaScript            |
+| **pnpm**       | 8.x o superior  | Gestor de paquetes (recomendado) |
+| **PostgreSQL** | 16 o superior   | Base de datos relacional         |
+| **Git**        | 2.x o superior  | Control de versiones             |
 
 ### Software Opcional
 
-| Software | Versión | Propósito |
-|----------|---------|-----------|
-| **Redis** | 6.x o superior | Sistema de caché (opcional) |
+| Software   | Versión         | Propósito                      |
+| ---------- | --------------- | ------------------------------ |
+| **Redis**  | 6.x o superior  | Sistema de caché (opcional)    |
 | **Docker** | 20.x o superior | Contenedores (para despliegue) |
 
 ### Verificar Instalaciones
@@ -71,7 +72,7 @@ scoop install nodejs-lts pnpm
 
 ```bash
 # Clonar el proyecto
-git clone https://github.com/Lau-prog/GarrSYS.git
+git clone https://github.com/lautaro-peralta/GarrSYS.git
 
 # Navegar al directorio del backend
 cd GarrSYS/TGS-Backend
@@ -85,10 +86,12 @@ pnpm install
 ```
 
 Este comando instalará:
+
 - Dependencias de producción (Express, MikroORM, etc.)
 - Dependencias de desarrollo (TypeScript, tipos, etc.)
 
 **Salida esperada:**
+
 ```
 Packages: +XXX
 ++++++++++++++++++++++++++++++++++++
@@ -100,6 +103,7 @@ Progress: resolved XXX, reused XXX, downloaded X, added XXX, done
 #### Opción A: PostgreSQL Local
 
 1. **Iniciar PostgreSQL:**
+
 ```bash
 # En Linux/macOS
 sudo systemctl start postgresql
@@ -111,6 +115,7 @@ net start postgresql-x64-16
 ```
 
 2. **Crear la base de datos:**
+
 ```bash
 # Conectar a PostgreSQL
 psql -U postgres
@@ -235,6 +240,7 @@ EMAIL_VERIFICATION_REQUIRED=false
 ```
 
 O usar el comando directo:
+
 ```bash
 pnpm start:demo
 ```
@@ -244,6 +250,7 @@ pnpm start:demo
 Si deseas probar el sistema de emails:
 
 **Mailtrap (Recomendado para Testing)**
+
 1. Crea una cuenta gratuita en [Mailtrap.io](https://mailtrap.io)
 2. Copia las credenciales SMTP de tu bandeja de entrada
 3. Úsalas en las variables SMTP
@@ -260,6 +267,7 @@ pnpm build
 ```
 
 **Salida esperada:**
+
 ```
 > proyecto_tgs@1.0.0 build
 > tsc -p ./tsconfig.json
@@ -278,6 +286,7 @@ pnpm start:demo
 ```
 
 **Salida esperada:**
+
 ```
 [HH:MM:SS] Starting compilation in watch mode...
 [HH:MM:SS] Found 0 errors. Watching for file changes.
@@ -309,6 +318,7 @@ INFO: Server running on http://localhost:3000/ [development]
 El sistema crea automáticamente en modo desarrollo:
 
 #### Usuario Administrador por Defecto
+
 ```
 Email: admin@tgs.com
 Password: admin123
@@ -316,6 +326,7 @@ Rol: ADMIN
 ```
 
 #### Zonas por Defecto
+
 - Birmingham
 - London
 - Camden Town
@@ -338,6 +349,7 @@ curl http://localhost:3000/health
 ```
 
 **Respuesta esperada:**
+
 ```json
 {
   "status": "ok",
@@ -362,6 +374,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```
 
 **Respuesta esperada:**
+
 ```json
 {
   "success": true,
@@ -395,6 +408,7 @@ SELECT * FROM users LIMIT 1;
 ```
 
 **Tablas esperadas:**
+
 ```
  Schema |        Name         | Type  |  Owner
 --------+---------------------+-------+----------
@@ -416,6 +430,7 @@ SELECT * FROM users LIMIT 1;
 **Problema:** Faltan dependencias instaladas
 
 **Solución:**
+
 ```bash
 # Limpiar node_modules y reinstalar
 rm -rf node_modules pnpm-lock.yaml
@@ -427,6 +442,7 @@ pnpm install
 **Problema:** PostgreSQL no está ejecutándose o usa un puerto diferente
 
 **Soluciones:**
+
 ```bash
 # 1. Verificar que PostgreSQL está corriendo
 sudo systemctl status postgresql
@@ -442,6 +458,7 @@ psql -U postgres -c "SHOW port;"
 **Problema:** Credenciales incorrectas de base de datos
 
 **Soluciones:**
+
 ```bash
 # 1. Verificar usuario y contraseña en .env.development
 # 2. Recrear usuario en PostgreSQL:
@@ -458,6 +475,7 @@ GRANT ALL PRIVILEGES ON DATABASE tpdesarrollo TO dsw;
 **Problema:** El JWT_SECRET es muy corto
 
 **Solución:**
+
 ```bash
 # Generar un JWT_SECRET seguro
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -470,6 +488,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 **Problema:** Puerto 3000 ya está en uso
 
 **Soluciones:**
+
 ```bash
 # Opción 1: Cambiar el puerto en .env.development
 PORT=3001
@@ -487,6 +506,7 @@ Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Proc
 **Problema:** Versión incompatible o configuración incorrecta
 
 **Solución:**
+
 ```bash
 # Verificar versión de TypeScript
 pnpm list typescript

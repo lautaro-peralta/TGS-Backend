@@ -129,12 +129,12 @@ Re-login requerido
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Servidor de Desarrollo',
+        url: 'https://tgs-backend-u5xz.onrender.com',
+        description: 'Servidor de Producción (Render)',
       },
       {
-        url: 'https://api.tgs.com',
-        description: 'Servidor de Producción',
+        url: 'http://localhost:3000',
+        description: 'Servidor de Desarrollo Local',
       },
     ],
     components: {
